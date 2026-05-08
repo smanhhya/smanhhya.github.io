@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -1074,14 +1073,6 @@
             
             message += `🕒 وقت الطلب: ${orderDate} - ${orderTime}\n\n🛒 *الطلبات:*\n`;
 
-            let orderDetailsForTickTick = "";
-            if (isNew) {
-                orderDetailsForTickTick = `الاسم: ${customerName}\nالموبايل: ${customerPhone}\nالمنطقة: ${zoneName}\n`;
-                if(customerAddress) orderDetailsForTickTick += `العنوان: ${customerAddress}\n`;
-            } else { orderDetailsForTickTick = `عميل سابق يطلب مجدداً\nالموبايل المسجل: ${customerPhone}\nالمنطقة: ${zoneName}\n`; }
-            
-            orderDetailsForTickTick += `وقت الطلب: ${orderDate} - ${orderTime}\n\nالطلبات:\n`;
-
             for (let id in cart) {
                 const item = cart[id]; 
                 const itemTotal = item.quantity * item.price; 
@@ -1090,14 +1081,13 @@
                 let shortName = item.name.replace('طبق ', '').split(' (')[0];
                 itemsSummaryArray.push(`${item.quantity} ${shortName}`);
                 
-                // إنشاء الهاشتاج (مثلاً: "طبق بيض سمان" يتحول إلى "#بيض_سمان")
+                // إنشاء الهاشتاج
                 let tagName = "#" + shortName.replace(/ /g, '_');
                 if(!smartTagsArray.includes(tagName)) {
                     smartTagsArray.push(tagName);
                 }
 
                 message += `▪️ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`;
-                orderDetailsForTickTick += `▪️ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`;
             }
 
             // حساب الخصم
@@ -1113,7 +1103,6 @@
                 discountAmount = Math.round(discountAmount);
                 discountText = `🎁 كود خصم (${appliedPromo.code}): -${discountAmount} ج.م\n`;
                 message += `\n${discountText}`;
-                orderDetailsForTickTick += `\n${discountText}`;
             }
 
             const totalAfterPromo = subTotal - discountAmount;
@@ -1124,24 +1113,56 @@
             
             let deliveryText = freeDelivery ? "مجاني 🎉" : ((deliveryFee === 0 && zoneName === 'مكان آخر') ? "يحدد لاحقاً" : `${deliveryFee} ج.م`);
 
-            // إعداد العنوان النظيف لـ TickTick (مثال: 2 جامبو 1 بيض سمان)
-            let tickTickSubject = itemsSummaryArray.join(' '); 
-            
-            // إضافة الهاشتاجات في نهاية تفاصيل المهمة بدلاً من العنوان
-            let tagsString = smartTagsArray.join(' ');
-            orderDetailsForTickTick += `\n\nالتاجات:\n${tagsString}`;
-
             message += `\n═════════════════\n📦 قيمة الطلبات: ${subTotal} ج.م\n🚚 رسوم التوصيل: ${deliveryText}\n💰 *الإجمالي النهائي: ${finalTotal} ج.م*\n`;
-
+            
             if(deliveryFee === 0 && zoneName === 'مكان آخر' && !freeDelivery) {
                 message += `*(الإجمالي غير شامل رسوم التوصيل)*\n`;
-                orderDetailsForTickTick += `\nالإجمالي النهائي: ${finalTotal} ج.م (غير شامل التوصيل)`;
-            } else { orderDetailsForTickTick += `\nالإجمالي النهائي: ${finalTotal} ج.م`; }
-
-            if (freeDelivery) orderDetailsForTickTick += ` (شامل التوصيل المجاني)`;
+            }
             message += `\n(في انتظار تأكيد الحجز وموعد الاستلام)`;
 
-            // --- التعديل الجديد: تجهيز البيانات لـ Make ---
+            // ---------------------------------------------------------
+            // تصميم فاتورة تيك تك (Receipt Style)
+            // ---------------------------------------------------------
+            let orderDetailsForTickTick = `================================\n`;
+            orderDetailsForTickTick += `          فاتورة طلب سمان ههيا\n`;
+            orderDetailsForTickTick += `================================\n`;
+            orderDetailsForTickTick += `👤 الاسم      : ${customerName}\n`;
+            orderDetailsForTickTick += `📱 الموبايل    : ${customerPhone}\n`;
+            orderDetailsForTickTick += `📍 المنطقة    : ${zoneName}\n`;
+            if(customerAddress) {
+                orderDetailsForTickTick += `🏠 العنوان    : ${customerAddress}\n`;
+            }
+            orderDetailsForTickTick += `🕒 وقت الطلب  : ${orderDate} - ${orderTime}\n`;
+            orderDetailsForTickTick += `--------------------------------\n`;
+            orderDetailsForTickTick += `🛒 الطلبات:\n`;
+
+            for (let id in cart) {
+                const item = cart[id];
+                const itemTotal = item.quantity * item.price;
+                orderDetailsForTickTick += `[ ${item.quantity} ] ${item.name} ........ ${itemTotal} ج.م\n`;
+            }
+
+            orderDetailsForTickTick += `--------------------------------\n`;
+            orderDetailsForTickTick += `قيمة الطلبات : ${subTotal} ج.م\n`;
+            if (discountAmount > 0) {
+                orderDetailsForTickTick += `الخصم (${appliedPromo.code}) : -${discountAmount} ج.م\n`;
+            }
+            orderDetailsForTickTick += `رسوم التوصيل : ${deliveryText}\n`;
+            orderDetailsForTickTick += `================================\n`;
+            
+            if(deliveryFee === 0 && zoneName === 'مكان آخر' && !freeDelivery) {
+                orderDetailsForTickTick += `💰 الإجمالي النهائي : ${finalTotal} ج.م (غير شامل التوصيل)\n`;
+            } else { 
+                orderDetailsForTickTick += `💰 الإجمالي النهائي : ${finalTotal} ج.م\n`;
+            }
+            
+            orderDetailsForTickTick += `================================\n\n`;
+            orderDetailsForTickTick += smartTagsArray.join(' '); // إضافة التاجات في النهاية
+
+            // عنوان المهمة في تيك تك (مثال: 2 جامبو 1 بيض سمان)
+            let tickTickSubject = itemsSummaryArray.join(' '); 
+
+            // --- إرسال البيانات لـ Make و Web3Forms ---
             const makeWebhookUrl = "https://hook.eu1.make.com/nqbt9bhk73h7cgvhvjm51qej6gnlu4pd";
             const makePayload = {
                 customerType: isNew ? "جديد" : "سابق",
@@ -1150,24 +1171,21 @@
                 customerAddress: customerAddress || "غير محدد",
                 zoneName: zoneName,
                 finalTotal: finalTotal,
-                tickTickSubject: tickTickSubject, // العنوان النظيف
-                tickTickDescription: orderDetailsForTickTick // التفاصيل بالتاجات
+                tickTickSubject: tickTickSubject,
+                tickTickDescription: orderDetailsForTickTick
             };
 
             try {
-                // إرسال لـ Web3Forms
                 const web3Request = fetch('https://api.web3forms.com/submit', {
                     method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
                     body: JSON.stringify({ access_key: web3FormsKey, subject: tickTickSubject, "التفاصيل": orderDetailsForTickTick })
                 });
 
-                // إرسال لـ Make 
                 const makeRequest = fetch(makeWebhookUrl, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(makePayload)
                 });
 
-                // تشغيلهم مع بعض بدون تعطيل
                 await Promise.all([web3Request, makeRequest].map(p => p.catch(e => console.log("Request Error", e))));
 
                 if (hasCloud && db) {
@@ -1175,7 +1193,6 @@
                     for (let id in cart) updates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity);
                     await db.collection('inventory').doc('stock').update(updates);
                     
-                    // تحديث الإحصائيات البسيطة
                     await db.collection('inventory').doc('stats').set({
                         sales: firebase.firestore.FieldValue.increment(finalTotal),
                         orders: firebase.firestore.FieldValue.increment(1)
@@ -1202,7 +1219,6 @@
 
             const wantsWhatsApp = document.getElementById('optional-whatsapp')?.checked;
             
-            // --- اللوجيك الجديد لرسالة الواتساب ---
             if (isNew || wantsWhatsApp) { 
                 document.getElementById('alert-icon-container').className = "w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl";
                 document.getElementById('alert-icon').className = "fa-brands fa-whatsapp";
@@ -1217,7 +1233,6 @@
                 document.getElementById('alert-icon-container').className = "w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl";
                 document.getElementById('alert-icon').className = "fa-solid fa-check";
                 
-                // استخدام الرسالة المخصصة من الإعدادات
                 const alertTitle = globalSettings.successTitle || "تم استلام الأوردر! 🎉";
                 const alertMsg = globalSettings.successMessage || "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.";
                 
@@ -1503,6 +1518,3 @@
     </script>
 </body>
 </html>
-
-
-```
