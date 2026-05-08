@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -227,7 +226,7 @@
                 <i class="fa-solid fa-bell" id="alert-icon"></i>
             </div>
             <h3 class="text-xl font-black text-brand-navy mb-2" id="alert-title">تنبيه</h3>
-            <p class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed" id="alert-message">الرسالة</p>
+            <p class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</p>
             <button onclick="closeAlert()" class="bg-brand-navy hover:bg-gray-800 text-white font-bold py-3 px-6 rounded-xl w-full transition-colors">حسناً</button>
         </div>
     </div>
@@ -272,6 +271,18 @@
                         <label class="text-sm font-bold text-brand-navy cursor-pointer" onclick="document.getElementById('admin-banner-active').click()">تفعيل الشريط</label>
                     </div>
                     <input type="text" id="admin-banner-text" placeholder="مثال: خصم خاص لدفعة العيد..." class="w-full border border-gray-300 rounded-lg p-2 font-bold text-brand-navy outline-none focus:border-brand-cyan text-sm">
+                </div>
+
+                <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+                    <h3 class="font-black text-brand-navy mb-3 border-b border-gray-100 pb-2 flex items-center gap-2"><i class="fa-solid fa-message text-green-500"></i> رسالة تأكيد الطلب (للعميل)</h3>
+                    <div class="mb-3">
+                        <label class="text-[10px] font-bold text-gray-600 block mb-1">عنوان الرسالة</label>
+                        <input type="text" id="admin-success-title" class="w-full border border-gray-300 rounded-lg p-2 font-bold text-brand-navy outline-none focus:border-brand-cyan text-sm" placeholder="مثال: تم استلام الأوردر! 🎉">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-gray-600 block mb-1">نص الرسالة</label>
+                        <textarea id="admin-success-message" rows="3" class="w-full border border-gray-300 rounded-lg p-2 font-bold text-brand-navy outline-none focus:border-brand-cyan text-sm" placeholder="اكتب التفاصيل وموعد التوصيل هنا..."></textarea>
+                    </div>
                 </div>
 
                 <div class="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
@@ -409,7 +420,7 @@
             { id: 'other', name: 'مكان آخر', price: 0 }
         ];
 
-        // إعدادات المتجر الإضافية (Banner, Promos, Cross-sell, Best Sellers)
+        // إعدادات المتجر الإضافية
         let globalSettings = {
             freeDeliveryActive: false,
             freeDeliveryThreshold: 500,
@@ -417,9 +428,11 @@
             bannerText: "متاح الآن حجز أوردرات - الكمية محدودة!",
             crossSellActive: true,
             crossSellProductId: 'eggs',
-            promoCodes: [], // e.g. { code: 'HEHIA10', discount: 10, type: 'percent' }
-            bestSellers: ['super'], // array of product ids
-            web3FormsKey: "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c"
+            promoCodes: [],
+            bestSellers: ['super'],
+            web3FormsKey: "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c",
+            successTitle: "تم استلام الأوردر! 🎉",
+            successMessage: "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد."
         };
 
         let dailyStats = { sales: 0, orders: 0 };
@@ -428,7 +441,7 @@
         let tempPromoCodes = [];
 
         let cart = {};
-        let appliedPromo = null; // يحتفظ بالكود المفعل { code, discount, type }
+        let appliedPromo = null; // يحتفظ بالكود المفعل
         let db = null;
         let hasCloud = false;
         let customerType = 'new'; 
@@ -566,6 +579,8 @@
                     if(data.promoCodes !== undefined) globalSettings.promoCodes = data.promoCodes;
                     if(data.bestSellers !== undefined) globalSettings.bestSellers = data.bestSellers;
                     if(data.web3FormsKey !== undefined) globalSettings.web3FormsKey = data.web3FormsKey;
+                    if(data.successTitle !== undefined) globalSettings.successTitle = data.successTitle;
+                    if(data.successMessage !== undefined) globalSettings.successMessage = data.successMessage;
                     
                     applySettingsToUI();
                     renderDeliveryZones();
@@ -1108,10 +1123,10 @@
             
             let deliveryText = freeDelivery ? "مجاني 🎉" : ((deliveryFee === 0 && zoneName === 'مكان آخر') ? "يحدد لاحقاً" : `${deliveryFee} ج.م`);
 
-            // دمج الهاشتاجات في عنوان الإيميل (Subject)
-            let itemsString = itemsSummaryArray.join('، ');
+            // دمج الهاشتاجات في عنوان الإيميل (Subject) ليصبح: 4 جامبو 2 سوبر #عميل_جديد #جامبو #سوبر
+            let itemsString = itemsSummaryArray.join(' '); // دمج بمسافة فقط
             let tagsString = smartTagsArray.join(' ');
-            let tickTickSubject = `🛒 أوردر: ${itemsString} ${tagsString}`;
+            let tickTickSubject = `${itemsString} ${tagsString}`;
 
             message += `\n═════════════════\n📦 قيمة الطلبات: ${subTotal} ج.م\n🚚 رسوم التوصيل: ${deliveryText}\n💰 *الإجمالي النهائي: ${finalTotal} ج.م*\n`;
 
@@ -1199,7 +1214,11 @@
                 document.getElementById('alert-icon-container').className = "w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl";
                 document.getElementById('alert-icon').className = "fa-solid fa-check";
                 
-                showAlert("تم استلام الأوردر! 🎉", "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.");
+                // استخدام الرسالة المخصصة من الإعدادات
+                const alertTitle = globalSettings.successTitle || "تم استلام الأوردر! 🎉";
+                const alertMsg = globalSettings.successMessage || "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.";
+                
+                showAlert(alertTitle, alertMsg);
             }
         };
 
@@ -1331,6 +1350,10 @@
             document.getElementById('admin-banner-active').checked = globalSettings.bannerActive;
             document.getElementById('admin-banner-text').value = globalSettings.bannerText;
 
+            // رسالة تأكيد الطلب
+            document.getElementById('admin-success-title').value = globalSettings.successTitle || "تم استلام الأوردر! 🎉";
+            document.getElementById('admin-success-message').value = globalSettings.successMessage || "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.";
+
             // الربط مع TickTick
             document.getElementById('admin-web3forms-key').value = globalSettings.web3FormsKey || '';
 
@@ -1431,7 +1454,9 @@
                 crossSellProductId: document.getElementById('admin-crosssell-product').value,
                 promoCodes: tempPromoCodes,
                 bestSellers: newBestSellers,
-                web3FormsKey: document.getElementById('admin-web3forms-key').value.trim()
+                web3FormsKey: document.getElementById('admin-web3forms-key').value.trim(),
+                successTitle: document.getElementById('admin-success-title').value.trim(),
+                successMessage: document.getElementById('admin-success-message').value.trim()
             };
 
             const btn = document.querySelector('#admin-dashboard-modal button[onclick="saveAdminData()"]');
@@ -1475,5 +1500,3 @@
     </script>
 </body>
 </html>
-
-```
