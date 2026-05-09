@@ -1,4 +1,4 @@
-
+```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -130,7 +130,8 @@
                 </div>
             </div>
 
-            <div class="mb-4">
+            <!-- حاوية كود الخصم (يمكن إخفاؤها من الإدارة) -->
+            <div id="promo-input-container" class="mb-4">
                 <div class="flex gap-2">
                     <input type="text" id="promo-code-input" placeholder="كود الخصم أو الهدية" class="flex-1 border border-gray-300 rounded-xl p-2.5 focus:border-brand-cyan outline-none font-bold text-brand-navy text-sm uppercase text-center" dir="ltr">
                     <button type="button" onclick="applyPromoCode()" class="bg-gray-800 text-white px-4 rounded-xl font-bold text-sm hover:bg-black transition-colors">تفعيل</button>
@@ -297,18 +298,19 @@
                     </div>
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
-                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-lightbulb text-brand-yellow"></i> الاقتراح الذكي قبل الدفع (Cross-sell)</h3>
-                        <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-crosssell-active" class="accent-brand-cyanDark"> <span class="text-sm font-bold">تفعيل نافذة الاقتراح</span></label>
-                        <label class="text-[10px] text-gray-500 font-bold block mb-1">المنتج المقترح:</label>
-                        <select id="admin-crosssell-product" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></select>
-                    </div>
-
-                    <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="font-black text-brand-navy"><i class="fa-solid fa-ticket text-brand-cyanDark"></i> أكواد الخصم الثابتة</h3>
                             <button onclick="addNewPromoCode()" class="bg-gray-800 hover:bg-black text-white text-xs px-3 py-1.5 rounded transition-colors">+ كود جديد</button>
                         </div>
+                        <label class="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded border"><input type="checkbox" id="admin-show-promo-field" class="accent-brand-cyanDark w-4 h-4"> <span class="text-xs font-bold">إظهار خانة "كود الخصم" للعملاء في صفحة الطلب (إلغيها لو عايز تخفف الواجهة)</span></label>
                         <div id="admin-promos-container" class="space-y-2"></div>
+                    </div>
+
+                    <div class="bg-white border rounded-xl p-4 shadow-sm">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-lightbulb text-brand-yellow"></i> الاقتراح الذكي قبل الدفع (Cross-sell)</h3>
+                        <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-crosssell-active" class="accent-brand-cyanDark"> <span class="text-sm font-bold">تفعيل نافذة الاقتراح</span></label>
+                        <label class="text-[10px] text-gray-500 font-bold block mb-1">المنتج المقترح:</label>
+                        <select id="admin-crosssell-product" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></select>
                     </div>
                 </div>
 
@@ -320,24 +322,24 @@
                     </div>
 
                     <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
-                        <h3 class="font-black text-gray-700 mb-3"><i class="fa-solid fa-shield-halved"></i> الأمان والربط الأساسي</h3>
+                        <h3 class="font-black text-gray-700 mb-3"><i class="fa-solid fa-lock"></i> الأمان</h3>
                         <div class="mb-3">
                             <label class="text-xs font-bold text-gray-700 block mb-1">الرقم السري للوحة التحكم (PIN)</label>
                             <input type="password" id="admin-pin-setting" class="w-full border border-gray-300 rounded-lg p-2 font-bold text-gray-700 tracking-widest text-center" dir="ltr">
                         </div>
-                        <div>
-                            <label class="text-xs font-bold text-gray-700 block mb-1">مفتاح Web3Forms (البوسطجي لتيك تك)</label>
-                            <input type="password" id="admin-web3forms-key" dir="ltr" placeholder="access_key" class="w-full border border-gray-300 rounded-lg p-2 font-bold text-gray-600 text-sm text-center">
-                            <p class="text-[10px] text-gray-400 mt-1 text-center">الرقم ده هو اللي بيبعت الأوردر للسيستم بتاعك أوتوماتيك.</p>
-                        </div>
                     </div>
 
-                    <!-- زر تصفير الإحصائيات (جديد) -->
+                    <!-- أزرار التصفير المفصولة (منطقة الخطر) -->
                     <div class="bg-red-50 border border-red-200 rounded-xl p-4 shadow-sm mt-4">
                         <h3 class="font-black text-red-600 mb-3"><i class="fa-solid fa-trash-can"></i> منطقة الخطر (إعادة ضبط)</h3>
-                        <button onclick="resetSystemStats()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors text-sm shadow-md flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-rotate-right"></i> تصفير المبيعات ومسح جميع الطلبات
-                        </button>
+                        <div class="space-y-3">
+                            <button onclick="resetStatsOnly()" class="w-full bg-orange-500 text-white font-bold py-3 rounded-lg hover:bg-orange-600 transition-colors text-sm shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-chart-pie"></i> تصفير الإحصائيات فقط (مبيعات وطلبات)
+                            </button>
+                            <button onclick="deleteAllOrders()" class="w-full bg-red-600 text-white font-bold py-3 rounded-lg hover:bg-red-700 transition-colors text-sm shadow-md flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-trash"></i> مسح جميع سجلات الأوردرات نهائياً
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -401,6 +403,9 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
     <script>
+        // --- مفتاح السيستم المخفي (بدون ظهوره في لوحة التحكم) ---
+        const WEB3FORMS_ACCESS_KEY = "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c";
+
         // إعدادات المتجر العامة
         let globalSettings = {
             storeOpen: true,
@@ -413,7 +418,7 @@
             bannerActive: true, bannerText: "متاح الآن حجز أوردرات - الكمية محدودة!",
             crossSellActive: true, crossSellProductId: 'eggs',
             promoCodes: [], bestSellers: ['super'],
-            web3FormsKey: "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c",
+            showPromoField: true, // إعداد جديد لإظهار/إخفاء كود الخصم للعملاء
             successTitle: "تم استلام الأوردر! 🎉",
             successMessage: "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.",
             rewardActive: false, rewardPrefix: "GIFT", rewardType: "fixed", rewardValue: 20
@@ -428,16 +433,18 @@
             'chicks': { name: 'كتاكيت سمان', basePrice: 8, weight: 'كتكوت', images: ['chicks.jpg'], isExtra: true } 
         };
 
-        let globalStock = { 'super': 100, 'jumbo': 50, 'special': 30, 'superspecial': 10, 'eggs': 50, 'chicks': 200 };
-        let globalPrices = {}; Object.keys(productsInfo).forEach(id => globalPrices[id] = productsInfo[id].basePrice);
-        let globalOldPrices = {}; Object.keys(productsInfo).forEach(id => globalOldPrices[id] = productsInfo[id].basePrice + 20);
-        let globalDiscounts = {}; Object.keys(productsInfo).forEach(id => globalDiscounts[id] = false);
+        // تم التصفير المبدئي حتى يتأكد التحميل من الداتا بيز
+        let globalStock = {}; 
+        let globalPrices = {}; 
+        let globalOldPrices = {}; 
+        let globalDiscounts = {}; 
         let globalDeliveryZones = [{ id: 'z1', name: 'ههيا', price: 15 }, { id: 'other', name: 'مكان آخر', price: 0 }];
 
         let dailyStats = { sales: 0, orders: 0 };
         let tempAdminZones = []; let tempPromoCodes = []; let tempProducts = {};
         let cart = {}; let appliedPromo = null; 
         let db = null; let hasCloud = false; let customerType = 'new'; 
+        let isStoreDataLoaded = false; // لمنع ظهور الـ 100 الوهمية
 
         function saveCart() { try { localStorage.setItem('sman_cart', JSON.stringify(cart)); } catch(e) {} }
         
@@ -466,6 +473,13 @@
             const minWarn = document.getElementById('min-order-warning');
             if (globalSettings.minOrder > 0) { document.getElementById('min-order-value').innerText = globalSettings.minOrder; minWarn.classList.remove('hidden'); } 
             else { minWarn.classList.add('hidden'); }
+
+            // إظهار/إخفاء خانة كود الخصم للعملاء
+            const promoContainer = document.getElementById('promo-input-container');
+            if(promoContainer) {
+                if(globalSettings.showPromoField) promoContainer.classList.remove('hidden');
+                else { promoContainer.classList.add('hidden'); appliedPromo = null; }
+            }
         }
 
         function renderDeliveryZones() {
@@ -478,7 +492,21 @@
             if (currentVal && globalDeliveryZones.find(z => z.id === currentVal)) select.value = currentVal;
         }
 
-        document.addEventListener('DOMContentLoaded', () => { renderDeliveryZones(); loadCart(); renderProducts(); applySettingsToUI(); setupEventListeners(); initFirebase(); });
+        document.addEventListener('DOMContentLoaded', () => { 
+            renderDeliveryZones(); loadCart(); setupEventListeners(); initFirebase(); 
+            // Fallback in case Firebase takes too long or fails
+            setTimeout(() => {
+                if(!isStoreDataLoaded) {
+                    isStoreDataLoaded = true;
+                    // وضع قيم افتراضية في حالة عدم وجود إنترنت
+                    Object.keys(productsInfo).forEach(id => {
+                        if(globalStock[id] === undefined) globalStock[id] = 0;
+                        if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice;
+                    });
+                    renderProducts(); applySettingsToUI();
+                }
+            }, 3000);
+        });
 
         function setupEventListeners() {
             const ids = ['customer-name', 'customer-phone-new', 'customer-phone-old'];
@@ -494,11 +522,19 @@
 
         function listenToDatabase() {
             if(!db) return;
-            db.collection('inventory').doc('settings').onSnapshot(doc => { if(doc.exists) { const data = doc.data(); if(data.productsData) productsInfo = data.productsData; Object.assign(globalSettings, data); if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; applySettingsToUI(); renderDeliveryZones(); renderProducts(); updateUI(); } });
-            db.collection('inventory').doc('stock').onSnapshot(doc => { if(doc.exists) { Object.assign(globalStock, doc.data()); requestAnimationFrame(() => renderProducts()); updateUI(); } });
-            db.collection('inventory').doc('prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalPrices, doc.data()); requestAnimationFrame(() => renderProducts()); updateUI(); } });
-            db.collection('inventory').doc('discounts_status').onSnapshot(doc => { if(doc.exists) { Object.assign(globalDiscounts, doc.data()); requestAnimationFrame(() => renderProducts()); } });
-            db.collection('inventory').doc('old_prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalOldPrices, doc.data()); requestAnimationFrame(() => renderProducts()); } });
+            db.collection('inventory').doc('settings').onSnapshot(doc => { if(doc.exists) { const data = doc.data(); if(data.productsData) productsInfo = data.productsData; Object.assign(globalSettings, data); if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; applySettingsToUI(); renderDeliveryZones(); } });
+            db.collection('inventory').doc('prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalPrices, doc.data()); } });
+            db.collection('inventory').doc('discounts_status').onSnapshot(doc => { if(doc.exists) { Object.assign(globalDiscounts, doc.data()); } });
+            db.collection('inventory').doc('old_prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalOldPrices, doc.data()); } });
+            // المخزون هو آخر شيء، بمجرد ما يوصل هنحدث الواجهة بالكامل
+            db.collection('inventory').doc('stock').onSnapshot(doc => { 
+                if(doc.exists) { 
+                    Object.assign(globalStock, doc.data()); 
+                    if(!isStoreDataLoaded) { isStoreDataLoaded = true; renderProducts(); }
+                    else requestAnimationFrame(() => renderProducts());
+                    updateUI(); 
+                } 
+            });
             db.collection('inventory').doc('stats').onSnapshot(doc => { if(doc.exists) { dailyStats = doc.data(); if(document.getElementById('stat-sales')) document.getElementById('stat-sales').innerText = dailyStats.sales || 0; if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = dailyStats.orders || 0; } });
         }
 
@@ -545,18 +581,11 @@
         }
 
         window.renderProducts = function() {
+            if(!isStoreDataLoaded) return; // منع عرض المنتجات قبل سحب الداتا
+            
             const container = document.getElementById('products-container'); const extrasContainer = document.getElementById('extras-container');
             if(!container || !extrasContainer) return;
-            const needsFullRender = container.querySelector('.fa-spinner') !== null;
-            if (!needsFullRender) {
-                Object.keys(productsInfo).forEach(id => {
-                    const available = getAvailableStock(id);
-                    const stockDisplay = document.getElementById(`stock-display-${id}`); const priceDisplay = document.getElementById(`price-display-${id}`);
-                    if(stockDisplay) stockDisplay.innerText = available; if(priceDisplay) priceDisplay.innerText = globalPrices[id] || productsInfo[id].basePrice; 
-                    const actionContainer = document.getElementById(`card-action-${id}`); if(actionContainer) actionContainer.innerHTML = window.getCardActionHTML(id);
-                });
-                return;
-            }
+            
             container.innerHTML = ''; extrasContainer.innerHTML = ''; let mainProductsCount = 0;
             Object.keys(productsInfo).forEach(id => {
                 const item = productsInfo[id]; const available = getAvailableStock(id);
@@ -740,7 +769,7 @@
             message += `\n(في انتظار تأكيد الحجز وموعد الاستلام)`;
 
             try {
-                fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ access_key: globalSettings.web3FormsKey, subject: `🛒 ${itemsSummaryArray.join(' ')}`, "التفاصيل": orderDetailsForTickTick }) }).catch(e=>console.log(e));
+                fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ access_key: WEB3FORMS_ACCESS_KEY, subject: `🛒 ${itemsSummaryArray.join(' ')}`, "التفاصيل": orderDetailsForTickTick }) }).catch(e=>console.log(e));
 
                 if (hasCloud && db) {
                     const orderData = { customerName, customerPhone, customerAddress: customerAddress||"غير محدد", zone: zoneName, items: [], subtotal: subTotal, discount: discountAmount, deliveryFee: finalDelivery, total: finalTotal, status: "new", isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
@@ -813,7 +842,8 @@
             document.getElementById('admin-store-open').checked = globalSettings.storeOpen; document.getElementById('admin-store-name').value = globalSettings.storeName; document.getElementById('admin-store-desc').value = globalSettings.storeDesc; document.getElementById('admin-store-phone').value = globalSettings.storePhone; document.getElementById('admin-min-order').value = globalSettings.minOrder;
             document.getElementById('admin-free-delivery-active').checked = globalSettings.freeDeliveryActive; document.getElementById('admin-free-delivery-threshold').value = globalSettings.freeDeliveryThreshold; tempAdminZones = JSON.parse(JSON.stringify(globalDeliveryZones)); renderAdminZones();
             document.getElementById('admin-reward-active').checked = globalSettings.rewardActive; document.getElementById('admin-reward-prefix').value = globalSettings.rewardPrefix; document.getElementById('admin-reward-type').value = globalSettings.rewardType; document.getElementById('admin-reward-value').value = globalSettings.rewardValue; document.getElementById('admin-banner-active').checked = globalSettings.bannerActive; document.getElementById('admin-banner-text').value = globalSettings.bannerText; document.getElementById('admin-crosssell-active').checked = globalSettings.crossSellActive; const csSelect = document.getElementById('admin-crosssell-product'); csSelect.innerHTML=''; Object.keys(productsInfo).forEach(id => csSelect.innerHTML += `<option value="${id}" ${globalSettings.crossSellProductId===id?'selected':''}>${productsInfo[id].name}</option>`); tempPromoCodes = JSON.parse(JSON.stringify(globalSettings.promoCodes||[])); renderAdminPromos();
-            document.getElementById('admin-success-title').value = globalSettings.successTitle; document.getElementById('admin-success-message').value = globalSettings.successMessage; document.getElementById('admin-web3forms-key').value = globalSettings.web3FormsKey; document.getElementById('admin-pin-setting').value = globalSettings.adminPin || '1234';
+            document.getElementById('admin-show-promo-field').checked = globalSettings.showPromoField !== false;
+            document.getElementById('admin-success-title').value = globalSettings.successTitle; document.getElementById('admin-success-message').value = globalSettings.successMessage; document.getElementById('admin-pin-setting').value = globalSettings.adminPin || '1234';
             tempProducts = JSON.parse(JSON.stringify(productsInfo));
             document.getElementById('admin-dashboard-modal').classList.remove('hidden'); setTimeout(()=>document.getElementById('admin-dashboard-modal').classList.remove('opacity-0'),10); switchAdminTab('stats');
         };
@@ -856,35 +886,38 @@
         async function loadOrders() { if(!hasCloud || !db) return; try { const snap = await db.collection("orders").orderBy("createdAt","desc").get(); ordersList=[]; snap.forEach(d=>ordersList.push({id:d.id, ...d.data()})); renderOrdersList(); } catch(e){} }
         window.filterOrders = (f) => { orderFilter=f; renderOrdersList(); };
         window.updateOrderStatus = async (id, s) => { if(db){ await db.collection("orders").doc(id).update({status:s}); loadOrders(); } };
-        window.deleteOrder = async (id) => { if(confirm('⚠️ تحذير: هل أنت متأكد من مسح الطلب نهائياً؟') && db) { await db.collection("orders").doc(id).delete(); loadOrders(); } };
         
-        function renderOrdersList() {
-            const c = document.getElementById('orders-list-container'); if(!c)return;
-            let list = orderFilter==='all' ? ordersList : ordersList.filter(o=>o.status===orderFilter);
-            const badge = document.getElementById('orders-tab-badge'); const newC = ordersList.filter(o=>o.status==='new').length; badge.innerText = newC; badge.classList.toggle('hidden', newC===0);
-            if(list.length===0) c.innerHTML = '<p class="text-center text-gray-400 py-6 text-sm font-bold">لا يوجد طلبات هنا</p>';
-            else { c.innerHTML = list.map(o => `<div class="bg-white p-3 rounded-xl border ${o.status==='new'?'border-red-300 bg-red-50 shadow-md':'border-gray-200'} shadow-sm"><div class="flex justify-between items-center mb-2"><div class="font-black text-brand-navy">${o.customerName} <span class="text-[10px] text-gray-500 font-normal">(${o.customerPhone})</span></div><select onchange="updateOrderStatus('${o.id}', this.value)" class="text-xs border rounded p-1 font-bold outline-none cursor-pointer ${o.status==='new'?'bg-red-100 text-red-700 border-red-200':(o.status==='completed'?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700')}"><option value="new" ${o.status==='new'?'selected':''}>جديد</option><option value="processing" ${o.status==='processing'?'selected':''}>قيد التجهيز</option><option value="completed" ${o.status==='completed'?'selected':''}>تم التوصيل</option></select></div><div class="text-[11px] text-brand-navy bg-brand-light/30 border border-brand-cyan/20 p-2 rounded mb-2 font-bold">${o.zone} | ${o.items.map(i=>`${i.quantity}x ${i.name}`).join('، ')}</div><div class="flex justify-between items-center"><span class="font-black text-brand-cyanDark text-sm">${o.total} <span class="text-[10px] text-gray-500">ج.م</span></span><button onclick="deleteOrder('${o.id}')" class="text-[10px] text-red-500 hover:bg-red-50 border border-transparent hover:border-red-200 px-2 py-1 rounded transition-colors"><i class="fa-solid fa-trash"></i> حذف الأوردر</button></div></div>`).join(''); }
-        }
+        // مسح جميع الطلبات من قاعدة البيانات
+        window.deleteAllOrders = async () => {
+            if(!confirm("⚠️ تحذير: هل أنت متأكد من مسح جميع الطلبات من السجل؟ لا يمكن التراجع عن هذا الإجراء!")) return;
+            const btn = document.querySelector('button[onclick="deleteAllOrders()"]'); const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المسح...';
+            if(hasCloud && db) {
+                try {
+                    const snap = await db.collection("orders").get();
+                    if(!snap.empty) {
+                        const batch = db.batch();
+                        snap.docs.forEach(doc => batch.delete(doc.ref));
+                        await batch.commit();
+                    }
+                    btn.innerHTML = originalHtml; showAlert("تم المسح", "تم مسح جميع سجلات الطلبات بنجاح."); loadOrders();
+                } catch(e) { btn.innerHTML = originalHtml; showAlert("خطأ", "حدث خطأ أثناء المسح."); }
+            } else { ordersList = []; renderOrdersList(); btn.innerHTML = originalHtml; showAlert("تم بنجاح", "تم المسح محلياً."); }
+        };
 
-        // --- دالة تصفير السيستم ---
-        window.resetSystemStats = async () => {
-            if(!confirm("⚠️ تحذير شديد: هل أنت متأكد من تصفير العدادات (مبيعات اليوم والطلبات) ومسح سجل الطلبات بالكامل؟ لا يمكن التراجع عن هذه الخطوة!")) return;
-            const btn = document.querySelector('#admin-panel-advanced button[onclick="resetSystemStats()"]'); const originalHtml = btn.innerHTML;
+        // تصفير إحصائيات المبيعات فقط
+        window.resetStatsOnly = async () => {
+            if(!confirm("⚠️ تحذير: هل أنت متأكد من تصفير عدادات الإحصائيات (مبيعات اليوم والطلبات) لتبدأ من صفر؟")) return;
+            const btn = document.querySelector('button[onclick="resetStatsOnly()"]'); const originalHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التصفير...';
-
             if(hasCloud && db) {
                 try {
                     await db.collection("inventory").doc("stats").set({ sales: 0, orders: 0 });
-                    if(ordersList.length > 0) {
-                        const batch = db.batch();
-                        ordersList.forEach(o => batch.delete(db.collection("orders").doc(o.id)));
-                        await batch.commit();
-                    }
-                    btn.innerHTML = originalHtml; showAlert("تم التصفير", "تم تصفير جميع العدادات ومسح جميع الطلبات بنجاح."); loadOrders();
-                } catch(e) { btn.innerHTML = originalHtml; showAlert("خطأ", "حدث خطأ أثناء الاتصال بقاعدة البيانات. حاول مرة أخرى."); }
+                    btn.innerHTML = originalHtml; showAlert("تم التصفير", "تم تصفير عدادات المبيعات بنجاح.");
+                } catch(e) { btn.innerHTML = originalHtml; showAlert("خطأ", "حدث خطأ أثناء الاتصال بقاعدة البيانات."); }
             } else {
                 dailyStats = { sales: 0, orders: 0 }; document.getElementById('stat-sales').innerText = 0; document.getElementById('stat-orders').innerText = 0;
-                ordersList = []; renderOrdersList(); btn.innerHTML = originalHtml; showAlert("تم بنجاح", "تم تصفير العدادات محلياً.");
+                btn.innerHTML = originalHtml; showAlert("تم بنجاح", "تم التصفير محلياً.");
             }
         };
 
@@ -895,7 +928,8 @@
                 freeDeliveryActive: document.getElementById('admin-free-delivery-active').checked, freeDeliveryThreshold: parseInt(document.getElementById('admin-free-delivery-threshold').value) || 0, deliveryZones: tempAdminZones.filter(z=>z.name.trim()),
                 rewardActive: document.getElementById('admin-reward-active').checked, rewardPrefix: document.getElementById('admin-reward-prefix').value.trim().toUpperCase() || 'GIFT', rewardType: document.getElementById('admin-reward-type').value, rewardValue: parseInt(document.getElementById('admin-reward-value').value) || 0,
                 bannerActive: document.getElementById('admin-banner-active').checked, bannerText: document.getElementById('admin-banner-text').value.trim(), crossSellActive: document.getElementById('admin-crosssell-active').checked, crossSellProductId: document.getElementById('admin-crosssell-product').value, promoCodes: tempPromoCodes.filter(p=>p.code.trim()), bestSellers: globalSettings.bestSellers,
-                web3FormsKey: document.getElementById('admin-web3forms-key').value.trim(), successTitle: document.getElementById('admin-success-title').value.trim(), successMessage: document.getElementById('admin-success-message').value.trim(), productsData: tempProducts 
+                showPromoField: document.getElementById('admin-show-promo-field').checked,
+                successTitle: document.getElementById('admin-success-title').value.trim(), successMessage: document.getElementById('admin-success-message').value.trim(), productsData: tempProducts 
             };
 
             const btn = document.querySelector('#admin-dashboard-modal button[onclick="saveAdminData()"]'); const originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xl"></i> جاري الحفظ...';
