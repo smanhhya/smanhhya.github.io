@@ -1328,6 +1328,55 @@ window.generateBulkWhatsAppLinks = () => {
 };
 // === نهاية كود إنشاء روابط الواتساب الجماعية ===
 
+                window.generateBulkWhatsAppLinks = () => {
+            const numbersRaw = document.getElementById('admin-bulk-numbers').value.trim();
+            const messageTemplate = document.getElementById('admin-bulk-message').value.trim() || "شكراً لثقتك! كود الخصم بتاعك: {الكود}";
+            const rewardType = document.getElementById('admin-bulk-reward-type').value;
+            const rewardValue = parseInt(document.getElementById('admin-bulk-reward-value').value) || 0;
+
+            if(!numbersRaw) { showAlert("تنبيه", "يرجى إدخال أرقام الموبايلات أولاً"); return; }
+
+            // تصفية الأرقام (بياخد سطر سطر ويمسح المسافات)
+            const numbers = numbersRaw.split('\n').map(n => n.trim()).filter(n => n.length >= 10);
+
+            if(numbers.length === 0) { showAlert("تنبيه", "لم يتم العثور على أرقام صحيحة"); return; }
+
+            const linksContainer = document.getElementById('bulk-whatsapp-links');
+            linksContainer.innerHTML = '<p class="text-xs font-black text-brand-navy mb-2 border-b pb-2"><i class="fa-solid fa-check-double text-green-500"></i> اضغط "إرسال" قدام كل رقم:</p>';
+
+            numbers.forEach(num => {
+                // عمل كود عشوائي
+                const randomCode = "THX-" + Math.floor(1000 + Math.random() * 9000);
+
+                // إضافة الكود للسيستم
+                tempPromoCodes.push({ code: randomCode, type: rewardType, discount: rewardValue, isAuto: true, usesLeft: 1 });
+
+                // تظبيط الرسالة والرقم للواتساب
+                const finalMessage = messageTemplate.replace(/{الكود}/g, randomCode);
+                let waNumber = num;
+                if(waNumber.startsWith('0')) waNumber = '2' + waNumber; // تظبيط مفتاح مصر
+
+                const waLink = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(finalMessage)}`;
+
+                // عمل زرار الإرسال
+                linksContainer.innerHTML += `
+                    <div class="flex justify-between items-center bg-white p-2 border border-gray-200 rounded-lg shadow-sm">
+                        <span class="text-xs font-bold text-gray-600" dir="ltr">${num}</span>
+                        <a href="${waLink}" target="_blank" class="bg-green-500 hover:bg-green-600 text-white text-[10px] px-4 py-1.5 rounded font-black transition-colors flex items-center gap-1">
+                            إرسال <i class="fa-brands fa-whatsapp text-sm"></i>
+                        </a>
+                    </div>
+                `;
+            });
+
+            // تحديث واجهة الأكواد عشان الإدمن يشوفها
+            renderAdminPromos();
+
+            linksContainer.classList.remove('hidden');
+            showAlert("تم التجهيز بنجاح 🎉", `تم إنشاء أكواد لـ ${numbers.length} عميل. \n\n⚠️ مهم جداً: انزل تحت في لوحة التحكم ودوس "حفظ جميع التعديلات" عشان الأكواد تتفعل في السيستم وتقدر تبعت الرسايل.`);
+        };
+
+
 window.saveAdminData = async () => {
     syncAdminProductsFromDOM(); 
     const newSettings = {
