@@ -888,14 +888,16 @@
                 if (customerName.length < 3 || !nameRegex.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
             } else { customerPhone = document.getElementById('customer-phone-old').value.trim(); customerName = (globalSettings.oldCustomerLabel || "عميل سابق") + " (" + customerPhone + ")"; }
 
-            for (let id in cart) {
+                        for (let id in cart) {
                 if(!productsInfo[id]) continue;
-                if (cart[id].quantity > globalStock[id]) {
+                // هنتخطى فحص المخزون لو الأوردر عبارة عن حجز مسبق
+                if (!cart[id].isPreorder && cart[id].quantity > globalStock[id]) {
                     showAlert("تنبيه", `المنتج ${productsInfo[id].name} لم يعد متوفر بهذه الكمية، لقد تم حجزه بواسطة عميل آخر للتو.`);
                     cart[id].quantity = globalStock[id]; if(cart[id].quantity === 0) delete cart[id];
                     saveCart(); updateUI(); renderProducts(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return;
                 }
             }
+
 
             const orderDate = new Date().toLocaleDateString('ar-EG'); const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
             let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = [isNew ? "#عميل_جديد" : "#عميل_سابق"];
