@@ -192,7 +192,7 @@
         </div>
     </div>
 
-    <!-- شاشة تسجيل الدخول بالتحديث الجديد للإيميل والباسورد -->
+    <!-- شاشة تسجيل الدخول -->
     <div id="admin-login-modal" class="fixed inset-0 bg-brand-navy/90 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm shadow-2xl">
             <div class="flex justify-between items-center mb-6">
@@ -295,8 +295,6 @@
                 </div>
 
                 <div id="admin-panel-marketing" class="hidden space-y-4">
-    
-                    <!-- بداية نظام الولاء -->
                     <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-green-500">
                         <h3 class="font-black text-brand-navy mb-3">
                             <i class="fa-solid fa-gift text-green-500"></i> نظام الولاء (إنشاء كود خصم تلقائي للعميل)
@@ -320,14 +318,12 @@
                                 <input type="number" id="admin-reward-value" class="w-full border rounded p-2 font-bold text-brand-navy text-center">
                             </div>
                             <div class="col-span-2 mt-2">
-                                <label class="text-[10px] text-gray-500 font-bold block mb-1">الحد الأقصى للإصدار (لو عايز تطلع الكود لـ 10 عملاء بس اكتب 10، لو مفتوح اكتب 0)</label>
+                                <label class="text-[10px] text-gray-500 font-bold block mb-1">الحد الأقصى للإصدار</label>
                                 <input type="number" id="admin-reward-max-generations" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="مثال: 10">
                             </div>
                         </div>
                     </div>
-                    <!-- نهاية نظام الولاء -->
 
-                    <!-- بداية كود الإرسال الجماعي -->
                     <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-purple-500">
                         <h3 class="font-black text-brand-navy mb-3">
                             <i class="fa-solid fa-users text-purple-500"></i> إرسال أكواد شكر لعملاء سابقين
@@ -359,11 +355,8 @@
                             <i class="fa-solid fa-wand-magic-sparkles"></i> توليد الأكواد وتجهيز الرسايل
                         </button>
 
-                        <div id="bulk-whatsapp-links" class="mt-4 space-y-2 hidden max-h-48 overflow-y-auto cart-scroll bg-gray-50 p-3 rounded-xl border border-gray-200">
-                            <!-- الرسايل هتظهر هنا -->
-                        </div>
+                        <div id="bulk-whatsapp-links" class="mt-4 space-y-2 hidden max-h-48 overflow-y-auto cart-scroll bg-gray-50 p-3 rounded-xl border border-gray-200"></div>
                     </div>
-                    <!-- نهاية كود الإرسال الجماعي -->
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-red-500"></i> شريط الإعلانات العلوي</h3>
@@ -389,26 +382,33 @@
                 </div>
 
                 <div id="admin-panel-advanced" class="hidden space-y-4">
-    
-    <!-- ده المربع القديم بتاع الواتساب اللي إنت لقيته -->
-    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
-        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-language text-brand-cyanDark"></i> نصوص وتسميات النظام</h3>
-        <label class="text-xs font-bold text-gray-500 block mb-1">تسمية العميل القديم (تظهر في الواتساب والطلبات)</label>
-        <input type="text" id="admin-old-customer-label" placeholder="مثال: عميل سابق" class="w-full border rounded-lg p-2 mb-3 font-bold text-brand-navy">
-        <label class="text-xs font-bold text-gray-500 block mb-1">قالب رسالة الواتساب</label>
-        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {تفاصيل_العميل} , {الطلبات} , {الخصم} , {قيمة_الطلبات} , {التوصيل} , {الاجمالي}</p>
-        <textarea id="admin-whatsapp-template" rows="6" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
-    </div>
+                    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-language text-brand-cyanDark"></i> نصوص وتسميات النظام</h3>
+                        <label class="text-xs font-bold text-gray-500 block mb-1">تسمية العميل القديم (تظهر في الواتساب والطلبات)</label>
+                        <input type="text" id="admin-old-customer-label" placeholder="مثال: عميل سابق" class="w-full border rounded-lg p-2 mb-3 font-bold text-brand-navy">
+                        <label class="text-xs font-bold text-gray-500 block mb-1">قالب رسالة الواتساب</label>
+                        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {تفاصيل_العميل} , {الطلبات} , {الخصم} , {قيمة_الطلبات} , {التوصيل} , {الاجمالي}</p>
+                        <textarea id="admin-whatsapp-template" rows="6" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
+                    </div>
 
-    <!-- حط المربع الجديد بتاع TickTick هنا بالظبط 👇 -->
-    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
-        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-list-check text-brand-cyanDark"></i> قالب رسالة TickTick (المهام)</h3>
-        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {اسم_العميل} , {الموبايل} , {المنطقة} , {العنوان} , {الوقت} , {تفاصيل_الطلبات} , {قيمة_الطلبات} , {الخصم} , {التوصيل} , {الاجمالي} , {ملاحظات} , {الهاشتاجات}</p>
-        <textarea id="admin-ticktick-template" rows="8" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
-    </div>
+                    <!-- الهاشتاج التلقائي -->
+                    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4 border-l-4 border-l-brand-cyanDark">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-hashtag text-brand-cyanDark"></i> هاشتاج الدفعة الحالية (TickTick)</h3>
+                        <p class="text-[10px] text-gray-500 font-bold mb-2">الهاشتاج ده هيتضاف تلقائياً لأي أوردر عشان يسهل عليك فلترة كل دفعة لوحدها.</p>
+                        <input type="text" id="admin-batch-hashtag" placeholder="مثال: #دفعة_شهر_6" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr">
+                    </div>
 
-    <!-- وبعدين الكود بيكمل عادي (رسالة نجاح الطلب العادية ومنطقة الخطر إلخ...) -->
+                    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-crown text-brand-yellow"></i> رسالة حجز الـ VIP (واتساب)</h3>
+                        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغير: {اسم_المنتج}</p>
+                        <textarea id="admin-vip-whatsapp-template" rows="3" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
+                    </div>
 
+                    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-list-check text-brand-cyanDark"></i> قالب رسالة TickTick (المهام)</h3>
+                        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {اسم_العميل} , {الموبايل} , {المنطقة} , {العنوان} , {الوقت} , {تفاصيل_الطلبات} , {قيمة_الطلبات} , {الخصم} , {التوصيل} , {الاجمالي} , {ملاحظات} , {الهاشتاجات}</p>
+                        <textarea id="admin-ticktick-template" rows="8" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
+                    </div>
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-message text-green-500"></i> رسالة نجاح الطلب (العادية)</h3>
@@ -443,9 +443,8 @@
             </span>
             <h1 class="text-4xl md:text-5xl font-black mb-2 text-brand-navy" id="header-store-name">سمان ههيا</h1>
             <p class="text-brand-navy/80 font-bold max-w-xl mx-auto bg-white/80 p-3 rounded-xl backdrop-blur-sm border border-white mt-4 text-sm md:text-base shadow-sm" id="header-store-desc">
-    <i class="fa-solid fa-spinner fa-spin text-gray-400"></i> جاري التحميل...
-</p>
-
+                <i class="fa-solid fa-spinner fa-spin text-gray-400"></i> جاري التحميل...
+            </p>
         </div>
     </header>
 
@@ -491,24 +490,25 @@
         const WEB3FORMS_ACCESS_KEY = "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c";
 
         let globalSettings = {
-    storeOpen: true,
-    storeName: "سمان ههيا",
-    storeDesc: "مرحباً بك في متجر سمان ههيا.. نضمن لك أعلى جودة ونظافة.",
-    storePhone: "01208027294",
-    minOrder: 0,
-    freeDeliveryActive: false, freeDeliveryThreshold: 500,
-    bannerActive: true, bannerText: "متاح الآن حجز أوردرات - الكمية محدودة!",
-    crossSellActive: true, crossSellProductId: 'eggs',
-    promoCodes: [], bestSellers: ['super'],
-    showPromoField: true, 
-    successTitle: "تم استلام الأوردر! 🎉",
-    successMessage: "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.",
-    rewardActive: false, rewardType: "fixed", rewardValue: 20, rewardMaxGenerations: 0,
-    oldCustomerLabel: "عميل سابق",
-    whatsappTemplate: "السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)",
-    ticktickTemplate: "🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}"
-};
-
+            storeOpen: true,
+            storeName: "سمان ههيا",
+            storeDesc: "مرحباً بك في متجر سمان ههيا.. نضمن لك أعلى جودة ونظافة.",
+            storePhone: "01208027294",
+            minOrder: 0,
+            freeDeliveryActive: false, freeDeliveryThreshold: 500,
+            bannerActive: true, bannerText: "متاح الآن حجز أوردرات - الكمية محدودة!",
+            crossSellActive: true, crossSellProductId: 'eggs',
+            promoCodes: [], bestSellers: ['super'],
+            showPromoField: true, 
+            successTitle: "تم استلام الأوردر! 🎉",
+            successMessage: "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.",
+            rewardActive: false, rewardType: "fixed", rewardValue: 20, rewardMaxGenerations: 0,
+            oldCustomerLabel: "عميل سابق",
+            whatsappTemplate: "السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)",
+            ticktickTemplate: "🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}",
+            vipWhatsappTemplate: "السلام عليكم،\nأريد الانضمام لقائمة الـ VIP وحجز ({اسم_المنتج}) من الدفعة القادمة قبل نزولها المتجر. 👑",
+            batchHashtag: ""
+        };
 
         let productsInfo = {
             'super': { name: 'طبق سوبر', basePrice: 100, weight: '300-350 جم', images: ['super.png'], isExtra: false },
@@ -692,10 +692,47 @@
         window.getCardActionHTML = function(id) {
             if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-sm border border-gray-200 text-center cursor-not-allowed">مغلق</div>`;
             const inCart = cart[id]?.quantity || 0; const available = getAvailableStock(id);
-            if (available === 0 && inCart === 0) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-sm border border-gray-200 text-center cursor-not-allowed">نفدت الكمية</div>`;
+            if (available === 0 && inCart === 0) return `<div onclick="openVipPreOrder('${id}')" class="w-full bg-gradient-to-r from-brand-yellow to-yellow-500 text-brand-navy hover:from-yellow-500 hover:to-yellow-600 font-black py-2 rounded-xl transition-all shadow-sm text-xs flex justify-center items-center gap-1 cursor-pointer select-none border border-yellow-400 transform hover:scale-105"><i class="fa-solid fa-crown"></i> حجز للدفعة القادمة</div>`;
             if (inCart > 0) return `<div class="flex items-center justify-between bg-brand-light/50 border border-brand-cyan/40 rounded-xl p-1 h-[40px]"><div onclick="updateQuantity('${id}', 1)" class="w-9 h-full bg-white text-brand-cyanDark rounded-lg shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none">+</div><span class="font-black text-brand-navy text-lg min-w-[28px] text-center select-none">${inCart}</span><div onclick="updateQuantity('${id}', -1)" class="w-9 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-2xl flex items-center justify-center cursor-pointer select-none pb-1">-</div></div>`;
             return `<div onclick="addToCart('${id}')" class="w-full bg-brand-cyanDark text-white hover:bg-brand-navy font-black py-2 rounded-xl transition-colors shadow-sm text-sm flex justify-center items-center gap-2 cursor-pointer select-none"><i class="fa-solid fa-plus"></i> إضافة للسلة</div>`;
         }
+        
+        window.openVipPreOrder = function(id) {
+            const item = productsInfo[id];
+            const msgHTML = `
+                <div class="text-5xl mb-3">👑</div>
+                <div class="font-black text-brand-navy mb-2 text-xl">نفدت الكمية حالياً!</div>
+                <div class="text-sm text-gray-600 font-bold mb-4 leading-relaxed bg-brand-light/30 p-3 rounded-xl border border-brand-cyan/20">
+                    أنا مقدر جداً إنك بتفضل <strong>(${item.name})</strong>.<br>
+                    الدفعة الجديدة هتكون جاهزة قريب جداً.<br><br>
+                    تحب أسجلك معايا في <strong>(قائمة حجز الـ VIP)</strong> وأأكدلك أوردرك من دلوقتي قبل ما ينزلوا المتجر؟
+                </div>
+                <div onclick="sendVipWhatsApp('${item.name}')" class="w-full bg-green-500 hover:bg-green-600 text-white font-black py-3 px-4 rounded-xl transition-colors flex justify-center items-center gap-2 shadow-lg mb-2 cursor-pointer">
+                    <i class="fa-brands fa-whatsapp text-xl"></i> تأكيد الحجز المسبق عبر واتساب
+                </div>
+            `;
+            document.getElementById('alert-icon-container').classList.add('hidden');
+            document.getElementById('alert-title').classList.add('hidden');
+            document.getElementById('alert-message').innerHTML = msgHTML;
+            
+            const alertBtn = document.querySelector('#alert-box button');
+            if(alertBtn) {
+                alertBtn.className = "text-gray-400 hover:text-gray-600 font-bold py-2 text-sm transition-colors underline w-full bg-transparent border-0"; 
+                alertBtn.innerHTML = 'لا شكراً، هشوف حاجة تانية';
+            }
+
+            const md = document.getElementById('alert-modal');
+            md.classList.remove('hidden');
+            setTimeout(()=>md.classList.remove('opacity-0'),10);
+        };
+
+        window.sendVipWhatsApp = function(itemName) {
+            const phone = globalSettings.storePhone || "01208027294";
+            let template = globalSettings.vipWhatsappTemplate || "السلام عليكم،\nأريد الانضمام لقائمة الـ VIP وحجز ({اسم_المنتج}) من الدفعة القادمة قبل نزولها المتجر. 👑";
+            const message = template.replace(/{اسم_المنتج}/g, itemName);
+            window.location.href = `https://api.whatsapp.com/send?phone=20${phone}&text=${encodeURIComponent(message)}`;
+            closeAlert();
+        };
 
         window.renderProducts = function() {
             if(!isStoreDataLoaded) return;
@@ -868,16 +905,18 @@
             }
 
             const orderDate = new Date().toLocaleDateString('ar-EG'); const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
-            let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = [isNew ? "#عميل_جديد" : "#عميل_سابق"];
+            let subTotal = 0; let itemsSummaryArray = []; 
+            
+            // تجهيز الهاشتاجات وإضافة هاشتاج الدفعة من الإعدادات
+            let smartTagsArray = [isNew ? "#عميل_جديد" : "#عميل_سابق"];
+            if (globalSettings.batchHashtag) {
+                let cleanHashtag = globalSettings.batchHashtag.trim();
+                if (!cleanHashtag.startsWith('#')) cleanHashtag = '#' + cleanHashtag;
+                smartTagsArray.push(cleanHashtag.replace(/\s+/g, '_'));
+            }
             
             let customerDetailsStr = isNew ? `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}` : `🔁 ${globalSettings.oldCustomerLabel || "عميل سابق"}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n`;
             customerDetailsStr += `🕒 الوقت: ${orderDate} - ${orderTime}`;
-
-            let orderDetailsForTickTick = `🧾 **تفاصيل الأوردر كاملة:**\n`;
-            orderDetailsForTickTick += `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n`;
-            if (isNew && customerAddress) orderDetailsForTickTick += `🏠 العنوان: ${customerAddress}\n`;
-            orderDetailsForTickTick += `🕒 الوقت: ${orderDate} - ${orderTime}\n`;
-            orderDetailsForTickTick += `--------------------------------\n🛒 الطلبات:\n`;
 
             let itemsStr = "";
             for (let id in cart) {
@@ -885,9 +924,7 @@
                 const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal;
                 let shortName = item.name.replace('طبق ', '').split(' (')[0]; itemsSummaryArray.push(`${item.quantity} ${shortName}`);
                 let tagName = "#" + shortName.replace(/ /g, '_'); if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName);
-                
                 itemsStr += `▪️ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`;
-                orderDetailsForTickTick += `[ ${item.quantity} ] ${item.name} = ${itemTotal} ج.م\n`;
             }
 
             let discountAmount = 0; let discountTextTemplate = "";
@@ -912,12 +949,6 @@
                 .replace('{الاجمالي}', finalTotal);
 
             if(deliveryFee === 0 && zoneName === 'مكان آخر' && !freeDelivery) message += `\n*(الإجمالي غير شامل رسوم التوصيل)*`;
-
-            orderDetailsForTickTick += `--------------------------------\n`;
-            orderDetailsForTickTick += `📦 قيمة الطلبات: ${subTotal} ج.م\n`;
-            if (discountAmount > 0) orderDetailsForTickTick += `🎁 الخصم (${appliedPromo.code}): -${discountAmount} ج.م\n`;
-            orderDetailsForTickTick += `🚚 رسوم التوصيل: ${deliveryText}\n`;
-            orderDetailsForTickTick += `💰 الإجمالي النهائي: ${finalTotal} ج.م\n`;
 
             let promoUpdated = false;
 
@@ -961,37 +992,32 @@
                     }
                 }
                 promoUpdated = true;
-                
-                orderDetailsForTickTick += `\n🎟️ ملاحظة: العميل حصل على كود خصم للمرة القادمة (${newPromoCode})\n`;
             }
 
-            orderDetailsForTickTick += `\n${smartTagsArray.join(' ')}`;
+            // تطبيق قالب تيك تيك الديناميكي من لوحة التحكم
+            let addressText = (isNew && customerAddress) ? `🏠 العنوان: ${customerAddress}` : "";
+            let tickTickItemsStr = "";
+            for (let id in cart) {
+                if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`;
+            }
+            let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : "";
+            let notesText = earnedLoyalty ? `\n🎟️ ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
+            let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
-           // تطبيق قالب تيك تيك الديناميكي من لوحة التحكم
-let addressText = (isNew && customerAddress) ? `🏠 العنوان: ${customerAddress}` : "";
-let tickTickItemsStr = "";
-for (let id in cart) {
-    if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`;
-}
-let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : "";
-let notesText = earnedLoyalty ? `\n🎟️ ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
-let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
-
-orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick)
-    .replace('{اسم_العميل}', customerName)
-    .replace('{الموبايل}', customerPhone)
-    .replace('{المنطقة}', zoneName)
-    .replace('{العنوان}', addressText)
-    .replace('{الوقت}', `${orderDate} - ${orderTime}`)
-    .replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim())
-    .replace('{قيمة_الطلبات}', subTotal)
-    .replace('{الخصم}', discountTickTickText)
-    .replace('{التوصيل}', deliveryText)
-    .replace('{الاجمالي}', finalTotal)
-    .replace('{ملاحظات}', notesText)
-    .replace('{الهاشتاجات}', smartTagsArray.join(' '));
-orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
-// نهاية قالب تيك تيك الديناميكي
+            let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick)
+                .replace('{اسم_العميل}', customerName)
+                .replace('{الموبايل}', customerPhone)
+                .replace('{المنطقة}', zoneName)
+                .replace('{العنوان}', addressText)
+                .replace('{الوقت}', `${orderDate} - ${orderTime}`)
+                .replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim())
+                .replace('{قيمة_الطلبات}', subTotal)
+                .replace('{الخصم}', discountTickTickText)
+                .replace('{التوصيل}', deliveryText)
+                .replace('{الاجمالي}', finalTotal)
+                .replace('{ملاحظات}', notesText)
+                .replace('{الهاشتاجات}', smartTagsArray.join(' '));
+            orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
 
             try {
                 fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ access_key: WEB3FORMS_ACCESS_KEY, subject: `🛒 ${itemsSummaryArray.join(' ')}`, "التفاصيل": orderDetailsForTickTick }) }).catch(e=>console.log(e));
@@ -1131,8 +1157,10 @@ orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
             
             document.getElementById('admin-old-customer-label').value = globalSettings.oldCustomerLabel || 'عميل سابق';
             document.getElementById('admin-whatsapp-template').value = globalSettings.whatsappTemplate || 'السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)';
+            
+            document.getElementById('admin-batch-hashtag').value = globalSettings.batchHashtag || '';
+            document.getElementById('admin-vip-whatsapp-template').value = globalSettings.vipWhatsappTemplate || 'السلام عليكم،\nأريد الانضمام لقائمة الـ VIP وحجز ({اسم_المنتج}) من الدفعة القادمة قبل نزولها المتجر. 👑';
             document.getElementById('admin-ticktick-template').value = globalSettings.ticktickTemplate || '🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}';
-
 
             tempProducts = JSON.parse(JSON.stringify(productsInfo));
             renderAdminProducts(); 
@@ -1438,9 +1466,10 @@ orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
                 successTitle: document.getElementById('admin-success-title').value.trim(), successMessage: document.getElementById('admin-success-message').value.trim(), productsData: tempProducts,
                 oldCustomerLabel: document.getElementById('admin-old-customer-label').value.trim() || 'عميل سابق',
                 whatsappTemplate: document.getElementById('admin-whatsapp-template').value.trim() || 'السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)',
-ticktickTemplate: document.getElementById('admin-ticktick-template').value.trim()
-};
-
+                ticktickTemplate: document.getElementById('admin-ticktick-template').value.trim(),
+                vipWhatsappTemplate: document.getElementById('admin-vip-whatsapp-template').value.trim(),
+                batchHashtag: document.getElementById('admin-batch-hashtag').value.trim()
+            };
 
             const btn = document.querySelector('#admin-dashboard-modal button[onclick="saveAdminData()"]'); const originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-xl"></i> جاري الحفظ...';
             if(hasCloud && db) {
