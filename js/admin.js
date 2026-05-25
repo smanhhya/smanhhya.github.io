@@ -178,43 +178,79 @@ window.syncAdminProductsFromDOM = () => {
 window.renderAdminZones = () => { const c=document.getElementById('admin-zones-container'); c.innerHTML=''; tempAdminZones.forEach((z,i) => c.innerHTML += `<div class="flex gap-2 items-center"><input type="text" value="${z.name}" class="flex-1 border rounded p-2 text-sm font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempAdminZones[${i}].name=this.value"><input type="number" value="${z.price}" class="w-16 border rounded p-2 text-sm text-center font-bold text-brand-cyanDark outline-none focus:border-brand-cyan" onchange="tempAdminZones[${i}].price=parseInt(this.value)"><button onclick="tempAdminZones.splice(${i},1);renderAdminZones()" class="text-red-500 hover:bg-red-50 rounded w-8 h-8 transition-colors"><i class="fa-solid fa-trash"></i></button></div>`); };
 window.addNewAdminZone = () => { tempAdminZones.push({id:'z_'+Date.now(), name:'', price:0}); renderAdminZones(); };
 
+// --- تحديث نظام عرض أكواد الخصم بإضافة القيود الجديدة ---
 window.renderAdminPromos = () => { 
     const c = document.getElementById('admin-promos-container'); c.innerHTML=''; 
     tempPromoCodes.forEach((p,i) => {
         const autoBadge = p.isAuto ? `<span class="bg-yellow-100 text-yellow-700 text-[8px] font-black px-1 rounded ml-1">تلقائي</span>` : '';
         if(p.usesLeft === undefined) p.usesLeft = p.isAuto ? 1 : 100;
         
+        // تجهيز القيم الافتراضية للخصائص الجديدة عشان لو كود قديم
+        p.minOrder = p.minOrder || 0;
+        p.maxDiscount = p.maxDiscount || 0;
+        p.expiryDate = p.expiryDate || '';
+
         c.innerHTML += `
-        <div class="flex flex-col gap-2 bg-gray-50 p-2 border border-gray-200 rounded-lg mb-2 relative overflow-hidden">
+        <div class="flex flex-col gap-2 bg-gray-50 p-3 border border-gray-200 rounded-xl mb-3 relative overflow-hidden shadow-sm">
             ${p.customerPhone ? `<div class="absolute top-0 right-0 w-1 h-full bg-purple-500"></div>` : ''}
-            <div class="flex gap-1 items-center">
-                <input type="text" value="${p.code}" placeholder="الكود" class="w-20 border rounded p-1 text-xs text-center uppercase font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].code=this.value.toUpperCase()">
+
+            <div class="flex gap-2 items-center flex-wrap pr-2">
+                <input type="text" value="${p.code}" placeholder="الكود" class="w-24 border rounded p-1.5 text-xs text-center uppercase font-black text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].code=this.value.toUpperCase()">
                 ${autoBadge}
-                <input type="number" value="${p.discount}" placeholder="خصم" class="w-14 border rounded p-1 text-xs text-center font-bold text-brand-cyanDark outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].discount=parseInt(this.value)">
-                <select class="flex-1 border rounded p-1 text-xs bg-white font-bold text-gray-600 outline-none" onchange="tempPromoCodes[${i}].type=this.value">
+                <input type="number" value="${p.discount}" placeholder="خصم" class="w-16 border rounded p-1.5 text-xs text-center font-bold text-brand-cyanDark outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].discount=parseInt(this.value)">
+                <select class="flex-1 border rounded p-1.5 text-xs bg-white font-bold text-gray-600 outline-none" onchange="tempPromoCodes[${i}].type=this.value; renderAdminPromos();">
                     <option value="fixed" ${p.type==='fixed'?'selected':''}>جنيه</option>
                     <option value="percent" ${p.type==='percent'?'selected':''}>%</option>
                     <option value="free_delivery" ${p.type==='free_delivery'?'selected':''}>توصيل مجاني</option>
                 </select>
             </div>
-            
-            <div class="flex items-center bg-white border rounded p-1 border-gray-300">
-                <i class="fa-solid fa-mobile-screen text-gray-400 text-[10px] w-4 text-center"></i>
-                <input type="text" value="${p.customerPhone || ''}" placeholder="رقم الموبايل أو اسم العميل (اختياري)" class="flex-1 text-[10px] font-bold text-brand-navy outline-none bg-transparent" onchange="tempPromoCodes[${i}].customerPhone=this.value" dir="ltr" style="text-align: right;">
+
+            <div class="grid grid-cols-2 gap-2 mt-1">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأدنى للطلب (ج)</label>
+                    <input type="number" value="${p.minOrder}" placeholder="مثال: 150" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].minOrder=parseInt(this.value) || 0">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأقصى للخصم (ج)</label>
+                    <input type="number" value="${p.maxDiscount}" placeholder="بدون حد" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan ${p.type !== 'percent' ? 'bg-gray-100 cursor-not-allowed opacity-50' : ''}" ${p.type !== 'percent' ? 'disabled' : ''} onchange="tempPromoCodes[${i}].maxDiscount=parseInt(this.value) || 0">
+                </div>
             </div>
 
-            <div class="flex gap-2 items-center justify-between">
-                <label class="flex items-center gap-1 text-[10px] font-bold text-gray-600">
-                    متاح لعدد أشخاص:
-                    <input type="number" value="${p.usesLeft}" class="w-12 border rounded p-1 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].usesLeft=parseInt(this.value)">
-                </label>
-                <button onclick="tempPromoCodes.splice(${i},1);renderAdminPromos()" class="text-red-500 hover:bg-red-100 rounded w-6 h-6 flex justify-center items-center"><i class="fa-solid fa-trash text-[10px]"></i></button>
+            <div class="grid grid-cols-2 gap-2 mt-1">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">تاريخ الانتهاء</label>
+                    <input type="date" value="${p.expiryDate}" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].expiryDate=this.value">
+                </div>
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">متاح لعدد أشخاص</label>
+                    <input type="number" value="${p.usesLeft}" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].usesLeft=parseInt(this.value)">
+                </div>
             </div>
+
+            <div class="flex items-center bg-white border rounded p-1.5 border-gray-300 mt-1">
+                <i class="fa-solid fa-mobile-screen text-gray-400 text-[10px] w-4 text-center"></i>
+                <input type="text" value="${p.customerPhone || ''}" placeholder="مخصص لرقم موبايل (اختياري)" class="flex-1 text-xs font-bold text-brand-navy outline-none bg-transparent" onchange="tempPromoCodes[${i}].customerPhone=this.value" dir="ltr" style="text-align: right;">
+            </div>
+
+            <button onclick="tempPromoCodes.splice(${i},1);renderAdminPromos()" class="absolute top-2 left-2 text-red-500 hover:bg-red-100 rounded w-7 h-7 flex justify-center items-center transition-colors"><i class="fa-solid fa-trash text-[12px]"></i></button>
         </div>`;
     }); 
 };
 
-window.addNewPromoCode = () => { tempPromoCodes.push({code:'', discount:0, type:'fixed', usesLeft: 1}); renderAdminPromos(); };
+// --- تحديث دالة إضافة الكود للتعرف على الخانات الجديدة ---
+window.addNewPromoCode = () => { 
+    tempPromoCodes.push({
+        code: '', 
+        discount: 0, 
+        type: 'fixed', 
+        usesLeft: 1,
+        minOrder: 0,
+        maxDiscount: 0,
+        expiryDate: '',
+        customerPhone: ''
+    }); 
+    renderAdminPromos(); 
+};
 
 window.renderOrdersList = () => {
     const container = document.getElementById('orders-list-container');
@@ -278,14 +314,6 @@ async function loadOrders() {
         ordersList=[]; 
         snap.forEach(d=>ordersList.push({id:d.id, ...d.data()})); 
         renderOrdersList(); 
-        
-        const newOrdersCount = ordersList.filter(o => o.status === 'new').length;
-        const badge = document.getElementById('orders-tab-badge');
-        if(badge) {
-            if(newOrdersCount > 0) { badge.innerText = newOrdersCount; badge.classList.remove('hidden'); }
-            else { badge.classList.add('hidden'); }
-        }
-        
     } catch(e){ console.log("Error loading orders", e); } 
 }
 
@@ -345,9 +373,26 @@ window.generateBulkWhatsAppLinks = () => {
     const linksContainer = document.getElementById('bulk-whatsapp-links');
     linksContainer.innerHTML = '<p class="text-xs font-black text-brand-navy mb-2 border-b pb-2"><i class="fa-solid fa-check-double text-green-500"></i> اضغط "إرسال" قدام كل رقم:</p>';
 
+    // حساب تاريخ الصلاحية الافتراضي (بعد 14 يوم من اليوم)
+    const defaultExpiry = new Date();
+    defaultExpiry.setDate(defaultExpiry.getDate() + 14);
+    const formattedExpiry = defaultExpiry.toISOString().split('T')[0];
+
     numbers.forEach(num => {
         const randomCode = "THX-" + Math.floor(1000 + Math.random() * 9000);
-        tempPromoCodes.push({ code: randomCode, type: rewardType, discount: rewardValue, isAuto: true, usesLeft: 1, customerPhone: num });
+        
+        // حفظ الكود الجديد مع الشروط الافتراضية
+        tempPromoCodes.push({ 
+            code: randomCode, 
+            type: rewardType, 
+            discount: rewardValue, 
+            isAuto: true, 
+            usesLeft: 1, 
+            customerPhone: num,
+            minOrder: 0,
+            maxDiscount: 0,
+            expiryDate: formattedExpiry
+        });
 
         const finalMessage = messageTemplate.replace(/{الكود}/g, randomCode);
         let waNumber = num;
