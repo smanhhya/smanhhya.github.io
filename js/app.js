@@ -159,24 +159,35 @@ window.switchCustomerType = function(type) {
     updateUI();
 };
 
+// --- تحديث نظام تطبيق الكود (المراجعة الذكية) ---
 window.applyPromoCode = function() {
     const input = document.getElementById('promo-code-input').value.trim().toUpperCase();
     const msg = document.getElementById('promo-message');
     if (input === '') return;
     
-    const promo = (globalSettings.promoCodes || []).find(p => p.code.toUpperCase() === input && (p.usesLeft === undefined || p.usesLeft > 0));
+    let subTotal = 0;
+    for (let id in cart) subTotal += cart[id].quantity * (globalPrices[id] || productsInfo[id].basePrice);
+
+    const promo = (globalSettings.promoCodes || []).find(p => p.code.toUpperCase() === input);
     
-    if (promo) { 
-        appliedPromo = { ...promo, isLoyalty: false }; 
-        msg.innerText = "تم تفعيل كود الخصم بنجاح 🎉"; 
-        msg.className = "text-[11px] font-bold mt-1 text-green-600"; 
-        msg.classList.remove('hidden'); 
-    } 
-    else { 
-        msg.innerText = "كود غير صحيح، أو تم استخدامه مسبقاً وانتهت صلاحيته."; 
-        msg.className = "text-[11px] font-bold mt-1 text-red-500"; 
-        msg.classList.remove('hidden'); 
+    // المراجعات الصارمة
+    if (!promo) { 
+        msg.innerText = "كود غير صحيح."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return; 
     }
+    if (promo.usesLeft !== undefined && promo.usesLeft <= 0) {
+        msg.innerText = "عفواً، انتهى الحد الأقصى لاستخدام هذا الكود."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return;
+    }
+    if (promo.expiryDate && new Date(promo.expiryDate) < new Date(new Date().toDateString())) {
+        msg.innerText = "عفواً، هذا الكود منتهي الصلاحية."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return;
+    }
+    if (promo.minOrder && subTotal < promo.minOrder) {
+        msg.innerText = `عشان تفعل الكود ده، لازم طلباتك تتخطى ${promo.minOrder} ج.م`; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return;
+    }
+    
+    appliedPromo = { ...promo, isLoyalty: false }; 
+    msg.innerText = "تم تفعيل كود الخصم بنجاح 🎉"; 
+    msg.className = "text-[11px] font-bold mt-1 text-green-600"; 
+    msg.classList.remove('hidden'); 
     updateUI();
 };
 
@@ -305,12 +316,36 @@ window.updateUI = function() {
         else { textContainer.innerHTML = `<span class="text-green-600 font-black">مبروك! التوصيل مجاني 🎉</span><i class="fa-solid fa-check-circle text-green-500 text-lg"></i>`; document.getElementById('fd-progress').className = "bg-green-500 h-2.5 rounded-full progress-bar-animated"; }
     } else tracker.classList.add('hidden');
 
+    // --- تحديث حساب الخصم ومراجعة الحد الأدنى أثناء التعديل في السلة ---
     let discountAmount = 0; const promoRow = document.getElementById('promo-discount-row');
     if (appliedPromo && totalItems > 0) {
-        if(appliedPromo.type === 'free_delivery') { freeDelivery = true; discountAmount = 0; document.getElementById('promo-label').innerText = appliedPromo.code + " (توصيل مجاني)"; document.getElementById('cart-discount').innerText = "0"; } 
-        else { discountAmount = appliedPromo.type === 'percent' ? (subTotalPrice * (appliedPromo.discount / 100)) : appliedPromo.discount; discountAmount = Math.round(Math.min(discountAmount, subTotalPrice)); document.getElementById('promo-label').innerText = appliedPromo.code; document.getElementById('cart-discount').innerText = discountAmount; }
-        promoRow.classList.remove('hidden');
-    } else promoRow.classList.add('hidden');
+        if (appliedPromo.minOrder && subTotalPrice < appliedPromo.minOrder) {
+            // العميل قلل الطلبات ومبقاش جايب الحد الأدنى، نلغي الكود فوراً
+            appliedPromo = null;
+            const msg = document.getElementById('promo-message');
+            if(msg) { msg.innerText = "تم إلغاء الخصم لأن الطلبات قلت عن الحد الأدنى للكود."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); }
+            if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = '';
+        } else {
+            if(appliedPromo.type === 'free_delivery') { 
+                freeDelivery = true; discountAmount = 0; 
+                document.getElementById('promo-label').innerText = appliedPromo.code + " (توصيل مجاني)"; 
+                document.getElementById('cart-discount').innerText = "0"; 
+            } else { 
+                discountAmount = appliedPromo.type === 'percent' ? (subTotalPrice * (appliedPromo.discount / 100)) : appliedPromo.discount; 
+                // تطبيق الحد الأقصى للخصم لو كان الخصم بنسبة مئوية
+                if (appliedPromo.type === 'percent' && appliedPromo.maxDiscount > 0) {
+                    discountAmount = Math.min(discountAmount, appliedPromo.maxDiscount);
+                }
+                discountAmount = Math.round(Math.min(discountAmount, subTotalPrice)); 
+                document.getElementById('promo-label').innerText = appliedPromo.code; 
+                document.getElementById('cart-discount').innerText = discountAmount; 
+            }
+        }
+        if(appliedPromo) promoRow.classList.remove('hidden');
+        else promoRow.classList.add('hidden');
+    } else { 
+        promoRow.classList.add('hidden'); 
+    }
 
     const totalAfterPromo = subTotalPrice - discountAmount;
     const deliverySelect = document.getElementById('delivery-zone');
@@ -391,6 +426,16 @@ window.finalCheckoutStep = async function() {
         if (customerName.length < 3 || !nameRegex.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
     } else { customerPhone = document.getElementById('customer-phone-old').value.trim(); customerName = (globalSettings.oldCustomerLabel || "عميل سابق") + " (" + customerPhone + ")"; }
 
+    // --- مراجعة إذا كان الكود مخصص لرقم موبايل محدد ---
+    if (appliedPromo && appliedPromo.customerPhone) {
+        let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); 
+        let userPhone = customerPhone.replace(/\D/g, '').slice(-10);
+        if (phoneToMatch !== userPhone && phoneToMatch !== '') {
+            showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه.");
+            checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return;
+        }
+    }
+
     for (let id in cart) {
         if(!productsInfo[id]) continue;
         if (cart[id].quantity > globalStock[id]) {
@@ -424,8 +469,16 @@ window.finalCheckoutStep = async function() {
 
     let discountAmount = 0; let discountTextTemplate = "";
     if (appliedPromo) {
-        if(appliedPromo.type === 'free_delivery') { discountTextTemplate = `🎁 ${appliedPromo.code}: توصيل مجاني\n`; } 
-        else { discountAmount = appliedPromo.type === 'percent' ? (subTotal * (appliedPromo.discount / 100)) : appliedPromo.discount; discountAmount = Math.round(Math.min(discountAmount, subTotal)); discountTextTemplate = `🎁 كود (${appliedPromo.code}): -${discountAmount} ج\n`; }
+        if(appliedPromo.type === 'free_delivery') { 
+            discountTextTemplate = `🎁 ${appliedPromo.code}: توصيل مجاني\n`; 
+        } else { 
+            discountAmount = appliedPromo.type === 'percent' ? (subTotal * (appliedPromo.discount / 100)) : appliedPromo.discount; 
+            if (appliedPromo.type === 'percent' && appliedPromo.maxDiscount > 0) {
+                discountAmount = Math.min(discountAmount, appliedPromo.maxDiscount);
+            }
+            discountAmount = Math.round(Math.min(discountAmount, subTotal)); 
+            discountTextTemplate = `🎁 كود (${appliedPromo.code}): -${discountAmount} ج\n`; 
+        }
     }
 
     const totalAfterPromo = subTotal - discountAmount;
@@ -447,6 +500,7 @@ window.finalCheckoutStep = async function() {
 
     let promoUpdated = false;
 
+    // خصم عدد مرات استخدام الكود الحالي
     if (appliedPromo) {
         let pIndex = globalSettings.promoCodes.findIndex(p => p.code === appliedPromo.code);
         if (pIndex !== -1) {
@@ -473,10 +527,27 @@ window.finalCheckoutStep = async function() {
         }
     }
     
+    // إنشاء كود الولاء الجديد وحفظه بشكل دائم
     if (canGenerateReward) {
         newPromoCode = "VIP-" + Math.floor(1000 + Math.random() * 9000);
         earnedLoyalty = true;
-        const newPromoObj = { code: newPromoCode, type: globalSettings.rewardType, discount: globalSettings.rewardValue, isAuto: true, usesLeft: 1, customerPhone: customerPhone };
+        
+        const expDate = new Date();
+        expDate.setDate(expDate.getDate() + 14); // صالح لمدة 14 يوم
+        const fmtExp = expDate.toISOString().split('T')[0];
+
+        const newPromoObj = { 
+            code: newPromoCode, 
+            type: globalSettings.rewardType, 
+            discount: globalSettings.rewardValue, 
+            isAuto: true, 
+            usesLeft: 1, 
+            customerPhone: customerPhone,
+            minOrder: 0,
+            maxDiscount: 0,
+            expiryDate: fmtExp
+        };
+        
         if(!globalSettings.promoCodes) globalSettings.promoCodes = [];
         globalSettings.promoCodes.push(newPromoObj);
         
@@ -523,6 +594,7 @@ window.finalCheckoutStep = async function() {
             await Promise.all([
                 db.collection("orders").add(orderData),
                 db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true }),
+                // التحديث المباشر للمصفوفة لضمان حفظ الأكواد الجديدة بأمان تام
                 promoUpdated ? db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations, rewardActive: globalSettings.rewardActive }, { merge: true }) : Promise.resolve()
             ]);
             
@@ -565,7 +637,7 @@ window.finalCheckoutStep = async function() {
                     <i class="fa-regular fa-copy"></i> انسخ الكود
                 </button>
 
-                <span class="text-xs font-bold text-gray-600 block mt-3">يمنحك ${rewardDesc} (يستخدم مرة واحدة)</span>
+                <span class="text-xs font-bold text-gray-600 block mt-3">يمنحك ${rewardDesc} (صالح لمدة 14 يوم - يستخدم مرة واحدة)</span>
             </div>
             <div class="text-sm font-bold text-brand-navy mt-2">الأوردر وصل السيستم بنجاح وسيتم تجهيزه.</div>`;
         document.getElementById('alert-icon-container').classList.add('hidden'); document.getElementById('alert-title').classList.add('hidden'); document.getElementById('alert-message').innerHTML = msgHTML;
