@@ -105,7 +105,7 @@
     <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full sm:w-96 bg-gray-50 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
         <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white shadow-sm z-10">
             <h2 class="text-xl font-black text-brand-navy flex items-center gap-2">
-                <i class="fa-solid fa-basket-shopping text-brand-yellow"></i> <span id="lbl-checkout-title">إتمام الحجز</span>
+                <i class="fa-solid fa-basket-shopping text-brand-cyanDark"></i> <span id="lbl-checkout-title">إتمام الحجز</span>
             </h2>
             <button onclick="toggleCart()" class="text-gray-400 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
                 <i class="fa-solid fa-xmark"></i>
@@ -130,60 +130,71 @@
 
         <div class="p-5 border-t border-gray-200 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.03)] overflow-y-auto max-h-[60vh] cart-scroll">
             
-            <div class="mb-4 text-center">
-                <button type="button" onclick="document.getElementById('promo-input-container').classList.toggle('hidden'); this.classList.add('hidden')" class="text-xs font-bold text-brand-navy bg-brand-light/50 px-4 py-2 rounded-full border border-brand-cyan/30 inline-flex items-center gap-2 hover:bg-brand-light transition-colors shadow-sm">
-                    <i class="fa-solid fa-tag text-brand-cyanDark"></i> إضافة كود خصم
-                </button>
+            <div class="flex gap-2 mb-6 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200">
+                <button type="button" id="tab-new" onclick="switchCustomerType('new')" class="flex-1 py-3 rounded-xl bg-white shadow-sm font-black text-brand-navy text-sm transition-all flex items-center justify-center gap-2 border border-gray-200/50"><span id="lbl-tab-new">أول مرة تطلب مننا؟ 😍</span></button>
+                <button type="button" id="tab-old" onclick="switchCustomerType('old')" class="flex-1 py-3 rounded-xl text-gray-500 font-bold text-sm transition-all hover:text-brand-navy flex items-center justify-center gap-2"><span id="lbl-tab-old">طلبت مننا قبل كده؟ 😎</span></button>
             </div>
 
-            <div id="promo-input-container" class="mb-5 hidden">
+            <div class="mb-5 space-y-4">
+                <div>
+                    <label class="block text-sm font-black text-brand-navy mb-1.5"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-1"></i> <span id="lbl-zone-label">منطقة التوصيل</span> <span class="text-red-500">*</span></label>
+                    <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-brand-cyan outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all appearance-none"></select>
+                </div>
+
+                <div id="new-cust-fields" class="space-y-4 mt-4">
+                    <div>
+                        <label class="block text-sm font-black text-brand-navy mb-1.5"><i class="fa-regular fa-user text-brand-cyanDark ml-1"></i> <span id="lbl-name-label">اسم حضرتك</span> <span class="text-red-500">*</span></label>
+                        <input type="text" id="customer-name" placeholder="مثال: محمد أحمد..." class="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-brand-cyan outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-black text-brand-navy mb-1.5"><i class="fa-solid fa-mobile-screen text-brand-cyanDark ml-1"></i> <span id="lbl-phone-label">رقم الموبايل</span> <span class="text-red-500">*</span></label>
+                        <input type="tel" id="customer-phone-new" placeholder="01XXXXXXXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-brand-cyan outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest" dir="ltr">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-black text-brand-navy mb-1.5"><i class="fa-solid fa-house text-brand-cyanDark ml-1"></i> <span id="lbl-address-label">العنوان بالتفصيل (اختياري)</span></label>
+                        <input type="text" id="customer-address" placeholder="اسم الشارع، علامة مميزة بجوارك..." class="w-full border-2 border-gray-200 rounded-xl p-3 focus:border-brand-cyan outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all">
+                    </div>
+                </div>
+
+                <div id="old-cust-fields" class="space-y-4 mt-4 hidden">
+                    <div class="bg-brand-light/60 border border-brand-cyan/40 rounded-xl p-3.5 text-xs font-black text-brand-navy flex items-center gap-3 mb-2 shadow-sm">
+                        <div class="bg-white p-2 rounded-full shadow-sm text-brand-yellow"><i class="fa-solid fa-bolt text-lg"></i></div>
+                        <span id="lbl-old-msg">اكتب رقمك المسجل، والأوردر هيتم تأكيده في السيستم فوراً بدون أي خطوات إضافية!</span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-black text-brand-navy mb-1.5"><i class="fa-solid fa-mobile-screen text-brand-cyanDark ml-1"></i> <span id="lbl-old-phone-label">رقم الموبايل المسجل</span> <span class="text-red-500">*</span></label>
+                        <input type="tel" id="customer-phone-old" placeholder="01XXXXXXXXX" class="w-full border-2 border-brand-cyan/50 rounded-xl p-3 focus:border-brand-cyanDark outline-none font-black text-brand-navy bg-white shadow-sm transition-all text-left tracking-widest text-lg" dir="ltr">
+                    </div>
+                    
+                    <label class="flex items-center gap-3 cursor-pointer bg-green-50 p-3.5 rounded-xl border border-green-200 hover:bg-green-100 transition-colors select-none mt-2">
+                        <input type="checkbox" id="optional-whatsapp" onchange="updateUI()" class="w-5 h-5 text-green-600 rounded border-gray-300 accent-green-600">
+                        <div class="flex-1">
+                            <span class="text-sm font-black text-green-800 block" id="lbl-wa-check">تأكيد عبر الواتساب (اختياري)</span>
+                        </div>
+                        <i class="fa-brands fa-whatsapp text-2xl text-green-500"></i>
+                    </label>
+                </div>
+            </div>
+
+            <div id="promo-input-container" class="mb-4">
                 <div class="flex gap-2">
-                    <input type="text" id="promo-code-input" placeholder="اكتب الكود هنا" class="flex-1 border border-gray-200 rounded-lg p-2.5 focus:border-brand-navy outline-none font-bold text-brand-navy text-sm uppercase text-center bg-gray-50 focus:bg-white transition-all shadow-inner" dir="ltr">
-                    <button type="button" onclick="applyPromoCode()" class="bg-brand-navy text-white px-4 rounded-lg font-bold text-sm hover:bg-gray-800 transition-colors shadow-sm" id="lbl-promo-btn">تفعيل</button>
+                    <input type="text" id="promo-code-input" placeholder="كود الخصم (إن وجد)" class="flex-1 border-2 border-gray-200 rounded-xl p-2.5 focus:border-brand-cyan outline-none font-bold text-brand-navy text-sm uppercase text-center bg-gray-50 focus:bg-white transition-all" dir="ltr">
+                    <button type="button" onclick="applyPromoCode()" class="bg-gray-800 text-white px-4 rounded-xl font-bold text-sm hover:bg-black transition-colors" id="lbl-promo-btn">تفعيل</button>
                 </div>
                 <p id="promo-message" class="text-[10px] font-bold mt-1 hidden"></p>
             </div>
 
-            <div class="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl border border-gray-200">
-                <button type="button" id="tab-new" onclick="switchCustomerType('new')" class="flex-1 py-3 rounded-xl bg-white shadow-sm font-black text-brand-navy text-sm transition-all flex items-center justify-center gap-1 border border-gray-200/50">أول مرة أطلب 😍</button>
-                <button type="button" id="tab-old" onclick="switchCustomerType('old')" class="flex-1 py-3 rounded-xl text-gray-500 font-bold text-sm transition-all hover:text-brand-navy flex items-center justify-center gap-1">طلبت قبل كده 😎</button>
+            <div class="bg-brand-light/30 rounded-xl p-4 mb-4 border border-brand-cyan/20">
+                <div class="flex justify-between text-gray-600 text-sm font-bold mb-2"><span id="lbl-subtotal">قيمة الطلبات:</span><span><span id="cart-subtotal">0</span> ج.م</span></div>
+                <div id="promo-discount-row" class="flex justify-between text-green-600 text-sm font-bold mb-2 hidden"><span id="lbl-discount">الخصم (<span id="promo-label"></span>):</span><span>- <span id="cart-discount">0</span> ج.م</span></div>
+                <div class="flex justify-between text-brand-cyanDark text-sm font-bold mb-3 border-b border-brand-cyan/20 pb-3"><span id="lbl-delivery">مصاريف التوصيل:</span><span id="cart-delivery-fee" class="text-xs font-black">0 ج.م</span></div>
+                <div class="flex justify-between items-center text-lg"><span class="font-black text-brand-navy" id="lbl-final-total">الإجمالي المطلوب:</span><span class="font-black text-2xl text-brand-navy"><span id="cart-total">0</span> <span class="text-sm text-gray-500">ج.م</span></span></div>
             </div>
 
-            <div class="mb-4 relative">
-                <select id="delivery-zone" onchange="updateUI()" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-gray-600 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
-                <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
-            </div>
-
-            <div id="new-cust-fields" class="space-y-3 mb-5">
-                <input type="text" id="customer-name" placeholder="الاسم الكريم *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                <input type="tel" id="customer-phone-new" placeholder="رقم الموبايل *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-right tracking-widest shadow-sm" dir="ltr">
-                <input type="text" id="customer-address" placeholder="العنوان بالتفصيل (اختياري بس بيفيدنا)" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-            </div>
-
-            <div id="old-cust-fields" class="space-y-3 mb-5 hidden">
-                <input type="text" id="customer-name-old" placeholder="الاسم الكريم *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                <input type="tel" id="customer-phone-old" placeholder="رقم الموبايل المسجل *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-right tracking-widest shadow-sm" dir="ltr">
-                
-                <label class="flex items-center gap-3 cursor-pointer bg-brand-light/40 p-3 rounded-lg border border-brand-cyan/20 hover:bg-brand-light transition-colors select-none shadow-sm">
-                    <input type="checkbox" id="optional-whatsapp" onchange="updateUI()" class="w-4 h-4 text-brand-navy rounded border-gray-300 accent-brand-navy">
-                    <div class="flex-1">
-                        <span class="text-xs font-black text-brand-navy block" id="lbl-wa-check">تأكيد عبر الواتساب (اختياري)</span>
-                    </div>
-                    <i class="fa-brands fa-whatsapp text-xl text-green-600"></i>
-                </label>
-            </div>
-
-            <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200 shadow-inner">
-                <div class="flex justify-between text-gray-500 text-xs font-bold mb-2"><span id="lbl-subtotal">قيمة الطلبات:</span><span><span id="cart-subtotal">0</span> ج.م</span></div>
-                <div id="promo-discount-row" class="flex justify-between text-brand-cyanDark text-xs font-bold mb-2 hidden"><span id="lbl-discount">الخصم (<span id="promo-label"></span>):</span><span>- <span id="cart-discount">0</span> ج.م</span></div>
-                <div class="flex justify-between text-gray-500 text-xs font-bold mb-3 border-b border-gray-200 pb-3"><span id="lbl-delivery">مصاريف التوصيل:</span><span id="cart-delivery-fee" class="text-xs font-black">0 ج.م</span></div>
-                <div class="flex justify-between items-center"><span class="font-black text-brand-navy text-sm" id="lbl-final-total">الإجمالي المطلوب:</span><span class="font-black text-xl text-brand-navy"><span id="cart-total">0</span> <span class="text-xs text-gray-500">ج.م</span></span></div>
-            </div>
-
-            <button type="button" onclick="initiateCheckout()" id="checkout-btn" class="w-full font-black py-4 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5" disabled style="background-color: #1b4332 !important; color: #ffffff !important;">
-                <i class="fa-solid fa-check text-xl" id="btn-icon"></i> <span id="btn-text">تأكيد الطلب الآن</span>
+            <button type="button" onclick="initiateCheckout()" id="checkout-btn" class="w-full bg-green-500 hover:bg-green-600 text-white font-black py-4 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5" disabled>
+                <i class="fa-brands fa-whatsapp text-2xl" id="btn-icon"></i> <span id="btn-text">تأكيد وإرسال عبر واتساب</span>
             </button>
-            <p id="checkout-hint" class="text-center text-[10px] text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> يرجى استكمال البيانات المطلوبة والمنطقة</p>
+            <p id="checkout-hint" class="text-center text-xs text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> يرجى استكمال البيانات المطلوبة والمنطقة</p>
         </div>
     </div>
 
@@ -290,7 +301,6 @@
                 </div>
 
                 <div id="admin-panel-orders" class="hidden">
-                    <input type="text" id="order-search" placeholder="ابحث باسم العميل أو رقم الموبايل..." class="w-full border-2 border-gray-200 rounded-xl p-3 mb-4 font-bold text-brand-navy outline-none focus:border-brand-cyan" onkeyup="renderOrdersList()">
                     <div class="flex gap-2 mb-3">
                         <button onclick="filterOrders('all')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-200">الكل</button>
                         <button onclick="filterOrders('new')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700">جديد</button>
@@ -505,3 +515,4 @@
     <script src="js/admin.js"></script>
 </body>
 </html>
+ا
