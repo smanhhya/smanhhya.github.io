@@ -967,3 +967,4 @@ window.saveTextsSettings = () => {
         if(typeof applySettingsToUI === 'function') applySettingsToUI();
     }
 };
+console.log('admin.js loaded successfully');
