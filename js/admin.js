@@ -63,9 +63,6 @@ window.openAdminLogin = () => {
     }
 };
 
-    }
-};
-
 window.closeAdminLogin = () => { 
     const modal = document.getElementById('admin-login-modal');
     if(modal) {
