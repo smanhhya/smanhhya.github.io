@@ -255,6 +255,8 @@
             <button onclick="switchAdminTab('store')" id="admin-tab-store" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-store"></i> المتجر</button>
             <button onclick="switchAdminTab('products')" id="admin-tab-products" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-box-open"></i> المنتجات</button>
             <button onclick="switchAdminTab('orders')" id="admin-tab-orders" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap relative"><i class="fa-solid fa-clipboard-list"></i> الطلبات</button>
+            <!-- إضافة تبويب التوزيع -->
+            <button onclick="switchAdminTab('dispatch')" id="admin-tab-dispatch" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-truck-fast"></i> التوزيع</button>
             <button onclick="switchAdminTab('delivery')" id="admin-tab-delivery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-motorcycle"></i> التوصيل</button>
             <button onclick="switchAdminTab('marketing')" id="admin-tab-marketing" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> التسويق</button>
             <button onclick="switchAdminTab('advanced')" id="admin-tab-advanced" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-gear"></i> متقدم</button>
@@ -311,6 +313,40 @@
                     <div id="orders-list-container" class="space-y-3"></div>
                 </div>
 
+                <!-- لوحة التوزيع (جديدة) -->
+                <div id="admin-panel-dispatch" class="hidden space-y-4">
+                    <div class="bg-white border rounded-xl p-4 shadow-sm">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-truck-fast text-brand-cyanDark"></i> إرسال الطلبات للمندوبين</h3>
+                        <p class="text-[10px] text-gray-500 font-bold mb-3">اختار منطقة معينة ثم اختر الطلبات اللي عايز تبعتهم، واكتب رقم المندوب وهيتم فتح واتساب برسالة جاهزة بكل التفاصيل.</p>
+
+                        <div class="mb-3">
+                            <label class="text-[10px] font-bold text-gray-500 block mb-1">تصفية حسب المنطقة (اختياري)</label>
+                            <select id="dispatch-zone-filter" class="w-full border rounded-lg p-2 font-bold text-brand-navy bg-white" onchange="renderDispatchOrders()">
+                                <option value="all">كل المناطق</option>
+                            </select>
+                        </div>
+
+                        <div id="dispatch-orders-container" class="space-y-2 mb-4 max-h-96 overflow-y-auto cart-scroll border rounded-lg p-2 bg-gray-50">
+                            <p class="text-xs text-gray-400 text-center py-4">اختار منطقة أو حمّل الطلبات</p>
+                        </div>
+
+                        <div class="flex items-center gap-2 mb-3">
+                            <button onclick="toggleSelectAllDispatch()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs py-2 px-4 rounded-lg transition-colors">تحديد الكل / إلغاء</button>
+                            <span class="text-[10px] text-gray-500">عدد المحدد: <span id="dispatch-selected-count" class="font-black text-brand-cyanDark">0</span></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="text-[10px] font-bold text-gray-500 block mb-1">رقم موبايل المندوب (بالواتساب)</label>
+                            <input type="text" id="dispatch-driver-phone" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr" placeholder="20100000000">
+                        </div>
+
+                        <button onclick="sendDispatchToDriver()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2">
+                            <i class="fa-brands fa-whatsapp text-xl"></i> إرسال الطلبات المحددة للمندوب
+                        </button>
+                        <p class="text-[10px] text-gray-400 mt-2">الرسالة هتتفتح في واتساب المندوب، وساعتها تقدر تبعت أو تعدل قبل الإرسال.</p>
+                    </div>
+                </div>
+
                 <div id="admin-panel-delivery" class="hidden space-y-4">
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-gift text-green-500"></i> التوصيل المجاني</h3>
@@ -349,7 +385,7 @@
                             </div>
                             <div class="col-span-2 mt-2">
                                 <label class="text-[10px] text-gray-500 font-bold block mb-1">الحد الأقصى للإصدار</label>
-                                <input type="number" id="admin-reward-max-generations" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="مثال: 10">
+                                <input type="number" id="admin-reward-max-generations" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="مثال: 10 (اتركه 0 لغير محدود)">
                             </div>
                         </div>
                     </div>
@@ -412,11 +448,10 @@
                 </div>
 
                 <div id="admin-panel-advanced" class="hidden space-y-4">
+                    <!-- تم حذف قسم تسمية العميل القديم بالكامل، وإبقاء قالب الواتساب فقط -->
                     <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
                         <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-language text-brand-cyanDark"></i> نصوص وتسميات النظام</h3>
-                        <label class="text-xs font-bold text-gray-500 block mb-1">تسمية العميل القديم (تظهر في الواتساب والطلبات)</label>
-                        <input type="text" id="admin-old-customer-label" placeholder="مثال: عميل سابق" class="w-full border rounded-lg p-2 mb-3 font-bold text-brand-navy">
-                        <label class="text-xs font-bold text-gray-500 block mb-1">قالب رسالة الواتساب</label>
+                        <label class="text-xs font-bold text-gray-500 block mb-1">قالب رسالة الواتساب للعميل</label>
                         <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {تفاصيل_العميل} , {الطلبات} , {الخصم} , {قيمة_الطلبات} , {التوصيل} , {الاجمالي}</p>
                         <textarea id="admin-whatsapp-template" rows="6" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
                     </div>
@@ -437,6 +472,20 @@
                         <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-list-check text-brand-cyanDark"></i> قالب رسالة TickTick (المهام)</h3>
                         <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {اسم_العميل} , {الموبايل} , {المنطقة} , {العنوان} , {الوقت} , {تفاصيل_الطلبات} , {قيمة_الطلبات} , {الخصم} , {التوصيل} , {الاجمالي} , {ملاحظات} , {الهاشتاجات}</p>
                         <textarea id="admin-ticktick-template" rows="8" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl"></textarea>
+                    </div>
+
+                    <!-- قالب رسالة المندوب (جديد) -->
+                    <div class="bg-white border rounded-xl p-4 shadow-sm mb-4 border-l-4 border-l-blue-500">
+                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-truck-fast text-blue-500"></i> قالب رسالة المندوب (للإرسال الجماعي)</h3>
+                        <p class="text-[10px] text-gray-400 mb-2">استخدم المتغيرات: {اسم_العميل} , {رقم_العميل} , {المنطقة} , {العنوان} , {تفاصيل_الطلبات} , {إجمالي_الطلب} , {التوصيل} , {الإجمالي_النهائي}</p>
+                        <textarea id="admin-dispatch-template" rows="5" class="w-full border rounded-lg p-2 font-bold text-brand-navy whitespace-pre-wrap" dir="rtl">📦 طلب جديد من {اسم_العميل}
+📱 {رقم_العميل}
+📍 {المنطقة} - {العنوان}
+🛒 الطلبات:
+{تفاصيل_الطلبات}
+💰 إجمالي الطلب: {إجمالي_الطلب} ج.م
+🚚 التوصيل: {التوصيل}
+⭐ الإجمالي النهائي: {الإجمالي_النهائي} ج.م</textarea>
                     </div>
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
