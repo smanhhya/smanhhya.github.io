@@ -1,6 +1,6 @@
 // js/admin.js
 
-// --- دالة تأخير (لتحسين أداء البحث) ---
+// دالة تأخير للبحث السريع
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -23,12 +23,9 @@ window.verifyAdminPin = () => {
     const pass = document.getElementById('admin-password-input').value.trim();
     const btn = document.querySelector('#admin-login-modal button[onclick="verifyAdminPin()"]');
     const origHtml = btn.innerHTML;
-    
     if(!email || !pass) { showAlert("تنبيه", "يرجى كتابة البريد الإلكتروني وكلمة المرور."); return; }
-
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
     btn.disabled = true;
-
     firebase.auth().signInWithEmailAndPassword(email, pass)
         .then((userCredential) => {
             closeAdminLogin(); 
@@ -116,6 +113,9 @@ window.openAdminDashboard = () => {
 };
 
 window.closeAdminDashboard = () => { document.getElementById('admin-dashboard-modal').classList.add('opacity-0'); setTimeout(()=>document.getElementById('admin-dashboard-modal').classList.add('hidden'),300); };
+
+// باقي الدوال (renderTopProductsStats, moveProduct, renderAdminProducts, ...) كما هي بدون تغيير
+// ... نكتفي بإدراجها كاملة للحفاظ على سلامة الملف
 
 window.renderTopProductsStats = () => {
     const c = document.getElementById('top-products-list'); if(!c) return;
@@ -238,24 +238,12 @@ window.renderAdminPromos = () => {
                 </select>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-1">
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأدنى للطلب (ج)</label>
-                    <input type="number" value="${p.minOrder}" placeholder="بدون حد" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].minOrder=parseInt(this.value) || 0">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأقصى للخصم (ج)</label>
-                    <input type="number" value="${p.maxDiscount}" placeholder="بدون حد" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan ${p.type !== 'percent' ? 'bg-gray-100 cursor-not-allowed opacity-50' : ''}" ${p.type !== 'percent' ? 'disabled' : ''} onchange="tempPromoCodes[${i}].maxDiscount=parseInt(this.value) || 0">
-                </div>
+                <div><label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأدنى للطلب (ج)</label><input type="number" value="${p.minOrder}" placeholder="بدون حد" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].minOrder=parseInt(this.value) || 0"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 block mb-0.5">الحد الأقصى للخصم (ج)</label><input type="number" value="${p.maxDiscount}" placeholder="بدون حد" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan ${p.type !== 'percent' ? 'bg-gray-100 cursor-not-allowed opacity-50' : ''}" ${p.type !== 'percent' ? 'disabled' : ''} onchange="tempPromoCodes[${i}].maxDiscount=parseInt(this.value) || 0"></div>
             </div>
             <div class="grid grid-cols-2 gap-2 mt-1">
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">تاريخ الانتهاء</label>
-                    <input type="date" value="${p.expiryDate}" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].expiryDate=this.value">
-                </div>
-                <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">متاح لعدد أشخاص</label>
-                    <input type="number" value="${p.usesLeft !== null ? p.usesLeft : ''}" placeholder="∞" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].usesLeft=this.value === '' ? null : parseInt(this.value)">
-                </div>
+                <div><label class="text-[10px] font-bold text-gray-500 block mb-0.5">تاريخ الانتهاء</label><input type="date" value="${p.expiryDate}" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].expiryDate=this.value"></div>
+                <div><label class="text-[10px] font-bold text-gray-500 block mb-0.5">متاح لعدد أشخاص</label><input type="number" value="${p.usesLeft !== null ? p.usesLeft : ''}" placeholder="∞" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none focus:border-brand-cyan" onchange="tempPromoCodes[${i}].usesLeft=this.value === '' ? null : parseInt(this.value)"></div>
             </div>
             <div class="flex items-center bg-white border rounded p-1.5 border-gray-300 mt-1">
                 <i class="fa-solid fa-mobile-screen text-gray-400 text-[10px] w-4 text-center"></i>
@@ -267,33 +255,40 @@ window.renderAdminPromos = () => {
 };
 
 window.addNewPromoCode = () => { 
-    tempPromoCodes.push({
-        code: '', 
-        discount: 0, 
-        type: 'fixed', 
-        usesLeft: null,   // غير محدود افتراضيًا
-        minOrder: 0,
-        maxDiscount: 0,
-        expiryDate: '',
-        customerPhone: ''
-    }); 
+    tempPromoCodes.push({ code: '', discount: 0, type: 'fixed', usesLeft: null, minOrder: 0, maxDiscount: 0, expiryDate: '', customerPhone: '' }); 
     renderAdminPromos(); 
 };
 
-// ------------------ البحث الفعّال مع debounce ------------------
+// ========== نظام الطلبات الذكي (بحث شامل + إرسال رسالة + تقييم) ==========
+window.sendMessageToCustomer = (phone, order) => {
+    // رسالة مخصصة للعميل
+    let itemsText = order.items.map(i => `${i.quantity}x ${i.name}`).join('\n');
+    let msg = `مرحباً ${order.customerName}،\nتفاصيل طلبك:\n${itemsText}\nالإجمالي: ${order.total} ج.م\nشكراً لتعاملك معنا!`;
+    let waNumber = phone.startsWith('0') ? '2' + phone : phone;
+    window.open(`https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(msg)}`, '_blank');
+};
+
+window.sendRatingRequest = (phone, order) => {
+    let msg = `شكراً ${order.customerName} على طلبك!\nتقدر تقيم تجربتك معانا من هنا:\n⭐️ [رابط التقييم]\n(سيتم إضافة الرابط لاحقاً)`;
+    let waNumber = phone.startsWith('0') ? '2' + phone : phone;
+    window.open(`https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(msg)}`, '_blank');
+};
+
 window.renderOrdersList = () => {
     const container = document.getElementById('orders-list-container');
     if(!container) return;
     
     const searchQuery = document.getElementById('order-search')?.value.trim().toLowerCase() || '';
     
-    // فلترة حسب الحالة ونص البحث
     let filtered = ordersList.filter(o => {
         if(orderFilter !== 'all' && o.status !== orderFilter) return false;
         if(searchQuery) {
             const nameMatch = o.customerName?.toLowerCase().includes(searchQuery);
             const phoneMatch = o.customerPhone?.toLowerCase().includes(searchQuery);
-            if(!nameMatch && !phoneMatch) return false;
+            const zoneMatch = o.zone?.toLowerCase().includes(searchQuery);
+            const addressMatch = o.customerAddress?.toLowerCase().includes(searchQuery);
+            const itemsMatch = o.items?.some(i => i.name?.toLowerCase().includes(searchQuery));
+            if(!nameMatch && !phoneMatch && !zoneMatch && !addressMatch && !itemsMatch) return false;
         }
         return true;
     });
@@ -317,7 +312,10 @@ window.renderOrdersList = () => {
                     <div class="font-black text-brand-navy">${order.customerName}</div>
                     <a href="tel:${order.customerPhone}" class="text-sm font-bold text-blue-600 hover:underline" dir="ltr">${order.customerPhone}</a>
                 </div>
-                <span class="px-2 py-1 rounded text-[10px] font-black border ${statusColor}">${statusText}</span>
+                <div class="flex gap-2 items-center">
+                    <button onclick="sendMessageToCustomer('${order.customerPhone}', ordersList.find(o=>o.id==='${order.id}'))" class="text-[10px] bg-blue-500 text-white px-2 py-1 rounded font-bold"><i class="fa-brands fa-whatsapp"></i> رسالة</button>
+                    <span class="px-2 py-1 rounded text-[10px] font-black border ${statusColor}">${statusText}</span>
+                </div>
             </div>
             <div class="text-[11px] text-gray-500 mb-3 font-bold bg-gray-50 p-2 rounded">
                 <i class="fa-solid fa-location-dot text-brand-cyanDark mr-1"></i> ${order.zone} ${order.customerAddress && order.customerAddress !== 'غير محدد' ? ' - ' + order.customerAddress : ''}
@@ -334,19 +332,19 @@ window.renderOrdersList = () => {
                 </div>
             </div>
             
-            <div class="flex gap-2">
-                ${order.status === 'new' ? `<button onclick="updateOrderStatus('${order.id}', 'processing')" class="flex-1 bg-yellow-500 hover:bg-yellow-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">جاري التجهيز</button>` : ''}
-                ${order.status !== 'completed' ? `<button onclick="updateOrderStatus('${order.id}', 'completed')" class="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">تم التوصيل ✔️</button>` : ''}
+            <div class="flex gap-2 flex-wrap">
+                ${order.status === 'new' ? `<button onclick="updateOrderStatus('${order.id}', 'processing')" class="flex-1 bg-yellow-500 hover:bg-yellow-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">قيد التجهيز</button>` : ''}
+                ${order.status === 'processing' ? `<button onclick="updateOrderStatus('${order.id}', 'completed')" class="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">تم التوصيل</button>` : ''}
+                ${order.status === 'completed' ? `<button onclick="sendRatingRequest('${order.customerPhone}', ordersList.find(o=>o.id==='${order.id}'))" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-black"><i class="fa-solid fa-star"></i> إرسال تقييم</button>` : ''}
             </div>
         </div>`;
     }).join('');
 };
 
-// تفعيل البحث مع debounce (بدلاً من onkeyup المباشر)
+// ربط البحث مع debounce
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('order-search');
     if (searchInput) {
-        // إزالة onkeyup القديم (تمت إزالته من الـ HTML بالفعل لو غيرته)
         searchInput.addEventListener('input', debounce(() => renderOrdersList(), 300));
     }
 });
@@ -359,7 +357,7 @@ async function loadOrders() {
         ordersList=[]; 
         snap.forEach(d=>ordersList.push({id:d.id, ...d.data()})); 
         renderOrdersList();
-        // تحديث قائمة التوزيع لتشمل فقط "قيد التجهيز"
+        // تحديث التوزيع تلقائياً: فقط الطلبات اللي حالتها processing
         dispatchOrdersList = ordersList.filter(o => o.status === 'processing');
         if(currentAdminTab === 'dispatch') renderDispatchOrders();
     } catch(e){ console.log("Error loading orders", e); } 
@@ -370,9 +368,12 @@ window.updateOrderStatus = async (id, s) => {
     if(db){ 
         const btn = event.target; const origText = btn.innerText; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true;
         await db.collection("orders").doc(id).update({status:s}); 
-        loadOrders(); 
+        loadOrders(); // إعادة تحميل تلقائي
     } 
 };
+
+// ... (باقي دوال deleteAllOrders, resetStatsOnly, dispatch, إلخ)
+// نضيفها كاملة
 
 window.deleteAllOrders = async () => {
     if(!confirm("⚠️ تحذير: هل أنت متأكد من مسح جميع الطلبات من السجل؟ لا يمكن التراجع عن هذا الإجراء!")) return;
@@ -419,7 +420,7 @@ window.renderDispatchOrders = () => {
             zones.map(z => `<option value="${z}" ${zoneFilter === z ? 'selected' : ''}>${z}</option>`).join('');
     }
 
-    let filtered = dispatchOrdersList; // بالفعل مقتصرة على processing
+    let filtered = dispatchOrdersList; // فقط processing
     if (zoneFilter !== 'all') {
         filtered = filtered.filter(o => o.zone === zoneFilter);
     }
@@ -527,7 +528,7 @@ window.generateBulkWhatsAppLinks = () => {
             type: rewardType, 
             discount: rewardValue, 
             isAuto: true, 
-            usesLeft: null,   // غير محدود
+            usesLeft: null,
             customerPhone: num,
             minOrder: 0,
             maxDiscount: 0,
