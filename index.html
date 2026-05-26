@@ -132,7 +132,7 @@
             
             <div class="mb-4 text-center">
                 <button type="button" onclick="document.getElementById('promo-input-container').classList.toggle('hidden'); this.classList.add('hidden')" class="text-xs font-bold text-brand-navy bg-brand-light/50 px-4 py-2 rounded-full border border-brand-cyan/30 inline-flex items-center gap-2 hover:bg-brand-light transition-colors shadow-sm">
-                    <i class="fa-solid fa-tag text-brand-cyanDark"></i> إضافة كود خصم
+                    <i class="fa-solid fa-tag text-brand-cyanDark"></i> عندك كود خصم؟
                 </button>
             </div>
 
@@ -144,33 +144,15 @@
                 <p id="promo-message" class="text-[10px] font-bold mt-1 hidden"></p>
             </div>
 
-            <div class="flex gap-1 mb-4 bg-gray-100 p-1 rounded-xl border border-gray-200">
-                <button type="button" id="tab-new" onclick="switchCustomerType('new')" class="flex-1 py-3 rounded-xl bg-white shadow-sm font-black text-brand-navy text-sm transition-all flex items-center justify-center gap-1 border border-gray-200/50">أول مرة أطلب 😍</button>
-                <button type="button" id="tab-old" onclick="switchCustomerType('old')" class="flex-1 py-3 rounded-xl text-gray-500 font-bold text-sm transition-all hover:text-brand-navy flex items-center justify-center gap-1">طلبت قبل كده 😎</button>
-            </div>
-
-            <div class="mb-4 relative">
+            <div class="mb-3 relative">
                 <select id="delivery-zone" onchange="updateUI()" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-gray-600 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
                 <div class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-xs"></i></div>
             </div>
 
-            <div id="new-cust-fields" class="space-y-3 mb-5">
+            <div id="unified-cust-fields" class="space-y-3 mb-5">
                 <input type="text" id="customer-name" placeholder="الاسم الكريم *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                <input type="tel" id="customer-phone-new" placeholder="رقم الموبايل *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-right tracking-widest shadow-sm" dir="ltr">
+                <input type="tel" id="customer-phone" placeholder="رقم الموبايل *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-right tracking-widest shadow-sm" dir="ltr">
                 <input type="text" id="customer-address" placeholder="العنوان بالتفصيل (اختياري بس بيفيدنا)" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-            </div>
-
-            <div id="old-cust-fields" class="space-y-3 mb-5 hidden">
-                <input type="text" id="customer-name-old" placeholder="الاسم الكريم *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                <input type="tel" id="customer-phone-old" placeholder="رقم الموبايل المسجل *" class="w-full border border-gray-200 rounded-lg p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-right tracking-widest shadow-sm" dir="ltr">
-                
-                <label class="flex items-center gap-3 cursor-pointer bg-brand-light/40 p-3 rounded-lg border border-brand-cyan/20 hover:bg-brand-light transition-colors select-none shadow-sm">
-                    <input type="checkbox" id="optional-whatsapp" onchange="updateUI()" class="w-4 h-4 text-brand-navy rounded border-gray-300 accent-brand-navy">
-                    <div class="flex-1">
-                        <span class="text-xs font-black text-brand-navy block" id="lbl-wa-check">تأكيد عبر الواتساب (اختياري)</span>
-                    </div>
-                    <i class="fa-brands fa-whatsapp text-xl text-green-600"></i>
-                </label>
             </div>
 
             <div class="bg-gray-50 rounded-xl p-4 mb-4 border border-gray-200 shadow-inner">
@@ -181,11 +163,11 @@
             </div>
 
             <button type="button" onclick="initiateCheckout()" id="checkout-btn" class="w-full font-black py-4 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5" disabled style="background-color: #1b4332 !important; color: #ffffff !important;">
-                <i class="fa-solid fa-check text-xl" id="btn-icon"></i> <span id="btn-text">تأكيد الطلب الآن</span>
+                <i class="fa-brands fa-whatsapp text-xl" id="btn-icon"></i> <span id="btn-text">تأكيد وإرسال الطلب</span>
             </button>
-            <p id="checkout-hint" class="text-center text-[10px] text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> يرجى استكمال البيانات المطلوبة والمنطقة</p>
+            <p id="checkout-hint" class="text-center text-[10px] text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> يرجى إكمال (المنطقة، الاسم، الموبايل)</p>
         </div>
-    </div>
+        </div>
 
     <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
         <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box">
