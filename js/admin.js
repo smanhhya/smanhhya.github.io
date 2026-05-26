@@ -56,7 +56,8 @@ window.openAdminLogin = () => {
             alert("تأكد من وجود نافذة تسجيل الدخول في ملف الـ HTML بـ id='admin-login-modal'");
         }
     }
-};
+};  //  ← القفل دا مهم جداً، هو اللي بيغلق الدالة كلها
+
 window.closeAdminLogin = () => { 
     const modal = document.getElementById('admin-login-modal');
     if(modal) {
