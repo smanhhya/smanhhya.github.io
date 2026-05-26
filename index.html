@@ -39,10 +39,13 @@
         </div>
     </nav>
 
-    <div id="top-banner" class="bg-[#fef3c7] text-[#92400e] text-center py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-[#fde68a] transition-all hidden">
-        <i class="fa-solid fa-fire text-orange-500 ml-1"></i> 
+    <div id="top-banner" class="text-center py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b transition-all hidden" style="background-color: #fef3c7; color: #92400e; font-size: 1rem;">
+    <div class="flex items-center justify-center gap-2">
+        <i id="top-banner-icon" class="fa-solid fa-fire"></i>
         <span id="top-banner-text">متاح الآن حجز أوردرات - الكمية محدودة!</span>
+        <a id="top-banner-link" href="#" target="_blank" class="underline font-black hidden hover:opacity-80">اضغط هنا</a>
     </div>
+</div>
 
     <header class="bg-[#1b4332] text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
         <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-3">
@@ -235,11 +238,14 @@
 
     <div id="admin-dashboard-modal" class="fixed inset-0 bg-gray-50 z-[80] hidden opacity-0 transition-opacity duration-300 flex flex-col">
         <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm">
-            <div class="flex items-center gap-3">
-                <h2 class="text-lg font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2>
-            </div>
-            <button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
-        </div>
+    <div class="flex items-center gap-3">
+        <h2 class="text-lg font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2>
+    </div>
+    <div class="flex items-center gap-2">
+        <button onclick="logoutAdmin()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center text-sm" title="تسجيل الخروج"><i class="fa-solid fa-right-from-bracket"></i></button>
+        <button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+</div>
 
         <div class="bg-white p-3 flex justify-between items-center border-b border-gray-200 shadow-sm z-10">
             <span class="font-black text-brand-navy text-sm"><i class="fa-solid fa-door-open text-brand-cyanDark ml-1"></i> استقبال الطلبات:</span>
@@ -281,7 +287,7 @@
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <h3 class="font-bold text-brand-navy mb-3">المنتجات الأكثر طلباً</h3>
                         <div id="top-products-list" class="space-y-2 text-sm font-semibold text-gray-500">جاري الحساب...</div>
-                    </div>
+                    </div>                   
                 </div>
 
                 <div id="admin-panel-store" class="hidden space-y-4">
@@ -425,10 +431,18 @@
                     </div>
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
-                        <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-red-500"></i> شريط الإعلانات العلوي</h3>
-                        <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-banner-active" class="accent-brand-cyanDark"> <span class="text-sm font-bold">تفعيل الشريط</span></label>
-                        <input type="text" id="admin-banner-text" placeholder="اكتب إعلانك هنا..." class="w-full border rounded-lg p-2 font-bold text-brand-navy">
-                    </div>
+    <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-red-500"></i> شريط الإعلانات العلوي المتقدم</h3>
+    <label class="flex items-center gap-2 mb-3"><input type="checkbox" id="admin-banner-active" class="accent-brand-cyanDark"> <span class="text-sm font-bold">تفعيل الشريط</span></label>
+    <div class="grid grid-cols-2 gap-2 mb-3">
+        <div><label class="text-[10px] font-bold text-gray-500">النص</label><input type="text" id="admin-banner-text" class="w-full border rounded p-1.5 text-xs font-bold"></div>
+        <div><label class="text-[10px] font-bold text-gray-500">الرابط (اختياري)</label><input type="text" id="admin-banner-link" class="w-full border rounded p-1.5 text-xs font-bold" dir="ltr"></div>
+        <div><label class="text-[10px] font-bold text-gray-500">لون الخلفية</label><input type="color" id="admin-banner-bgcolor" class="w-full border rounded p-0 h-8"></div>
+        <div><label class="text-[10px] font-bold text-gray-500">لون النص</label><input type="color" id="admin-banner-textcolor" class="w-full border rounded p-0 h-8"></div>
+        <div><label class="text-[10px] font-bold text-gray-500">حجم الخط (px)</label><input type="number" id="admin-banner-fontsize" class="w-full border rounded p-1.5 text-xs font-bold" value="16"></div>
+        <div><label class="text-[10px] font-bold text-gray-500">الأيقونة (FontAwesome)</label><input type="text" id="admin-banner-icon" class="w-full border rounded p-1.5 text-xs font-bold" placeholder="fa-solid fa-fire"></div>
+    </div>
+    <label class="flex items-center gap-2"><input type="checkbox" id="admin-banner-animated" class="accent-brand-cyanDark"> <span class="text-sm font-bold">تأثير متحرك (نبض)</span></label>
+</div>
 
                     <div class="bg-white border rounded-xl p-4 shadow-sm">
                         <div class="flex justify-between items-center mb-3">
