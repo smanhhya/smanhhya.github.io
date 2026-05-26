@@ -1,14 +1,6 @@
 // js/admin.js
 
-// --- دالة تأخير (لتحسين أداء البحث) ---
-function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(this, args), delay);
-    };
-}
-
+// --- عناصر واجهة سريعة ---
 document.getElementById('admin-store-open')?.addEventListener('change', function() {
     const label = document.getElementById('store-open-label');
     label.innerText = this.checked ? 'مفتوح' : 'مغلق';
@@ -45,10 +37,12 @@ window.verifyAdminPin = () => {
 };
 
 let currentAdminTab = 'stats'; let ordersList = []; let orderFilter = 'all';
+// مصفوفة الطلبات المعلقة للتوزيع
 window.dispatchOrdersList = [];
 
 window.switchAdminTab = (tab) => {
     currentAdminTab = tab;
+    // التبويبات الموجودة + dispatch
     ['stats','store','products','orders','dispatch','delivery','marketing','advanced','texts'].forEach(t => {
         document.getElementById('admin-panel-'+t)?.classList.add('hidden');
         const btn = document.getElementById('admin-tab-'+t);
@@ -91,11 +85,13 @@ window.openAdminDashboard = () => {
     document.getElementById('admin-success-title').value = globalSettings.successTitle || ''; 
     document.getElementById('admin-success-message').value = globalSettings.successMessage || ''; 
     
+    // حذف سطر old-customer-label بالكامل
     document.getElementById('admin-whatsapp-template').value = globalSettings.whatsappTemplate || 'السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)';
     
     document.getElementById('admin-batch-hashtag').value = globalSettings.batchHashtag || '';
     document.getElementById('admin-vip-whatsapp-template').value = globalSettings.vipWhatsappTemplate || 'السلام عليكم،\nأريد الانضمام لقائمة الـ VIP وحجز ({اسم_المنتج}) من الدفعة القادمة قبل نزولها المتجر. 👑';
     document.getElementById('admin-ticktick-template').value = globalSettings.ticktickTemplate || '🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}';
+    // قالب رسالة المندوب (للتوزيع)
     document.getElementById('admin-dispatch-template').value = globalSettings.dispatchTemplate || '📦 طلب جديد من {اسم_العميل}\n📱 {رقم_العميل}\n📍 {المنطقة} - {العنوان}\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n💰 إجمالي الطلب: {إجمالي_الطلب} ج.م\n🚚 التوصيل: {التوصيل}\n⭐ الإجمالي النهائي: {الإجمالي_النهائي} ج.م';
 
     const textsCont = document.getElementById('admin-texts-container');
@@ -280,36 +276,28 @@ window.addNewPromoCode = () => {
     renderAdminPromos(); 
 };
 
-// ------------------ البحث الفعّال مع debounce ------------------
 window.renderOrdersList = () => {
     const container = document.getElementById('orders-list-container');
     if(!container) return;
+    container.innerHTML = '';
     
-    const searchQuery = document.getElementById('order-search')?.value.trim().toLowerCase() || '';
-    
-    // فلترة حسب الحالة ونص البحث
-    let filtered = ordersList.filter(o => {
-        if(orderFilter !== 'all' && o.status !== orderFilter) return false;
-        if(searchQuery) {
-            const nameMatch = o.customerName?.toLowerCase().includes(searchQuery);
-            const phoneMatch = o.customerPhone?.toLowerCase().includes(searchQuery);
-            if(!nameMatch && !phoneMatch) return false;
-        }
-        return true;
-    });
-    
+    let filtered = ordersList;
+    if(orderFilter !== 'all') {
+        filtered = ordersList.filter(o => o.status === orderFilter);
+    }
+
     if(filtered.length === 0) { 
-        container.innerHTML = '<p class="text-center text-gray-500 py-8 font-bold text-sm bg-gray-50 rounded-xl border border-dashed">لا توجد طلبات تطابق بحثك</p>'; 
+        container.innerHTML = '<p class="text-center text-gray-500 py-8 font-bold text-sm bg-gray-50 rounded-xl border border-dashed">لا توجد طلبات هنا</p>'; 
         return; 
     }
 
-    container.innerHTML = filtered.map(order => {
+    filtered.forEach(order => {
         let statusColor = order.status === 'new' ? 'bg-red-100 text-red-700 border-red-200' : (order.status === 'processing' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-green-100 text-green-700 border-green-200');
         let statusText = order.status === 'new' ? 'جديد' : (order.status === 'processing' ? 'قيد التجهيز' : 'مكتمل');
         
         let itemsHtml = order.items.map(i => `<div class="flex justify-between text-xs text-gray-700 font-bold border-b border-gray-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0"><span><span class="text-brand-cyanDark">${i.quantity}x</span> ${i.name}</span><span>${i.quantity*i.price} ج</span></div>`).join('');
 
-        return `
+        container.innerHTML += `
         <div class="bg-white border rounded-xl p-4 shadow-sm relative overflow-hidden">
             <div class="absolute top-0 right-0 w-1 h-full ${order.status === 'new' ? 'bg-red-500' : (order.status === 'processing' ? 'bg-yellow-500' : 'bg-green-500')}"></div>
             <div class="flex justify-between items-start mb-3">
@@ -339,17 +327,8 @@ window.renderOrdersList = () => {
                 ${order.status !== 'completed' ? `<button onclick="updateOrderStatus('${order.id}', 'completed')" class="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">تم التوصيل ✔️</button>` : ''}
             </div>
         </div>`;
-    }).join('');
+    });
 };
-
-// تفعيل البحث مع debounce (بدلاً من onkeyup المباشر)
-document.addEventListener('DOMContentLoaded', () => {
-    const searchInput = document.getElementById('order-search');
-    if (searchInput) {
-        // إزالة onkeyup القديم (تمت إزالته من الـ HTML بالفعل لو غيرته)
-        searchInput.addEventListener('input', debounce(() => renderOrdersList(), 300));
-    }
-});
 
 async function loadOrders() { 
     if(!hasCloud || !db) return; 
@@ -359,8 +338,8 @@ async function loadOrders() {
         ordersList=[]; 
         snap.forEach(d=>ordersList.push({id:d.id, ...d.data()})); 
         renderOrdersList();
-        // تحديث قائمة التوزيع لتشمل فقط "قيد التجهيز"
-        dispatchOrdersList = ordersList.filter(o => o.status === 'processing');
+        // تحديث قائمة التوزيع
+        dispatchOrdersList = ordersList.filter(o => o.status === 'new' || o.status === 'processing');
         if(currentAdminTab === 'dispatch') renderDispatchOrders();
     } catch(e){ console.log("Error loading orders", e); } 
 }
@@ -412,6 +391,7 @@ window.renderDispatchOrders = () => {
     const zoneFilter = document.getElementById('dispatch-zone-filter')?.value || 'all';
     if (!container) return;
 
+    // تحديث قائمة المناطق في الفلتر
     const zoneSelect = document.getElementById('dispatch-zone-filter');
     if (zoneSelect && dispatchOrdersList.length > 0) {
         const zones = [...new Set(dispatchOrdersList.map(o => o.zone))].sort();
@@ -419,13 +399,13 @@ window.renderDispatchOrders = () => {
             zones.map(z => `<option value="${z}" ${zoneFilter === z ? 'selected' : ''}>${z}</option>`).join('');
     }
 
-    let filtered = dispatchOrdersList; // بالفعل مقتصرة على processing
+    let filtered = dispatchOrdersList; // بالفعل مقتصرة على new/processing
     if (zoneFilter !== 'all') {
         filtered = filtered.filter(o => o.zone === zoneFilter);
     }
 
     if (filtered.length === 0) {
-        container.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm font-bold">لا توجد طلبات قيد التجهيز في هذه التصفية</p>';
+        container.innerHTML = '<p class="text-center text-gray-400 py-4 text-sm font-bold">لا توجد طلبات في هذه التصفية</p>';
         return;
     }
 
@@ -480,6 +460,7 @@ window.sendDispatchToDriver = () => {
         return;
     }
 
+    // تجهيز رسالة مجمعة
     const template = (globalSettings.dispatchTemplate || 
         '📦 طلب جديد من {اسم_العميل}\n📱 {رقم_العميل}\n📍 {المنطقة} - {العنوان}\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n💰 إجمالي الطلب: {إجمالي_الطلب} ج.م\n🚚 التوصيل: {التوصيل}\n⭐ الإجمالي النهائي: {الإجمالي_النهائي} ج.م');
 
@@ -499,6 +480,7 @@ window.sendDispatchToDriver = () => {
         fullMessage += msg + '\n\n' + '─'.repeat(10) + '\n\n';
     });
 
+    // فتح واتساب
     let waNumber = phone.startsWith('0') ? '2' + phone : phone;
     const url = `https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(fullMessage.trim())}`;
     window.open(url, '_blank');
@@ -522,6 +504,7 @@ window.generateBulkWhatsAppLinks = () => {
     numbers.forEach(num => {
         const randomCode = "THX-" + Math.floor(1000 + Math.random() * 9000);
         
+        // أكواد غير محدودة الاستخدام
         tempPromoCodes.push({ 
             code: randomCode, 
             type: rewardType, 
@@ -587,6 +570,7 @@ window.saveAdminData = async () => {
         successTitle: document.getElementById('admin-success-title').value.trim(), 
         successMessage: document.getElementById('admin-success-message').value.trim(), 
         productsData: tempProducts,
+        // تم حذف oldCustomerLabel
         whatsappTemplate: document.getElementById('admin-whatsapp-template').value.trim() || 'السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)',
         ticktickTemplate: document.getElementById('admin-ticktick-template').value.trim(),
         vipWhatsappTemplate: document.getElementById('admin-vip-whatsapp-template').value.trim(),
