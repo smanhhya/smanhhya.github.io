@@ -43,9 +43,8 @@ window.verifyAdminPin = () => {
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
     btn.disabled = true;
     
-    // تفعيل الاحتفاظ بتسجيل الدخول في المتصفح
-    firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
-        .then(() => firebase.auth().signInWithEmailAndPassword(email, pass))
+    // تسجيل الدخول المباشر (فايربيس بيحفظ الجلسة تلقائياً فمش هنحتاج كود إضافي يعمل تعارض)
+    firebase.auth().signInWithEmailAndPassword(email, pass)
         .then((userCredential) => {
             closeAdminLogin(); 
             openAdminDashboard();
@@ -56,6 +55,7 @@ window.verifyAdminPin = () => {
         .catch((error) => {
             btn.innerHTML = origHtml;
             btn.disabled = false;
+            console.error("Login Error: ", error); // عشان لو في خطأ يظهرلنا في الكونسول
             showAlert("خطأ", "بيانات الدخول غير صحيحة، أو ليس لديك صلاحية!");
         });
 };
@@ -64,7 +64,7 @@ window.adminLogout = () => {
     if(!confirm("هل تريد تسجيل الخروج من لوحة الإدارة؟")) return;
     firebase.auth().signOut().then(() => {
         closeAdminDashboard();
-        firebase.auth().signInAnonymously(); // العودة كعميل عادي
+        firebase.auth().signInAnonymously(); // العودة كعميل عادي عشان السيستم مايوقفش
         showAlert("تم الخروج", "تم تسجيل الخروج من حساب الإدارة بنجاح.");
     });
 };
@@ -74,7 +74,6 @@ window.dispatchOrdersList = [];
 
 window.switchAdminTab = (tab) => {
     currentAdminTab = tab;
-    // تم إضافة 'theme' لضمان التوافق مع ملف index.html
     ['stats','store','products','orders','dispatch','delivery','marketing','advanced','texts','theme'].forEach(t => {
         document.getElementById('admin-panel-'+t)?.classList.add('hidden');
         const btn = document.getElementById('admin-tab-'+t);
