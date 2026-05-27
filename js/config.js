@@ -1,5 +1,5 @@
 // js/config.js
-const WEB3FORMS_ACCESS_KEY = "d8e4b3fe-018c-4c39-b15f-191ccc7cf10c";
+const WEB3FORMS_ACCESS_KEY = "29c14342-5ab0-4c2a-a57d-16f2e2bac1d8";
 
 const textsConfig = [
     { id: 'cartTotalLabel', label: 'إجمالي السلة (الشريط السفلي)', default: 'الإجمالي (بدون التوصيل)' },
