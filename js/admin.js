@@ -1,3 +1,6 @@
+window.openAdminLogin = function() {
+    alert("اشتغل");
+}
 // ==================== admin.js - لوحة التحكم الشاملة ====================
 
 // دالة تأخير للبحث السريع
@@ -19,7 +22,7 @@ let orderFilter = 'all';
 window.dispatchOrdersList = [];
 
 // تبديل حالة المتجر
-document.getElementById('admin-store-open')?.addEventListener('change', function() {
+const adminStoreOpen = document.getElementById('admin-store-open');  if (adminStoreOpen) {     adminStoreOpen.addEventListener('change', function () {         const label = document.getElementById('store-open-label');          if (label) {             label.innerText = this.checked ? 'مفتوح' : 'مغلق';              label.className = this.checked                 ? 'mr-3 text-sm font-black text-green-600 w-12'                 : 'mr-3 text-sm font-black text-red-600 w-12';         }     }); }('change', function() {
     const label = document.getElementById('store-open-label');
     if(label) {
         label.innerText = this.checked ? 'مفتوح' : 'مغلق';
