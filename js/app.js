@@ -17,6 +17,7 @@ function applyUITexts() {
     setTxt('lbl-cart-total', getT('cartTotalLabel')); 
     setTxt('lbl-view-cart', getT('viewCartBtn')); 
     setTxt('lbl-checkout-title', getT('checkoutTitle')); 
+    // تم حذف lbl-tab-new و lbl-tab-old و lbl-old-msg و lbl-old-phone-label
     setTxt('lbl-zone-label', getT('zoneLabel')); 
     setTxt('lbl-name-label', getT('nameLabel')); 
     setTxt('lbl-phone-label', getT('phoneLabel')); 
@@ -76,11 +77,7 @@ function applySettingsToUI() {
             if(appliedPromo && !appliedPromo.isLoyalty) appliedPromo = null; 
         } 
     }
-    
     applyUITexts();
-    
-    // تشغيل المظهر الديناميكي والنافذة الترحيبية
-    if(typeof applyThemeSettings === 'function') applyThemeSettings();
 }
 
 function renderDeliveryZones() {
@@ -116,10 +113,7 @@ function listenToDatabase() {
         if(doc.exists) { 
             const data = doc.data(); if(data.productsData) productsInfo = data.productsData; Object.assign(globalSettings, data); 
             if(globalSettings.storeOpen === undefined) globalSettings.storeOpen = true; if(!globalSettings.promoCodes) globalSettings.promoCodes = []; if(!globalSettings.bestSellers) globalSettings.bestSellers = []; if(globalSettings.rewardMaxGenerations === undefined) globalSettings.rewardMaxGenerations = 0; if(!globalSettings.uiTexts) globalSettings.uiTexts = {};
-            if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; 
-            applySettingsToUI(); 
-            renderDeliveryZones(); 
-            updateUI(); 
+            if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; applySettingsToUI(); renderDeliveryZones(); updateUI(); 
         } 
     });
     db.collection('inventory').doc('prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalPrices, doc.data()); } });
@@ -135,6 +129,7 @@ window.applyPromoCode = function() {
     const promo = (globalSettings.promoCodes || []).find(p => p.code.toUpperCase() === input);
     
     if (!promo) { msg.innerText = "كود غير صحيح."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return; }
+    // usesLeft === null تعني غير محدود
     if (promo.usesLeft !== null && promo.usesLeft !== undefined && promo.usesLeft <= 0) { msg.innerText = "عفواً، انتهى الحد الأقصى لاستخدام هذا الكود."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return; }
     if (promo.expiryDate && new Date(promo.expiryDate) < new Date(new Date().toDateString())) { msg.innerText = "عفواً، هذا الكود منتهي الصلاحية."; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return; }
     if (promo.minOrder && subTotal < promo.minOrder) { msg.innerText = `عشان تفعل الكود ده، لازم طلباتك تتخطى ${promo.minOrder} ج.م`; msg.className = "text-[11px] font-bold mt-1 text-red-500"; msg.classList.remove('hidden'); return; }
@@ -166,7 +161,7 @@ window.renderProducts = function() {
     container.innerHTML = ''; extrasContainer.innerHTML = ''; let mainProductsCount = 0;
     Object.keys(productsInfo).forEach(id => {
         const item = productsInfo[id]; 
-        if(item.isVisible === false) return; 
+        if(item.isVisible === false) return; // إخفاء المنتج لو مقفول من الإدارة
 
         const available = getAvailableStock(id); const currentPrice = globalPrices[id] || item.basePrice; const oldPrice = globalOldPrices[id]; const isDiscountActive = globalDiscounts[id]; const isBestSeller = globalSettings.bestSellers && globalSettings.bestSellers.includes(id); const stockBadgeClass = available <= 10 ? (available === 0 ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600') : 'bg-green-50 text-green-700';
         
@@ -174,6 +169,7 @@ window.renderProducts = function() {
         if (isDiscountActive) { saleBadgeHtml = `<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg sale-badge z-10"><i class="fa-solid fa-tag"></i> عرض</div>`; priceHtml = `<div class="flex flex-col"><span class="text-[11px] text-gray-400 line-through decoration-red-500 font-bold">${oldPrice} ج.م</span><span class="font-black text-red-600 text-xl"><span id="price-display-${id}">${currentPrice}</span> <span class="text-[10px] text-gray-500">ج.م</span></span></div>`; } else priceHtml = `<span class="font-black text-brand-cyanDark text-lg"><span id="price-display-${id}">${currentPrice}</span> <span class="text-[10px] text-gray-400">ج.م</span></span>`;
         let bestSellerHtml = isBestSeller ? `<div class="absolute bottom-2 right-2 bg-brand-navy text-brand-yellow text-[10px] font-black px-2 py-1 rounded shadow z-10 border border-brand-yellow/30">الأكثر طلباً 🔥</div>` : ''; const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : '';
         
+        // عرض التاجز الجديدة
         let customTagHtml = '';
         if(item.tag === 'new') customTagHtml = `<span class="bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-200">🆕 جديد</span>`;
         else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-orange-200">🔥 قرب يخلص</span>`;
@@ -185,15 +181,17 @@ window.renderProducts = function() {
     if(mainProductsCount === 0) container.innerHTML = `<div class="text-center py-10 text-gray-400 font-bold">${globalSettings.uiTexts?.emptyMenuMsg || "لا توجد منتجات حالياً"}</div>`;
 };
 
+
 window.addToCart = function(id) { if (globalSettings.storeOpen === false) return; if (getAvailableStock(id) <= 0) { showAlert("عذراً", "الكمية المتاحة لا تكفي حالياً."); return; } if (cart[id]) cart[id].quantity++; else cart[id] = { quantity: 1, price: globalPrices[id] || productsInfo[id].basePrice, name: productsInfo[id].name }; saveCart(); updateUI(); requestAnimationFrame(() => renderProducts()); };
 window.updateQuantity = function(id, delta) { if (!cart[id] || globalSettings.storeOpen === false) return; if (delta === 1) { if (getAvailableStock(id) > 0) cart[id].quantity++; else showAlert("عذراً", "لا يوجد مخزون إضافي متاح."); } else if (delta === -1) { cart[id].quantity--; if (cart[id].quantity <= 0) delete cart[id]; } saveCart(); updateUI(); requestAnimationFrame(() => renderProducts()); };
 
+// --- دوال الحركة بين الخطوتين ---
 window.goToCheckoutStep2 = function() {
     document.getElementById('checkout-step-1').classList.add('hidden');
     document.getElementById('checkout-step-2').classList.remove('hidden');
     document.getElementById('btn-back-step').classList.remove('hidden');
     document.getElementById('lbl-checkout-title').innerText = "بيانات التوصيل";
-    updateUI(); 
+    updateUI(); // تأكيد المراجعة بعد النقلة
 };
 
 window.backToCart = function() {
@@ -201,9 +199,10 @@ window.backToCart = function() {
     document.getElementById('checkout-step-1').classList.remove('hidden');
     document.getElementById('btn-back-step').classList.add('hidden');
     document.getElementById('lbl-checkout-title').innerText = "سلة المشتريات";
-    updateUI(); 
+    updateUI(); // تأكيد المراجعة
 };
 
+// --- الدالة الذكية لتحديث الواجهة ومراقبة الأزرار ---
 window.updateUI = function() {
     let totalItems = 0, subTotalPrice = 0; const cartItemsContainer = document.getElementById('cart-items'); if(cartItemsContainer) cartItemsContainer.innerHTML = '';
     for (let id in cart) {
@@ -237,6 +236,7 @@ window.updateUI = function() {
     if(document.getElementById('cart-delivery-fee')) { if (freeDelivery) document.getElementById('cart-delivery-fee').innerHTML = `<span class="text-green-600 font-black">مجاني 🎉</span>`; else document.getElementById('cart-delivery-fee').innerText = (selectedZone && selectedZone.price === 0) ? "يحدد لاحقاً" : `${finalDelivery} ج.م`; }
     if(document.getElementById('cart-total')) document.getElementById('cart-total').innerText = Math.round(finalTotal);
 
+    // --- مراقبة الأزرار في الخطوتين ---
     const proceedBtn = document.getElementById('btn-proceed-checkout');
     const checkoutBtn = document.getElementById('checkout-btn'); 
     const checkoutHintStep1 = document.getElementById('checkout-hint'); 
@@ -268,7 +268,7 @@ window.toggleCart = function() {
     if(!sidebar || !overlay) return; 
     if (sidebar.classList.contains('translate-x-full')) { 
         sidebar.classList.remove('translate-x-full'); overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10); document.body.style.overflow = 'hidden'; 
-        backToCart(); 
+        backToCart(); // يفتح دايماً على الخطوة الأولى
     } 
     else { sidebar.classList.add('translate-x-full'); overlay.classList.add('opacity-0'); setTimeout(() => overlay.classList.add('hidden'), 300); document.body.style.overflow = ''; } 
 };
@@ -356,6 +356,7 @@ window.finalCheckoutStep = async function() {
     }
 
     let earnedLoyalty = false; let newPromoCode = ""; let canGenerateReward = false;
+    // rewardMaxGenerations === 0 تعني غير محدود، أي قيمة >= 0 تسمح بالتوليد
     if (globalSettings.rewardActive && !appliedPromo) {
         if (globalSettings.rewardMaxGenerations >= 0) { canGenerateReward = true; }
     }
@@ -365,8 +366,10 @@ window.finalCheckoutStep = async function() {
         newPromoCode = prefix + Math.floor(1000 + Math.random() * 9000); earnedLoyalty = true;
         const newPromoObj = { code: newPromoCode, type: globalSettings.rewardType, discount: globalSettings.rewardValue, isAuto: true, usesLeft: null, customerPhone: customerPhone, minOrder: 0, maxDiscount: 0, expiryDate: '' };
         if(!globalSettings.promoCodes) globalSettings.promoCodes = []; globalSettings.promoCodes.push(newPromoObj);
+        // إذا كان الرقم أكبر من 0 ننقصه، وإذا كان 0 يبقى غير محدود ولا ننقصه ولا نوقف المكافأة
         if (globalSettings.rewardMaxGenerations > 0) { 
             globalSettings.rewardMaxGenerations -= 1; 
+            // لا نوقف المكافأة تلقائياً، نترك المستخدم يتحكم
         }
         promoUpdated = true;
     }
