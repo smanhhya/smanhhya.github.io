@@ -26,24 +26,17 @@
         }
     </script>
 </head>
-<body class="text-gray-800 antialiased selection:bg-brand-navy selection:text-white">
-
-    <nav class="bg-brand-navy shadow-md sticky top-0 z-30 border-b border-[#143024]">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-center h-14 items-center">
-                <a href="#" class="flex items-center gap-2">
-                    <i class="fa-solid fa-kiwi-bird text-white text-xl"></i>
-                    <span class="font-black text-xl text-white" id="nav-store-name">سمان <span class="text-brand-yellow">ههيا</span></span>
-                </a>
-            </div>
-        </div>
-    </nav>
-
-    <div id="top-banner" class="bg-[#fef3c7] text-[#92400e] text-center py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-[#fde68a] transition-all hidden">
-        <i class="fa-solid fa-fire text-orange-500 ml-1"></i> 
-        <span id="top-banner-text">متاح الآن حجز أوردرات - الكمية محدودة!</span>
+<body>
+    <!-- شريط الإعلانات الديناميكي هنا في أول الصفحة -->
+    <div id="top-banner" class="hidden bg-brand-orange text-white text-center text-sm font-bold p-2">
+        <span id="top-banner-text"></span>
     </div>
 
+    <!-- ده الهيدر بتاع موقعك (الشريط اللي فيه اللوجو) -->
+    <header class="...">
+       ...
+    </header>
+    
     <header class="bg-[#1b4332] text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
         <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-3">
             <h1 class="text-4xl md:text-5xl font-black mb-1" id="header-store-name">سمان ههيا</h1>
@@ -555,6 +548,10 @@
             </div>
         </div>
     </footer>
+    <div id="top-banner" class="hidden bg-brand-orange text-white text-center text-sm font-bold p-2">
+    <span id="top-banner-text"></span>
+</div>
+
 
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
