@@ -8,17 +8,13 @@ function debounce(func, delay) {
     };
 }
 
-// --- الإجبار على حفظ الأكواد فوراً ---
-window.forceSavePromoCodes = async () => {
-    if(hasCloud && db) {
-        try { 
-            // بنفلتر الأكواد الفاضية ونبعتها للسيرفر فوراً
-            await db.collection("inventory").doc("settings").set({ 
-                promoCodes: tempPromoCodes.filter(p => p.code.trim()) 
-            }, { merge: true }); 
-        } catch(e) { console.log("خطأ في الحفظ التلقائي للكود"); }
+document.getElementById('admin-store-open')?.addEventListener('change', function() {
+    const label = document.getElementById('store-open-label');
+    if(label) {
+        label.innerText = this.checked ? 'مفتوح' : 'مغلق';
+        label.className = this.checked ? 'mr-3 text-sm font-black text-green-600 w-12' : 'mr-3 text-sm font-black text-red-600 w-12';
     }
-};
+});
 
 // --- نظام الدخول المباشر ---
 window.openAdminLogin = () => { 
@@ -77,7 +73,7 @@ let currentAdminTab = 'stats'; let ordersList = []; let orderFilter = 'all'; win
 
 window.switchAdminTab = (tab) => {
     currentAdminTab = tab;
-    ['stats','store','products','orders','dispatch','delivery','marketing','advanced','texts','theme','gallery'].forEach(t => {
+    ['stats','store','products','orders','dispatch','delivery','marketing','advanced','texts','theme', 'gallery'].forEach(t => {
         const panel = document.getElementById('admin-panel-'+t);
         const btn = document.getElementById('admin-tab-'+t);
         if(panel) panel.classList.add('hidden');
@@ -90,10 +86,6 @@ window.switchAdminTab = (tab) => {
     if(tab==='orders' || tab==='dispatch') loadOrders();
     if(tab==='products') renderAdminProducts();
     if(tab==='stats') renderTopProductsStats();
-    if(tab==='marketing') renderMarketingTabUI();
-    if(tab==='advanced') renderAdvancedTabUI();
-    if(tab==='store') renderAdminStore();
-    if(tab==='dispatch') renderAdminDispatch();
 };
 
 const getSafeVal = (id, def) => document.getElementById(id) ? document.getElementById(id).value.trim() : def;
@@ -101,112 +93,56 @@ const getSafeCheck = (id, def) => document.getElementById(id) ? document.getElem
 const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
 const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = val; };
 
-// --- 1. بناء واجهة المتجر (شاملة المربعات الأربعة) ---
-window.renderAdminStore = () => {
-    const c = document.getElementById('admin-panel-store');
-    if(!c) return;
-
-    if(!globalSettings.trustBadges || globalSettings.trustBadges.length !== 4) {
-        globalSettings.trustBadges = [
-            { icon: 'fa-regular fa-circle-check', title: 'أوزان دقيقة', desc: 'زي ما طلبت بالظبط' },
-            { icon: 'fa-regular fa-star', title: 'طلبك باسمك', desc: 'استيكر مخصص ليك' },
-            { icon: 'fa-regular fa-clock', title: 'تجهيز يومي', desc: 'طازج مية بالمية' },
-            { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية' }
-        ];
-    }
-
-    let badgesHtml = '';
-    globalSettings.trustBadges.forEach((b, i) => {
-        badgesHtml += `
-        <div class="bg-gray-50 p-2 rounded border border-gray-200 mb-2">
-            <p class="text-[10px] font-bold text-gray-500 mb-1">المربع رقم ${i+1}</p>
-            <div class="flex gap-2">
-                <input type="text" id="badge-icon-${i}" value="${b.icon}" class="w-1/4 border p-1.5 text-[10px] font-bold" dir="ltr" placeholder="أيقونة">
-                <input type="text" id="badge-title-${i}" value="${b.title}" class="w-1/4 border p-1.5 text-xs font-bold text-brand-navy" placeholder="العنوان">
-                <input type="text" id="badge-desc-${i}" value="${b.desc}" class="flex-1 border p-1.5 text-xs font-bold text-brand-navy" placeholder="الوصف">
-            </div>
-        </div>`;
-    });
-
-    c.innerHTML = `
-        <div class="bg-white border rounded-xl p-4 shadow-sm space-y-3">
-            <h3 class="font-black text-brand-navy"><i class="fa-solid fa-pen-to-square text-brand-cyanDark"></i> بيانات المتجر الأساسية</h3>
-            <div><label class="text-xs font-bold text-gray-500">اسم المتجر</label><input type="text" id="admin-store-name" value="${globalSettings.storeName||''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></div>
-            <div><label class="text-xs font-bold text-gray-500">وصف المتجر (يظهر في الهيدر)</label><textarea id="admin-store-desc" rows="2" class="w-full border rounded-lg p-2 font-bold text-brand-navy">${globalSettings.storeDesc||''}</textarea></div>
-            <div><label class="text-xs font-bold text-gray-500">رقم الموبايل / الواتساب</label><input type="text" id="admin-store-phone" value="${globalSettings.storePhone||''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr"></div>
-            <div><label class="text-xs font-bold text-gray-500">الحد الأدنى للطلب (جنيه)</label><input type="number" id="admin-min-order" value="${globalSettings.minOrder||0}" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr"></div>
-            
-            <h3 class="font-black text-brand-navy mt-6 border-t pt-4"><i class="fa-solid fa-medal text-brand-yellow"></i> المربعات الأربعة (عناصر الثقة)</h3>
-            <p class="text-[10px] text-gray-500 font-bold mb-3">تقدر تغير أيقونات وعناوين المربعات اللي بتطمن العميل في الصفحة الرئيسية.</p>
-            ${badgesHtml}
-        </div>
-    `;
-};
-
-// --- 2. بناء واجهة التوزيع (شاملة حفظ المناديب) ---
-window.renderAdminDispatch = () => {
-    const c = document.getElementById('admin-panel-dispatch');
-    if(!c) return;
-
-    if(!globalSettings.drivers) globalSettings.drivers = [];
+// --- بناء واجهة المتجر (شاملة المربعات الأربعة) ---
+const renderStoreTabUI = () => {
+    const container = document.getElementById('admin-panel-store');
+    if(!container) return;
     
-    let driversHtml = globalSettings.drivers.map((d, i) => `
-        <div class="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200 mb-2">
-            <input type="text" value="${d.name}" class="w-1/2 border rounded p-1.5 text-xs font-bold text-brand-navy" onchange="globalSettings.drivers[${i}].name=this.value; renderAdminDispatch();" placeholder="الاسم والمنطقة (مثل: سعيد - أبو كبير)">
-            <input type="text" value="${d.phone}" class="flex-1 border rounded p-1.5 text-xs font-bold text-brand-navy text-left" onchange="globalSettings.drivers[${i}].phone=this.value; renderAdminDispatch();" placeholder="01xxxxxxxxx" dir="ltr">
-            <button onclick="globalSettings.drivers.splice(${i},1); renderAdminDispatch();" class="text-red-500 hover:bg-red-100 p-1.5 rounded transition-colors"><i class="fa-solid fa-trash text-sm"></i></button>
-        </div>
-    `).join('');
+    // قيم المربعات האربعة الحالية أو الافتراضية
+    const badges = globalSettings.trustBadges || [
+        { icon: 'fa-regular fa-circle-check', title: 'أوزان دقيقة', desc: 'زي ما طلبت بالظبط' },
+        { icon: 'fa-regular fa-star', title: 'طلبك باسمك', desc: 'استيكر مخصص ليك' },
+        { icon: 'fa-regular fa-clock', title: 'تجهيز يومي', desc: 'طازج مية بالمية' },
+        { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية' }
+    ];
 
-    if(globalSettings.drivers.length === 0) driversHtml = `<p class="text-xs text-gray-400 font-bold mb-2">لا يوجد مناديب مسجلين.</p>`;
-
-    let driversOptions = globalSettings.drivers.map(d => `<option value="${d.phone}">${d.name} (${d.phone})</option>`).join('');
-
-    c.innerHTML = `
-        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4 border-l-4 border-l-brand-cyanDark">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-users-gear text-brand-cyanDark"></i> قائمة المناديب المحفوظة</h3>
-            <div id="admin-drivers-list">${driversHtml}</div>
-            <button onclick="globalSettings.drivers.push({name:'', phone:''}); renderAdminDispatch();" class="w-full mt-2 bg-gray-100 hover:bg-gray-200 py-3 rounded-xl font-black text-xs text-brand-navy transition-colors shadow-sm">+ إضافة مندوب جديد</button>
+    container.innerHTML = `
+        <div class="bg-white border rounded-xl p-4 shadow-sm space-y-3 mb-4">
+            <h3 class="font-black text-brand-navy"><i class="fa-solid fa-pen-to-square text-brand-cyanDark"></i> بيانات المتجر الأساسية</h3>
+            <div><label class="text-xs font-bold text-gray-500">اسم المتجر</label><input type="text" id="admin-store-name" value="${globalSettings.storeName || ''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></div>
+            <div><label class="text-xs font-bold text-gray-500">وصف المتجر (يظهر في الهيدر)</label><textarea id="admin-store-desc" rows="2" class="w-full border rounded-lg p-2 font-bold text-brand-navy">${globalSettings.storeDesc || ''}</textarea></div>
+            <div><label class="text-xs font-bold text-gray-500">رقم الموبايل / الواتساب</label><input type="text" id="admin-store-phone" value="${globalSettings.storePhone || ''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr"></div>
+            <div><label class="text-xs font-bold text-gray-500">الحد الأدنى للطلب (جنيه)</label><input type="number" id="admin-min-order" value="${globalSettings.minOrder || 0}" placeholder="0 = لا يوجد حد أدنى" class="w-full border rounded-lg p-2 font-bold text-brand-navy text-left" dir="ltr"></div>
         </div>
 
-        <div class="bg-white border rounded-xl p-4 shadow-sm">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-truck-fast text-brand-cyanDark"></i> إرسال الطلبات للمندوبين</h3>
-            <div class="mb-3">
-                <label class="text-[10px] font-bold text-gray-500 block mb-1">تصفية الطلبات حسب المنطقة</label>
-                <select id="dispatch-zone-filter" class="w-full border rounded-lg p-2 font-bold text-brand-navy bg-white" onchange="renderDispatchOrders()"><option value="all">كل المناطق</option></select>
+        <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-brand-yellow">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-shield-heart text-brand-yellow"></i> المربعات الأربعة (عناصر الثقة)</h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-4">تتحكم هذه الخانات في المربعات الأربعة أسفل صورة المتجر.</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                ${badges.map((b, i) => `
+                    <div class="bg-gray-50 p-2 rounded-lg border border-gray-200">
+                        <label class="text-[10px] font-black text-brand-navy block mb-1">المربع ${i+1}</label>
+                        <input type="text" id="badge-${i}-icon" value="${b.icon}" class="w-full border rounded p-1.5 mb-1 text-xs font-bold text-gray-500 outline-none" placeholder="كود الأيقونة (اختياري)" dir="ltr">
+                        <input type="text" id="badge-${i}-title" value="${b.title}" class="w-full border rounded p-1.5 mb-1 text-xs font-black text-brand-navy outline-none" placeholder="العنوان الرئيسي">
+                        <input type="text" id="badge-${i}-desc" value="${b.desc}" class="w-full border rounded p-1.5 text-xs font-bold text-brand-cyanDark outline-none" placeholder="الوصف القصير">
+                    </div>
+                `).join('')}
             </div>
-            <div id="dispatch-orders-container" class="space-y-2 mb-4 max-h-64 overflow-y-auto cart-scroll border rounded-lg p-2 bg-gray-50">
-                </div>
-            <div class="flex items-center gap-2 mb-3">
-                <button onclick="toggleSelectAllDispatch()" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs py-2 px-4 rounded-lg transition-colors">تحديد الكل / إلغاء</button>
-                <span class="text-[10px] text-gray-500">محدد: <span id="dispatch-selected-count" class="font-black text-brand-cyanDark">0</span></span>
-            </div>
-            <div class="mb-3">
-                <label class="text-[10px] font-bold text-gray-500 block mb-1">اختر المندوب المُرسل إليه</label>
-                <select id="dispatch-driver-select" class="w-full border rounded-lg p-3 font-black text-brand-navy bg-white shadow-sm outline-none focus:border-brand-cyan">
-                    <option value="" disabled selected>-- اختر من القائمة --</option>
-                    ${driversOptions}
-                </select>
-            </div>
-            <button onclick="sendDispatchToDriver()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2">
-                <i class="fa-brands fa-whatsapp text-xl"></i> إرسال الطلبات للمندوب
-            </button>
         </div>
     `;
-    renderDispatchOrders();
 };
 
+// --- بناء واجهة التسويق بذكاء ---
 const renderMarketingTabUI = () => {
     const container = document.getElementById('admin-panel-marketing');
     if(!container) return;
-    const marqueeStr = (globalSettings.marqueeMessages || []).join('\n');
-    const notiNamesStr = (globalSettings.liveNotiNames || []).join('، ');
-    const notiPlacesStr = (globalSettings.liveNotiPlaces || []).join('، ');
-
     container.innerHTML = `
         <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-green-500 mb-4">
             <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-gift text-green-500"></i> نظام الولاء الذكي (كود تلقائي مع كل أوردر)</h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-3">السيستم بيعمل كود (يستخدم مرة واحدة فقط) لكل عميل بيطلب، وتقدر تتابعه وتشوفه استخدمه ولا لأ من قائمة الأكواد بالأسفل.</p>
+            
             <label class="flex items-center gap-2 mb-3"><input type="checkbox" id="admin-reward-active" class="accent-green-500 w-4 h-4" ${globalSettings.rewardActive ? 'checked' : ''}> <span class="text-sm font-bold text-green-700">تفعيل إنشاء كود الخصم التلقائي</span></label>
+            
             <div class="grid grid-cols-2 gap-2 bg-green-50 p-3 rounded-lg border border-green-100 mb-3">
                 <div>
                     <label class="text-[10px] font-bold text-gray-500 block mb-1">نوع الخصم</label>
@@ -221,40 +157,12 @@ const renderMarketingTabUI = () => {
                     <label class="text-[10px] font-bold text-gray-500 block mb-1">الحد الأقصى للخصم المئوي (مثال: أقصى خصم 50 ج)</label>
                     <input type="number" id="admin-reward-max-discount" value="${globalSettings.rewardMaxDiscount || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="سيبه 0 لو مفيش حد أقصى">
                 </div>
-                <div class="col-span-2"><label class="text-[10px] font-bold text-gray-500 block mb-1">عدد الأكواد اللي السيستم يولدها إجمالاً</label><input type="number" id="admin-reward-max-generations" value="${globalSettings.rewardMaxGenerations || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="سيبه 0 لعدد لا نهائي ∞"></div>
+                <div class="col-span-2"><label class="text-[10px] font-bold text-gray-500 block mb-1">عدد الأكواد اللي السيستم يولدها إجمالاً</label><input type="number" id="admin-reward-max-generations" value="${globalSettings.rewardMaxGenerations || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="سيبه 0 عشان السيستم يفضل يولد للما لا نهاية ∞"></div>
             </div>
             <div>
                 <label class="text-[10px] font-bold text-gray-500 block mb-1">الرسالة اللي بتظهر للعميل مع الكود (تقدر تغيرها براحتك)</label>
                 <textarea id="admin-loyalty-msg" rows="2" class="w-full border rounded-lg p-2 text-xs font-bold text-brand-navy">${globalSettings.autoPromoModalMsg || 'تم إصدار كود خصم خاص بك لطلبك القادم 🎁'}</textarea>
             </div>
-        </div>
-
-        <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-blue-500 mb-4">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bell text-blue-500"></i> الإشعارات الحية الوهمية (Social Proof)</h3>
-            <label class="flex items-center gap-2 mb-3"><input type="checkbox" id="admin-live-noti-active" class="accent-blue-500 w-4 h-4" ${globalSettings.liveNotiActive !== false ? 'checked' : ''}> <span class="text-sm font-bold text-blue-700">تفعيل الإشعارات أسفل الشاشة</span></label>
-            <div>
-                <label class="text-[10px] font-bold text-gray-500 block mb-1">الأسماء (افصل بينها بفاصلة ،)</label>
-                <textarea id="admin-noti-names" rows="2" class="w-full border rounded-lg p-2 text-xs font-bold text-brand-navy">${notiNamesStr}</textarea>
-            </div>
-            <div class="mt-2">
-                <label class="text-[10px] font-bold text-gray-500 block mb-1">المناطق (افصل بينها بفاصلة ،)</label>
-                <textarea id="admin-noti-places" rows="2" class="w-full border rounded-lg p-2 text-xs font-bold text-brand-navy">${notiPlacesStr}</textarea>
-            </div>
-        </div>
-
-        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4 border-l-4 border-l-yellow-500">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-yellow-500"></i> شريط الأخبار المتحرك</h3>
-            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-banner-active" class="accent-yellow-500 w-4 h-4" ${globalSettings.bannerActive ? 'checked' : ''}> <span class="text-sm font-bold text-yellow-700">تفعيل الشريط العلوي</span></label>
-            <div>
-                <label class="text-[10px] font-bold text-gray-500 block mb-1">الرسائل (كل رسالة في سطر منفصل)</label>
-                <textarea id="admin-marquee-messages" rows="3" class="w-full border rounded-lg p-2 text-xs font-bold text-brand-navy" placeholder="رسالة 1&#10;رسالة 2">${marqueeStr}</textarea>
-            </div>
-        </div>
-
-        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-lightbulb text-brand-yellow"></i> الاقتراح الذكي (Cross-sell)</h3>
-            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-crosssell-active" class="accent-brand-cyanDark" ${globalSettings.crossSellActive ? 'checked' : ''}> <span class="text-sm font-bold">تفعيل نافذة الاقتراح</span></label>
-            <select id="admin-crosssell-product" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></select>
         </div>
 
         <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-purple-500 mb-4">
@@ -265,16 +173,28 @@ const renderMarketingTabUI = () => {
                 <select id="admin-bulk-reward-type" class="w-full border rounded p-2 font-bold text-brand-navy"><option value="fixed">خصم مبلغ</option><option value="percent">خصم نسبة</option><option value="free_delivery">توصيل مجاني</option></select>
                 <input type="number" id="admin-bulk-reward-value" placeholder="القيمة" class="w-full border rounded p-2 font-bold text-brand-navy text-center">
             </div>
-            <button type="button" onclick="generateBulkWhatsAppLinks()" class="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 rounded-xl transition-colors text-sm shadow-md flex items-center justify-center gap-2"><i class="fa-brands fa-whatsapp text-xl"></i> توليد وتجهيز الواتساب</button>
+            <button type="button" onclick="generateBulkWhatsAppLinks()" class="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition-colors text-sm shadow-md">توليد وتجهيز الواتساب</button>
             <div id="bulk-whatsapp-links" class="mt-3 space-y-2 hidden max-h-40 overflow-y-auto bg-gray-50 p-2 rounded-xl border border-gray-200 cart-scroll"></div>
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-red-500"></i> شريط الإعلانات العلوي</h3>
+            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-banner-active" class="accent-brand-cyanDark" ${globalSettings.bannerActive ? 'checked' : ''}> <span class="text-sm font-bold">تفعيل الشريط</span></label>
+            <input type="text" id="admin-banner-text" value="${globalSettings.bannerText || ''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy">
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-lightbulb text-brand-yellow"></i> الاقتراح الذكي (Cross-sell)</h3>
+            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-crosssell-active" class="accent-brand-cyanDark" ${globalSettings.crossSellActive ? 'checked' : ''}> <span class="text-sm font-bold">تفعيل نافذة الاقتراح</span></label>
+            <select id="admin-crosssell-product" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></select>
         </div>
 
         <div class="bg-white border rounded-xl p-4 shadow-sm">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-black text-brand-navy"><i class="fa-solid fa-ticket text-brand-cyanDark"></i> رادار الأكواد</h3>
+                <h3 class="font-black text-brand-navy"><i class="fa-solid fa-ticket text-brand-cyanDark"></i> رادار ومتابعة الأكواد</h3>
                 <button onclick="addNewPromoCode()" class="bg-gray-800 hover:bg-black text-white text-xs px-3 py-1.5 rounded transition-colors shadow-sm">+ كود ثابت جديد</button>
             </div>
-            <label class="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded border"><input type="checkbox" id="admin-show-promo-field" class="accent-brand-cyanDark w-4 h-4" ${globalSettings.showPromoField !== false ? 'checked' : ''}> <span class="text-xs font-bold">إظهار خانة الكوبون بالسلة</span></label>
+            <label class="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded border"><input type="checkbox" id="admin-show-promo-field" class="accent-brand-cyanDark w-4 h-4" ${globalSettings.showPromoField !== false ? 'checked' : ''}> <span class="text-xs font-bold">إظهار خانة "كود الخصم" للعملاء في السلة</span></label>
             <div id="admin-promos-container" class="space-y-3"></div>
         </div>
     `;
@@ -341,17 +261,16 @@ window.openAdminDashboard = () => {
         storeOpenLabel.className = (globalSettings.storeOpen !== false) ? 'mr-3 text-sm font-black text-green-600 w-12' : 'mr-3 text-sm font-black text-red-600 w-12';
     }
 
-    renderAdminStore();
-    renderAdminDispatch();
-    renderMarketingTabUI();
-    renderAdvancedTabUI();
-    renderGalleryTabUI();
-    
+    renderStoreTabUI();
     setCheck('admin-free-delivery-active', globalSettings.freeDeliveryActive); 
     setVal('admin-free-delivery-threshold', globalSettings.freeDeliveryThreshold || 0); 
     
     tempAdminZones = JSON.parse(JSON.stringify(globalDeliveryZones||[])); 
     renderAdminZones();
+    
+    // بناء الأقسام الذكية عشان مافيش حاجة تضيع
+    renderMarketingTabUI();
+    renderAdvancedTabUI();
     
     tempPromoCodes = JSON.parse(JSON.stringify(globalSettings.promoCodes||[])); 
     renderAdminPromos();
@@ -473,27 +392,6 @@ window.renderAdminZones = () => {
 };
 window.addNewAdminZone = () => { tempAdminZones.push({id:'z_'+Date.now(), name:'', price:0}); renderAdminZones(); };
 
-window.renderGalleryTabUI = () => {
-    const container = document.getElementById('admin-panel-gallery');
-    if(!container) return;
-    if(!globalSettings.galleryImages) globalSettings.galleryImages = ["all-sizes.jpg"];
-    let imagesHtml = globalSettings.galleryImages.map((img, idx) => `
-        <div class="flex gap-2 mb-2 items-center bg-gray-50 p-2 rounded border border-gray-200">
-            <span class="font-black text-gray-400 text-xs">${idx+1}</span>
-            <input type="text" value="${img}" class="flex-1 border rounded p-2 text-xs font-bold text-brand-navy outline-none" onchange="globalSettings.galleryImages[${idx}]=this.value" placeholder="رابط الصورة أو مسارها" dir="ltr">
-            <button onclick="globalSettings.galleryImages.splice(${idx},1); renderGalleryTabUI()" class="text-red-500 hover:bg-red-100 p-2 rounded transition-colors shadow-sm"><i class="fa-solid fa-trash text-sm"></i></button>
-        </div>
-    `).join('');
-    container.innerHTML = `
-        <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-brand-yellow">
-            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-images text-brand-yellow"></i> معرض الكتالوج (السلايدر)</h3>
-            <p class="text-[10px] text-gray-500 font-bold mb-4">أضف روابط الصور ليتم عرضها في السلايدر أعلى قائمة المنتجات.</p>
-            <div id="admin-gallery-list">${imagesHtml}</div>
-            <button onclick="globalSettings.galleryImages.push(''); renderGalleryTabUI()" class="w-full mt-3 bg-brand-navy text-white hover:bg-gray-800 py-3 rounded-xl font-black text-xs transition-colors flex items-center justify-center gap-2 shadow-md"><i class="fa-solid fa-plus"></i> إضافة صورة جديدة</button>
-        </div>
-    `;
-};
-
 window.renderAdminPromos = () => { 
     const c = document.getElementById('admin-promos-container'); 
     if(!c) return; c.innerHTML=''; 
@@ -550,7 +448,7 @@ window.renderAdminPromos = () => {
                     <input type="number" value="${p.usesLeft !== null ? p.usesLeft : ''}" placeholder="سيبه فاضي لعدد ∞" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none placeholder-gray-400" onchange="tempPromoCodes[${i}].usesLeft=this.value === '' ? null : parseInt(this.value)">
                 </div>
             </div>
-            <button onclick="tempPromoCodes.splice(${i},1); renderAdminPromos(); forceSavePromoCodes();" class="absolute top-2 left-2 text-red-500 hover:bg-red-100 rounded w-7 h-7 flex justify-center items-center transition-colors shadow-sm"><i class="fa-solid fa-trash text-[12px]"></i></button>
+            <button onclick="tempPromoCodes.splice(${i},1);renderAdminPromos()" class="absolute top-2 left-2 text-red-500 hover:bg-red-100 rounded w-7 h-7 flex justify-center items-center transition-colors shadow-sm"><i class="fa-solid fa-trash text-[12px]"></i></button>
         </div>`;
     }); 
 };
@@ -558,7 +456,6 @@ window.renderAdminPromos = () => {
 window.addNewPromoCode = () => { 
     tempPromoCodes.push({ code: 'CODE-' + Math.floor(100 + Math.random() * 900), discount: 10, type: 'fixed', usesLeft: null, minOrder: 0, maxDiscount: 0, expiryDate: '', customerPhone: '', isAuto: false }); 
     renderAdminPromos(); 
-    forceSavePromoCodes(); // حفظ إجباري فوراً
 };
 
 window.exportOrdersToCSV = () => {
@@ -798,10 +695,10 @@ window.toggleSelectAllDispatch = () => {
 };
 
 window.sendDispatchToDriver = () => {
-    const selectEl = document.getElementById('dispatch-driver-select');
-    if(!selectEl) return;
-    const phone = selectEl.value;
-    if (!phone || phone.trim() === '') { showAlert('تنبيه', 'يرجى اختيار المندوب من القائمة'); return; }
+    const phoneEl = document.getElementById('dispatch-driver-phone');
+    if(!phoneEl) return;
+    const phone = phoneEl.value.trim();
+    if (!phone || phone.length < 10) { showAlert('تنبيه', 'يرجى إدخال رقم موبايل المندوب بشكل صحيح'); return; }
 
     const checkedOrders = [];
     document.querySelectorAll('.dispatch-checkbox:checked').forEach(cb => {
@@ -826,50 +723,6 @@ window.sendDispatchToDriver = () => {
     window.open(`https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(fullMessage.trim())}`, '_blank');
 };
 
-window.generateBulkWhatsAppLinks = () => {
-    const numbersEl = document.getElementById('admin-bulk-numbers');
-    const msgEl = document.getElementById('admin-bulk-message');
-    const typeEl = document.getElementById('admin-bulk-reward-type');
-    const valEl = document.getElementById('admin-bulk-reward-value');
-    
-    if(!numbersEl || !msgEl || !typeEl || !valEl) return;
-
-    const numbersRaw = numbersEl.value.trim();
-    const messageTemplate = msgEl.value.trim() || "شكراً لثقتك! كود الخصم بتاعك: {الكود}";
-    const rewardType = typeEl.value;
-    const rewardValue = parseInt(valEl.value) || 0;
-
-    if(!numbersRaw) { showAlert("تنبيه", "يرجى إدخال أرقام الموبايلات أولاً"); return; }
-    const numbers = numbersRaw.split('\n').map(n => n.trim()).filter(n => n.length >= 10);
-    if(numbers.length === 0) { showAlert("تنبيه", "لم يتم العثور على أرقام صحيحة"); return; }
-
-    const linksContainer = document.getElementById('bulk-whatsapp-links');
-    if(!linksContainer) return;
-    linksContainer.innerHTML = '<p class="text-xs font-black text-brand-navy mb-2 border-b pb-2"><i class="fa-solid fa-check-double text-green-500"></i> اضغط "إرسال" قدام كل رقم:</p>';
-
-    numbers.forEach(num => {
-        const randomCode = "THX-" + Math.floor(1000 + Math.random() * 9000);
-        tempPromoCodes.push({ code: randomCode, type: rewardType, discount: rewardValue, isAuto: true, usesLeft: 1, customerPhone: num, minOrder: 0, maxDiscount: 0, expiryDate: '' });
-        const finalMessage = messageTemplate.replace(/{الكود}/g, randomCode);
-        let waNumber = num;
-        if(waNumber.startsWith('0')) waNumber = '2' + waNumber; 
-
-        linksContainer.innerHTML += `
-            <div class="flex justify-between items-center bg-white p-2 border border-gray-200 rounded-lg shadow-sm">
-                <span class="text-xs font-bold text-gray-600" dir="ltr">${num}</span>
-                <a href="https://api.whatsapp.com/send?phone=${waNumber}&text=${encodeURIComponent(finalMessage)}" target="_blank" class="bg-green-500 hover:bg-green-600 text-white text-[10px] px-4 py-1.5 rounded font-black transition-colors flex items-center gap-1 shadow-sm">
-                    إرسال <i class="fa-brands fa-whatsapp text-sm"></i>
-                </a>
-            </div>
-        `;
-    });
-
-    renderAdminPromos();
-    linksContainer.classList.remove('hidden');
-    forceSavePromoCodes(); // حفظ إجباري للفايربيس
-    showAlert("تم التجهيز بنجاح 🎉", `تم إنشاء وحفظ أكواد لـ ${numbers.length} عميل تلقائياً في السيرفر.`);
-};
-
 // حفظ البيانات بأمان وقوة
 window.saveAdminData = async () => {
     syncAdminProductsFromDOM(); 
@@ -883,22 +736,19 @@ window.saveAdminData = async () => {
         });
     }
 
+    // استخراج بيانات المربعات האربعة (Trust Badges)
+    let newTrustBadges = [];
+    for(let i=0; i<4; i++) {
+        newTrustBadges.push({
+            icon: getSafeVal(`badge-${i}-icon`, globalSettings.trustBadges?.[i]?.icon || ''),
+            title: getSafeVal(`badge-${i}-title`, globalSettings.trustBadges?.[i]?.title || ''),
+            desc: getSafeVal(`badge-${i}-desc`, globalSettings.trustBadges?.[i]?.desc || '')
+        });
+    }
+
     const marqueeMsg = getSafeVal('admin-marquee-messages', '').split('\n').map(s=>s.trim()).filter(s=>s);
     const notiNames = getSafeVal('admin-noti-names', '').split('،').map(s=>s.trim()).filter(s=>s);
     const notiPlaces = getSafeVal('admin-noti-places', '').split('،').map(s=>s.trim()).filter(s=>s);
-
-    let newBadges = [];
-    if(document.getElementById('badge-title-0')) {
-        for(let i=0; i<4; i++) {
-            newBadges.push({
-                icon: getSafeVal(`badge-icon-${i}`, ''),
-                title: getSafeVal(`badge-title-${i}`, ''),
-                desc: getSafeVal(`badge-desc-${i}`, '')
-            });
-        }
-    } else {
-        newBadges = globalSettings.trustBadges || []; 
-    }
 
     const newSettings = {
         storeOpen: getSafeCheck('admin-store-open', globalSettings.storeOpen), 
@@ -932,12 +782,11 @@ window.saveAdminData = async () => {
         autoPromoModalMsg: getSafeVal('admin-loyalty-msg', globalSettings.autoPromoModalMsg || 'تم إصدار كود خصم خاص بك لطلبك القادم 🎁'),
         uiTexts: newUiTexts,
         galleryImages: globalSettings.galleryImages || [],
-        trustBadges: newBadges,
-        drivers: globalSettings.drivers ? globalSettings.drivers.filter(d => d.name.trim() && d.phone.trim()) : [],
         marqueeMessages: marqueeMsg.length > 0 ? marqueeMsg : (globalSettings.marqueeMessages || []),
         liveNotiActive: getSafeCheck('admin-live-noti-active', globalSettings.liveNotiActive),
         liveNotiNames: notiNames.length > 0 ? notiNames : (globalSettings.liveNotiNames || []),
-        liveNotiPlaces: notiPlaces.length > 0 ? notiPlaces : (globalSettings.liveNotiPlaces || [])
+        liveNotiPlaces: notiPlaces.length > 0 ? notiPlaces : (globalSettings.liveNotiPlaces || []),
+        trustBadges: newTrustBadges // تم إضافة حفظ بيانات المربعات האربعة هنا
     };
 
     const btn = document.querySelector('button[onclick="saveAdminData()"]'); 
