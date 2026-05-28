@@ -30,7 +30,7 @@
             animation: pulse-btn 2s infinite;
         }
 
-        /* شريط الأخبار المتحرك */
+        /* شريط الأخبار المتحرك (تم تعديل الاتجاه للعربي) */
         .marquee-container {
             overflow: hidden;
             white-space: nowrap;
@@ -38,11 +38,11 @@
         }
         .marquee-content {
             display: inline-block;
-            animation: marquee 20s linear infinite;
+            animation: marquee 25s linear infinite;
         }
         @keyframes marquee {
-            0% { transform: translateX(100%); }
-            100% { transform: translateX(-100%); }
+            0% { transform: translateX(-100vw); }
+            100% { transform: translateX(100%); }
         }
 
         /* ستايل السلايدر */
@@ -116,7 +116,7 @@
             <p class="text-brand-yellow font-bold text-sm md:text-base bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-inner">
                 <i class="fa-solid fa-leaf mr-1"></i> صحي وطازة
             </p>
-            <p class="text-white/80 font-semibold text-xs md:text-sm max-w-xl mx-auto mt-2 hidden" id="header-store-desc">
+            <p class="text-white/80 font-semibold text-xs md:text-sm max-w-xl mx-auto mt-2" id="header-store-desc">
                 جاري التحميل...
             </p>
         </div>
@@ -131,24 +131,24 @@
     <section class="max-w-3xl mx-auto px-4 mt-14 mb-8">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div class="bg-brand-light rounded-2xl p-3 text-center border border-brand-cyan/30 shadow-sm transition-transform hover:scale-105">
-                <i class="fa-regular fa-circle-check text-brand-navy text-2xl mb-2"></i>
-                <h3 class="font-black text-brand-navy text-[12px] mb-1">أوزان دقيقة</h3>
-                <p class="text-[10px] text-brand-navy/70 font-bold">زي ما طلبت بالظبط</p>
+                <i id="badge-1-icon" class="fa-regular fa-circle-check text-brand-navy text-2xl mb-2"></i>
+                <h3 id="badge-1-title" class="font-black text-brand-navy text-[12px] mb-1">أوزان دقيقة</h3>
+                <p id="badge-1-desc" class="text-[10px] text-brand-navy/70 font-bold">زي ما طلبت بالظبط</p>
             </div>
             <div class="bg-brand-light rounded-2xl p-3 text-center border border-brand-cyan/30 shadow-sm transition-transform hover:scale-105">
-                <i class="fa-regular fa-star text-brand-navy text-2xl mb-2"></i>
-                <h3 class="font-black text-brand-navy text-[12px] mb-1">طلبك باسمك</h3>
-                <p class="text-[10px] text-brand-navy/70 font-bold">استيكر مخصص ليك</p>
+                <i id="badge-2-icon" class="fa-regular fa-star text-brand-navy text-2xl mb-2"></i>
+                <h3 id="badge-2-title" class="font-black text-brand-navy text-[12px] mb-1">طلبك باسمك</h3>
+                <p id="badge-2-desc" class="text-[10px] text-brand-navy/70 font-bold">استيكر مخصص ليك</p>
             </div>
             <div class="bg-brand-light rounded-2xl p-3 text-center border border-brand-cyan/30 shadow-sm transition-transform hover:scale-105">
-                <i class="fa-regular fa-clock text-brand-navy text-2xl mb-2"></i>
-                <h3 class="font-black text-brand-navy text-[12px] mb-1">تجهيز يومي</h3>
-                <p class="text-[10px] text-brand-navy/70 font-bold">طازج مية بالمية</p>
+                <i id="badge-3-icon" class="fa-regular fa-clock text-brand-navy text-2xl mb-2"></i>
+                <h3 id="badge-3-title" class="font-black text-brand-navy text-[12px] mb-1">تجهيز يومي</h3>
+                <p id="badge-3-desc" class="text-[10px] text-brand-navy/70 font-bold">طازج مية بالمية</p>
             </div>
             <div class="bg-brand-light rounded-2xl p-3 text-center border border-brand-cyan/30 shadow-sm transition-transform hover:scale-105">
-                <i class="fa-solid fa-shield-halved text-brand-navy text-2xl mb-2"></i>
-                <h3 class="font-black text-brand-navy text-[12px] mb-1">تغليف آمن</h3>
-                <p class="text-[10px] text-brand-navy/70 font-bold">أطباق صحية</p>
+                <i id="badge-4-icon" class="fa-solid fa-shield-halved text-brand-navy text-2xl mb-2"></i>
+                <h3 id="badge-4-title" class="font-black text-brand-navy text-[12px] mb-1">تغليف آمن</h3>
+                <p id="badge-4-desc" class="text-[10px] text-brand-navy/70 font-bold">أطباق صحية</p>
             </div>
         </div>
     </section>
@@ -214,7 +214,6 @@
             <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3 cart-scroll bg-gray-50"></div>
 
             <div class="p-5 border-t border-gray-200 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.03)] rounded-t-3xl">
-                
                 <div class="mb-4 text-center">
                     <button type="button" onclick="document.getElementById('promo-input-container').classList.toggle('hidden'); this.classList.add('hidden')" class="text-xs font-bold text-brand-navy bg-brand-light/50 px-4 py-2 rounded-full border border-brand-cyan/30 inline-flex items-center gap-2 hover:bg-brand-light transition-colors shadow-sm">
                         <i class="fa-solid fa-tag text-brand-cyanDark"></i> عندك كود خصم؟
@@ -244,7 +243,6 @@
 
         <div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
             <div class="flex-1 overflow-y-auto p-4 cart-scroll bg-gray-50 space-y-4">
-                
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
                     <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>منطقة التوصيل</h3>
                     <div class="relative">
@@ -459,7 +457,7 @@
         
         // -- برمجة السلايدر --
         let currentSlide = 0;
-        let sliderImages = []; // هيتملي من الإعدادات
+        let sliderImages = []; 
         
         function moveSlider(direction) {
             if(sliderImages.length <= 1) return;
@@ -477,7 +475,6 @@
             });
         }
 
-        // Touch Support للسلايدر
         let touchStartX = 0;
         let touchEndX = 0;
         const sliderViewport = document.getElementById('slider-viewport');
@@ -485,8 +482,8 @@
             sliderViewport.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
             sliderViewport.addEventListener('touchend', e => { 
                 touchEndX = e.changedTouches[0].screenX; 
-                if(touchEndX < touchStartX - 30) moveSlider(-1); // سحب شمال (التالي)
-                if(touchEndX > touchStartX + 30) moveSlider(1);  // سحب يمين (السابق)
+                if(touchEndX < touchStartX - 30) moveSlider(-1); 
+                if(touchEndX > touchStartX + 30) moveSlider(1);  
             }, {passive: true});
         }
     </script>
