@@ -93,7 +93,80 @@ const getSafeCheck = (id, def) => document.getElementById(id) ? document.getElem
 const setVal = (id, val) => { const el = document.getElementById(id); if(el) el.value = val; };
 const setCheck = (id, val) => { const el = document.getElementById(id); if(el) el.checked = val; };
 
-// بناء واجهة متقدم بذكاء لضمان عدم ضياعها
+// --- بناء واجهة التسويق بذكاء ---
+const renderMarketingTabUI = () => {
+    const container = document.getElementById('admin-panel-marketing');
+    if(!container) return;
+    container.innerHTML = `
+        <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-green-500 mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-gift text-green-500"></i> نظام الولاء الذكي (كود تلقائي مع كل أوردر)</h3>
+            <p class="text-[10px] text-gray-500 font-bold mb-3">السيستم بيعمل كود (يستخدم مرة واحدة فقط) لكل عميل بيطلب، وتقدر تتابعه وتشوفه استخدمه ولا لأ من قائمة الأكواد بالأسفل.</p>
+            
+            <label class="flex items-center gap-2 mb-3"><input type="checkbox" id="admin-reward-active" class="accent-green-500 w-4 h-4" ${globalSettings.rewardActive ? 'checked' : ''}> <span class="text-sm font-bold text-green-700">تفعيل إنشاء كود الخصم التلقائي</span></label>
+            
+            <div class="grid grid-cols-2 gap-2 bg-green-50 p-3 rounded-lg border border-green-100 mb-3">
+                <div>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-1">نوع الخصم</label>
+                    <select id="admin-reward-type" class="w-full border rounded p-2 font-bold text-brand-navy" onchange="document.getElementById('reward-max-disc-container').classList.toggle('hidden', this.value !== 'percent')">
+                        <option value="fixed" ${globalSettings.rewardType === 'fixed' ? 'selected' : ''}>مبلغ ثابت (ج.م)</option>
+                        <option value="percent" ${globalSettings.rewardType === 'percent' ? 'selected' : ''}>نسبة مئوية (%)</option>
+                        <option value="free_delivery" ${globalSettings.rewardType === 'free_delivery' ? 'selected' : ''}>توصيل مجاني</option>
+                    </select>
+                </div>
+                <div><label class="text-[10px] font-bold text-gray-500 block mb-1">قيمة الخصم</label><input type="number" id="admin-reward-value" value="${globalSettings.rewardValue || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center"></div>
+                <div id="reward-max-disc-container" class="col-span-2 ${globalSettings.rewardType === 'percent' ? '' : 'hidden'}">
+                    <label class="text-[10px] font-bold text-gray-500 block mb-1">الحد الأقصى للخصم المئوي (مثال: أقصى خصم 50 ج)</label>
+                    <input type="number" id="admin-reward-max-discount" value="${globalSettings.rewardMaxDiscount || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="سيبه 0 لو مفيش حد أقصى">
+                </div>
+                <div class="col-span-2"><label class="text-[10px] font-bold text-gray-500 block mb-1">عدد الأكواد اللي السيستم يولدها إجمالاً</label><input type="number" id="admin-reward-max-generations" value="${globalSettings.rewardMaxGenerations || 0}" class="w-full border rounded p-2 font-bold text-brand-navy text-center" placeholder="سيبه 0 عشان السيستم يفضل يولد للما لا نهاية ∞"></div>
+            </div>
+            <div>
+                <label class="text-[10px] font-bold text-gray-500 block mb-1">الرسالة اللي بتظهر للعميل مع الكود (تقدر تغيرها براحتك)</label>
+                <textarea id="admin-loyalty-msg" rows="2" class="w-full border rounded-lg p-2 text-xs font-bold text-brand-navy">${globalSettings.autoPromoModalMsg || 'تم إصدار كود خصم خاص بك لطلبك القادم 🎁'}</textarea>
+            </div>
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm border-l-4 border-l-purple-500 mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-users text-purple-500"></i> إرسال أكواد لعملاء سابقين (واتساب)</h3>
+            <textarea id="admin-bulk-numbers" rows="2" class="w-full border rounded-lg p-2 font-bold text-brand-navy bg-gray-50" dir="ltr" placeholder="حط أرقام الموبايلات هنا..."></textarea>
+            <textarea id="admin-bulk-message" rows="2" class="w-full border rounded-lg p-2 font-bold text-brand-navy mt-2">شكراً لثقتك! كود الخصم للأوردر الجاي: {الكود}</textarea>
+            <div class="grid grid-cols-2 gap-2 mt-2">
+                <select id="admin-bulk-reward-type" class="w-full border rounded p-2 font-bold text-brand-navy"><option value="fixed">خصم مبلغ</option><option value="percent">خصم نسبة</option><option value="free_delivery">توصيل مجاني</option></select>
+                <input type="number" id="admin-bulk-reward-value" placeholder="القيمة" class="w-full border rounded p-2 font-bold text-brand-navy text-center">
+            </div>
+            <button type="button" onclick="generateBulkWhatsAppLinks()" class="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 rounded-xl transition-colors text-sm shadow-md">توليد وتجهيز الواتساب</button>
+            <div id="bulk-whatsapp-links" class="mt-3 space-y-2 hidden max-h-40 overflow-y-auto bg-gray-50 p-2 rounded-xl border border-gray-200 cart-scroll"></div>
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-bullhorn text-red-500"></i> شريط الإعلانات العلوي</h3>
+            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-banner-active" class="accent-brand-cyanDark" ${globalSettings.bannerActive ? 'checked' : ''}> <span class="text-sm font-bold">تفعيل الشريط</span></label>
+            <input type="text" id="admin-banner-text" value="${globalSettings.bannerText || ''}" class="w-full border rounded-lg p-2 font-bold text-brand-navy">
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm mb-4">
+            <h3 class="font-black text-brand-navy mb-3"><i class="fa-solid fa-lightbulb text-brand-yellow"></i> الاقتراح الذكي (Cross-sell)</h3>
+            <label class="flex items-center gap-2 mb-2"><input type="checkbox" id="admin-crosssell-active" class="accent-brand-cyanDark" ${globalSettings.crossSellActive ? 'checked' : ''}> <span class="text-sm font-bold">تفعيل نافذة الاقتراح</span></label>
+            <select id="admin-crosssell-product" class="w-full border rounded-lg p-2 font-bold text-brand-navy"></select>
+        </div>
+
+        <div class="bg-white border rounded-xl p-4 shadow-sm">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-black text-brand-navy"><i class="fa-solid fa-ticket text-brand-cyanDark"></i> رادار ومتابعة الأكواد</h3>
+                <button onclick="addNewPromoCode()" class="bg-gray-800 hover:bg-black text-white text-xs px-3 py-1.5 rounded transition-colors shadow-sm">+ كود ثابت جديد</button>
+            </div>
+            <label class="flex items-center gap-2 mb-4 bg-gray-50 p-2 rounded border"><input type="checkbox" id="admin-show-promo-field" class="accent-brand-cyanDark w-4 h-4" ${globalSettings.showPromoField !== false ? 'checked' : ''}> <span class="text-xs font-bold">إظهار خانة "كود الخصم" للعملاء في السلة</span></label>
+            <div id="admin-promos-container" class="space-y-3"></div>
+        </div>
+    `;
+
+    const csSelect = document.getElementById('admin-crosssell-product'); 
+    if(csSelect) {
+        Object.keys(productsInfo).forEach(id => csSelect.innerHTML += `<option value="${id}" ${globalSettings.crossSellProductId===id?'selected':''}>${productsInfo[id].name}</option>`); 
+    }
+};
+
+// --- بناء واجهة متقدم بذكاء ---
 const renderAdvancedTabUI = () => {
     const container = document.getElementById('admin-panel-advanced');
     if(!container) return;
@@ -160,29 +233,12 @@ window.openAdminDashboard = () => {
     tempAdminZones = JSON.parse(JSON.stringify(globalDeliveryZones||[])); 
     renderAdminZones();
     
-    // بناء واجهة متقدم
+    // بناء الأقسام الذكية عشان مافيش حاجة تضيع
+    renderMarketingTabUI();
     renderAdvancedTabUI();
-    
-    // إعدادات التسويق
-    setCheck('admin-reward-active', globalSettings.rewardActive); 
-    setVal('admin-reward-type', globalSettings.rewardType || 'fixed'); 
-    setVal('admin-reward-value', globalSettings.rewardValue || 0); 
-    setVal('admin-reward-max-discount', globalSettings.rewardMaxDiscount || 0); 
-    setVal('admin-reward-max-generations', globalSettings.rewardMaxGenerations || 0); 
-    setCheck('admin-banner-active', globalSettings.bannerActive); 
-    setVal('admin-banner-text', globalSettings.bannerText || ''); 
-    setCheck('admin-crosssell-active', globalSettings.crossSellActive); 
-    
-    const csSelect = document.getElementById('admin-crosssell-product'); 
-    if(csSelect) {
-        csSelect.innerHTML=''; 
-        Object.keys(productsInfo).forEach(id => csSelect.innerHTML += `<option value="${id}" ${globalSettings.crossSellProductId===id?'selected':''}>${productsInfo[id].name}</option>`); 
-    }
     
     tempPromoCodes = JSON.parse(JSON.stringify(globalSettings.promoCodes||[])); 
     renderAdminPromos();
-    
-    setCheck('admin-show-promo-field', globalSettings.showPromoField !== false);
 
     const textsCont = document.getElementById('admin-texts-container');
     if(textsCont && typeof textsConfig !== 'undefined') {
@@ -301,16 +357,15 @@ window.renderAdminZones = () => {
 };
 window.addNewAdminZone = () => { tempAdminZones.push({id:'z_'+Date.now(), name:'', price:0}); renderAdminZones(); };
 
-// --- رادار ومتابعة الأكواد (ذكاء التسويق) ---
+// --- رادار الأكواد الذكي المحدث ---
 window.renderAdminPromos = () => { 
     const c = document.getElementById('admin-promos-container'); 
     if(!c) return; c.innerHTML=''; 
 
-    // ترتيب: الأكواد التلقائية (الولاء) تظهر مع بعضها، والثابتة مع بعضها
+    // ترتيب الأكواد: التلقائية (الولاء) مع بعض، والثابتة مع بعض
     tempPromoCodes.sort((a, b) => (b.isAuto ? 1 : 0) - (a.isAuto ? 1 : 0));
 
     tempPromoCodes.forEach((p,i) => {
-        // حماية وتجهيز البيانات
         if(p.usesLeft === undefined) p.usesLeft = p.isAuto ? 1 : null;
         p.minOrder = p.minOrder || 0;
         p.maxDiscount = p.maxDiscount || 0;
@@ -318,10 +373,15 @@ window.renderAdminPromos = () => {
         const isLoyalty = p.isAuto;
         const isUsed = p.usesLeft === 0;
         
-        // شارات التمييز والحالة
-        const badgeHtml = isLoyalty ? 
-            (isUsed ? `<span class="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🔴 تم الاستخدام</span>` : `<span class="bg-green-100 text-green-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🟢 صالح (عميل)</span>`) 
-            : `<span class="bg-gray-200 text-gray-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">⚙️ كود ثابت</span>`;
+        // شارات ذكية توضح حالة الكود
+        let badgeHtml = '';
+        if (isLoyalty) {
+            badgeHtml = isUsed 
+                ? `<span class="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🔴 تم الاستخدام</span>` 
+                : `<span class="bg-green-100 text-green-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🟢 صالح لم يُستخدم</span>`;
+        } else {
+            badgeHtml = `<span class="bg-gray-200 text-gray-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">⚙️ كود ثابت</span>`;
+        }
 
         c.innerHTML += `
         <div class="flex flex-col gap-2 ${isLoyalty ? 'bg-blue-50/50' : 'bg-gray-50'} p-3 border border-gray-200 rounded-xl mb-3 relative overflow-hidden shadow-sm transition-all hover:shadow-md">
@@ -347,7 +407,7 @@ window.renderAdminPromos = () => {
                     <input type="number" value="${p.minOrder}" placeholder="بدون" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none" onchange="tempPromoCodes[${i}].minOrder=parseInt(this.value) || 0">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">أقصى خصم (ج.م)</label>
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">أقصى خصم بالجنيه</label>
                     <input type="number" value="${p.maxDiscount}" placeholder="بدون" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none ${p.type !== 'percent' ? 'bg-gray-100 opacity-50' : ''}" ${p.type !== 'percent' ? 'disabled' : ''} onchange="tempPromoCodes[${i}].maxDiscount=parseInt(this.value) || 0">
                 </div>
             </div>
@@ -358,8 +418,8 @@ window.renderAdminPromos = () => {
                     <input type="text" value="${p.customerPhone || ''}" placeholder="أي شخص" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none" onchange="tempPromoCodes[${i}].customerPhone=this.value" dir="ltr">
                 </div>
                 <div>
-                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">متاح لعدد أشخاص</label>
-                    <input type="number" value="${p.usesLeft !== null ? p.usesLeft : ''}" placeholder="∞ (غير محدود)" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none placeholder-green-600" onchange="tempPromoCodes[${i}].usesLeft=this.value === '' ? null : parseInt(this.value)">
+                    <label class="text-[10px] font-bold text-gray-500 block mb-0.5">يُستخدم كام مرة؟</label>
+                    <input type="number" value="${p.usesLeft !== null ? p.usesLeft : ''}" placeholder="سيبه فاضي لعدد ∞" class="w-full border rounded p-1.5 text-xs text-center font-bold text-brand-navy outline-none placeholder-gray-400" onchange="tempPromoCodes[${i}].usesLeft=this.value === '' ? null : parseInt(this.value)">
                 </div>
             </div>
             <button onclick="tempPromoCodes.splice(${i},1);renderAdminPromos()" class="absolute top-2 left-2 text-red-500 hover:bg-red-100 rounded w-7 h-7 flex justify-center items-center transition-colors shadow-sm"><i class="fa-solid fa-trash text-[12px]"></i></button>
@@ -660,7 +720,6 @@ window.generateBulkWhatsAppLinks = () => {
 
     numbers.forEach(num => {
         const randomCode = "THX-" + Math.floor(1000 + Math.random() * 9000);
-        // الأكواد المرسلة بالواتس بتكون استخدام مرة واحدة (usesLeft: 1)
         tempPromoCodes.push({ code: randomCode, type: rewardType, discount: rewardValue, isAuto: true, usesLeft: 1, customerPhone: num, minOrder: 0, maxDiscount: 0, expiryDate: '' });
         const finalMessage = messageTemplate.replace(/{الكود}/g, randomCode);
         let waNumber = num;
@@ -678,7 +737,7 @@ window.generateBulkWhatsAppLinks = () => {
 
     renderAdminPromos();
     linksContainer.classList.remove('hidden');
-    showAlert("تم التجهيز بنجاح 🎉", `تم إنشاء أكواد لـ ${numbers.length} عميل. \n\n⚠️ مهم جداً: انزل تحت في لوحة التحكم ودوس "حفظ جميع التعديلات" عشان الأكواد تتفعل.`);
+    showAlert("تم التجهيز بنجاح 🎉", `تم إنشاء أكواد لـ ${numbers.length} عميل. \n\n⚠️ مهم جداً: انزل تحت في لوحة التحكم ودوس "حفظ جميع التعديلات" عشان الأكواد تتفعل في السيستم وتقدر تبعت الرسايل.`);
 };
 
 // حفظ البيانات بأمان وقوة
@@ -723,6 +782,7 @@ window.saveAdminData = async () => {
         vipWhatsappTemplate: getSafeVal('admin-vip-whatsapp-template', globalSettings.vipWhatsappTemplate),
         batchHashtag: getSafeVal('admin-batch-hashtag', globalSettings.batchHashtag),
         dispatchTemplate: getSafeVal('admin-dispatch-template', globalSettings.dispatchTemplate),
+        autoPromoModalMsg: getSafeVal('admin-loyalty-msg', globalSettings.autoPromoModalMsg || 'تم إصدار كود خصم خاص بك لطلبك القادم 🎁'),
         uiTexts: newUiTexts
     };
 
