@@ -62,6 +62,25 @@ function applyUITexts() {
 }
 
 // --- تشغيل الميزات المرئية الذكية (سلايدر، شريط أخبار، إشعارات) ---
+window.currentSlide = 0;
+window.sliderImages = [];
+
+window.moveSlider = function(direction) {
+    if (!window.sliderImages || window.sliderImages.length <= 1) return;
+    window.currentSlide = (window.currentSlide + direction + window.sliderImages.length) % window.sliderImages.length;
+    window.updateSliderView();
+};
+
+window.updateSliderView = function() {
+    const track = document.getElementById('slider-track');
+    if(track) track.style.transform = `translateX(${window.currentSlide * 100}%)`;
+    
+    const dots = document.querySelectorAll('.slider-dot');
+    dots.forEach((dot, index) => {
+        dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 shadow-sm cursor-pointer ${index === window.currentSlide ? 'active' : 'bg-gray-300'}`;
+    });
+};
+
 function renderSlider() {
     const track = document.getElementById('slider-track');
     const dotsContainer = document.getElementById('slider-dots');
@@ -73,19 +92,49 @@ function renderSlider() {
     track.innerHTML = '';
     dotsContainer.innerHTML = '';
     
+    // لو مفيش صور خالص
     if(images.length === 0) {
         track.innerHTML = `<div class="w-full shrink-0 h-64 bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-image text-4xl"></i></div>`;
         return;
     }
 
-    // تم تغيير object-cover لـ object-contain ليظهر دليل الأحجام بالكامل
+    // رسم الصور والنقط
     images.forEach((img, idx) => {
         track.innerHTML += `<div class="w-full shrink-0 h-64 bg-gray-100"><img src="${img}" class="w-full h-full object-contain" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'"></div>`;
-        dotsContainer.innerHTML += `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx===0 ? 'active' : 'bg-gray-300'} shadow-sm cursor-pointer" onclick="currentSlide=${idx}; updateSliderView();"></div>`;
+        
+        // إخفاء النقط لو هي صورة واحدة بس
+        if (images.length > 1) {
+            dotsContainer.innerHTML += `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx===0 ? 'active' : 'bg-gray-300'} shadow-sm cursor-pointer" onclick="window.currentSlide=${idx}; window.updateSliderView();"></div>`;
+        }
     });
+    
+    // إخفاء زراير التقليب لو صورة واحدة
+    const rightBtn = document.querySelector('button[onclick="moveSlider(-1)"]');
+    const leftBtn = document.querySelector('button[onclick="moveSlider(1)"]');
+    if (images.length <= 1) {
+        if(rightBtn) rightBtn.classList.add('hidden');
+        if(leftBtn) leftBtn.classList.add('hidden');
+    } else {
+        if(rightBtn) rightBtn.classList.remove('hidden');
+        if(leftBtn) leftBtn.classList.remove('hidden');
+    }
+
     window.currentSlide = 0;
-    if(typeof window.updateSliderView === 'function') window.updateSliderView();
+    window.updateSliderView();
+    
+    // تفعيل السحب بالإصبع (Touch Swipe) للموبايل
+    let touchStartX = 0; let touchEndX = 0;
+    const sliderViewport = document.getElementById('slider-viewport');
+    if(sliderViewport) {
+        sliderViewport.ontouchstart = e => { touchStartX = e.changedTouches[0].screenX; };
+        sliderViewport.ontouchend = e => { 
+            touchEndX = e.changedTouches[0].screenX; 
+            if(touchEndX < touchStartX - 30) window.moveSlider(-1); 
+            if(touchEndX > touchStartX + 30) window.moveSlider(1);  
+        };
+    }
 }
+
 
 function renderMarquee() {
     const banner = document.getElementById('top-banner');
