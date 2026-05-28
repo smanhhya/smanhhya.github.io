@@ -134,7 +134,7 @@ function renderSlider() {
         return;
     }
 
-    // إدراج الصور لتملأ المساحة (object-cover) ومع خاصية النقر للتكبير
+    // إدراج الصور لتملأ المساحة (object-contain) ومع خاصية النقر للتكبير
     images.forEach((img, idx) => {
         track.innerHTML += `
         <div class="w-full shrink-0 h-64 bg-gray-100 overflow-hidden relative cursor-zoom-in" onclick="openImageModal('${img}')">
