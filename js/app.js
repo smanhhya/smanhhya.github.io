@@ -92,22 +92,25 @@ function renderSlider() {
     track.innerHTML = '';
     dotsContainer.innerHTML = '';
     
+    // لو مفيش صور خالص
     if(images.length === 0) {
         track.innerHTML = `<div class="w-full shrink-0 h-64 bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-image text-4xl"></i></div>`;
         return;
     }
 
+    // رسم الصور والنقط - تم تصحيح التكرار والتصميم لملء الشاشة
     images.forEach((img, idx) => {
-        // تم التعديل هنا لـ object-cover object-center عشان الصورة تملا الإطار وتبقى شيك
         track.innerHTML += `<div class="w-full shrink-0 h-64 bg-gray-100 overflow-hidden relative">
             <img src="${img}" class="w-full h-full object-cover object-center" style="width: 100%; height: 100%; object-fit: cover !important; object-position: center !important;" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'">
         </div>`;
         
+        // إظهار النقط لو في أكتر من صورة
         if (images.length > 1) {
             dotsContainer.innerHTML += `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx===0 ? 'active' : 'bg-gray-300'} shadow-sm cursor-pointer" onclick="window.currentSlide=${idx}; window.updateSliderView();"></div>`;
         }
     });
     
+    // إخفاء زراير التقليب لو صورة واحدة
     const rightBtn = document.querySelector('button[onclick="moveSlider(-1)"]');
     const leftBtn = document.querySelector('button[onclick="moveSlider(1)"]');
     if (images.length <= 1) {
@@ -121,6 +124,7 @@ function renderSlider() {
     window.currentSlide = 0;
     window.updateSliderView();
     
+    // تفعيل السحب بالإصبع (Touch Swipe) للموبايل
     let touchStartX = 0; let touchEndX = 0;
     const sliderViewport = document.getElementById('slider-viewport');
     if(sliderViewport) {
@@ -132,6 +136,7 @@ function renderSlider() {
         };
     }
 }
+
 
 function renderMarquee() {
     const banner = document.getElementById('top-banner');
