@@ -1,41 +1,20 @@
-const CACHE_NAME = 'sman-hhya-v1';
-const ASSETS = [
-  './',
-  './index.html',
-  './js/config.js',
-  './js/app.js',
-  './js/admin.js'
-];
+const CACHE_NAME = 'sman-hhya-v2';
 
-// تثبيت الـ Service Worker
+// تثبيت فوري بدون انتظار تحميل كل الملفات
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+  self.skipWaiting(); 
 });
 
-// تشغيل وتحديث الكاش
+// سيطرة فورية على المتصفح
 self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
-    })
-  );
+  e.waitUntil(clients.claim()); 
 });
 
-// جلب البيانات وسرعة التصفح
+// تلبية متطلبات التطبيق (الرد على طلبات المتصفح)
 self.addEventListener('fetch', (e) => {
   e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      return cachedResponse || fetch(e.request);
+    fetch(e.request).catch(() => {
+      return caches.match(e.request);
     })
   );
 });
