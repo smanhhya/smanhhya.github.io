@@ -487,27 +487,6 @@
             }, {passive: true});
         }
 
-        function updateSliderView() {
-            const track = document.getElementById('slider-track');
-            if(track) track.style.transform = `translateX(-${window.currentSlide * 100}%)`;
-            
-            const dots = document.querySelectorAll('.slider-dot');
-            dots.forEach((dot, index) => {
-                dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 ${index === window.currentSlide ? 'active' : 'bg-gray-300'}`;
-            });
-        }
-
-        let touchStartX = 0;
-        let touchEndX = 0;
-        const sliderViewport = document.getElementById('slider-viewport');
-        if(sliderViewport) {
-            sliderViewport.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-            sliderViewport.addEventListener('touchend', e => { 
-                touchEndX = e.changedTouches[0].screenX; 
-                if(touchEndX < touchStartX - 30) window.moveSlider(-1); 
-                if(touchEndX > touchStartX + 30) window.moveSlider(1);  
-            }, {passive: true});
-        }
     <button id="install-app-btn" class="hidden fixed bottom-24 right-4 z-[90] bg-[#0d3b2a] text-[#f2b921] font-black py-3 px-5 rounded-2xl shadow-2xl border border-[#f2b921]/30 flex items-center gap-3 transition-transform transform hover:scale-105">
         <i class="fa-solid fa-download text-xl animate-bounce"></i>
         <span>تثبيت التطبيق</span>
