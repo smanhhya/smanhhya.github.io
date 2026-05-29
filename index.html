@@ -496,40 +496,40 @@
     <script src="js/app.js"></script>
     <script src="js/admin.js"></script>
 
+    <div id="pwa-debug" class="fixed top-20 left-4 bg-black/80 text-white text-[10px] p-2 rounded z-[100] max-w-[200px] font-mono text-left" dir="ltr">
+        🔍 PWA Status:
+    </div>
+
     <script>
+      const debugEl = document.getElementById('pwa-debug');
+      const logInfo = (msg) => { debugEl.innerHTML += `<br>👉 ${msg}`; };
+
       let deferredPrompt;
       const installBtn = document.getElementById('install-app-btn');
 
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Sman Hhya App Registered! ✅'))
-            .catch(err => console.log('PWA Error:', err));
+            .then(reg => logInfo('✅ SW Registered!'))
+            .catch(err => logInfo('❌ SW Error: ' + err.message));
         });
+      } else {
+          logInfo('❌ SW Not Supported');
       }
 
       window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault(); 
         deferredPrompt = e; 
+        logInfo('🚀 App is Installable!');
         if(installBtn) installBtn.classList.remove('hidden'); 
       });
 
-      if(installBtn) {
-        installBtn.addEventListener('click', async () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt(); 
-            const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null; 
-            installBtn.classList.add('hidden'); 
-          }
-        });
-      }
-
       window.addEventListener('appinstalled', () => {
+        logInfo('📦 App Installed');
         if(installBtn) installBtn.classList.add('hidden');
-        deferredPrompt = null;
       });
     </script>
+
 
 </body>
 </html>
