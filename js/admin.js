@@ -945,7 +945,7 @@ window.saveAdminData = async () => {
     ];
 
     // فلترة الأكواد وحفظها بدون فقدان
-    const finalPromoCodes = (window.tempPromoCodes && window.tempPromoCodes.length > 0) ? window.tempPromoCodes.filter(p => p.code.trim()) : (globalSettings.promoCodes || []);
+const finalPromoCodes = tempPromoCodes.filter(p => p.code && p.code.trim() !== '');
 
     const newSettings = {
         ...globalSettings, // بيحافظ على أي إعداد قديم
