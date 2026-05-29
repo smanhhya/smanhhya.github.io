@@ -44,7 +44,8 @@ window.verifyAdminPin = () => {
         .catch(() => {
             if(btn) { btn.innerHTML = origHtml; btn.disabled = false; }
             showAlert("خطأ", "بيانات الدخول غير صحيحة!");
-        });
+        }
+
 };
 
 window.adminLogout = () => {
