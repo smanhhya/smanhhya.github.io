@@ -1,0 +1,28 @@
+name: WhatsApp Follow-up Bot
+
+# المنبه: هيشتغل كل يوم الساعة 6 مساءً بتوقيت جرينتش (حوالي 8 أو 9 بالليل بتوقيت مصر)
+on:
+  schedule:
+    - cron: '0 18 * * *'
+  # السطر ده بيسمحلك تشغله يدوي بأيدك في أي وقت عشان نجرب
+  workflow_dispatch: 
+
+jobs:
+  send-messages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Run WhatsApp Bot Script
+        # السطر ده بيستدعي الأرقام السرية بتاعتك من خزنة جيت هب عشان محدش يشوفها
+        env:
+          FIREBASE_URL: ${{ secrets.FIREBASE_URL }}
+          META_TOKEN: ${{ secrets.META_TOKEN }}
+          PHONE_ID: ${{ secrets.PHONE_ID }}
+        run: node bot.js
