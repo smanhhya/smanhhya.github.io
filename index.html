@@ -500,20 +500,6 @@
       let deferredPrompt;
       const installBtn = document.getElementById('install-app-btn');
 
-    <button id="install-app-btn" class="hidden fixed bottom-24 right-4 z-[90] bg-[#0d3b2a] text-[#f2b921] font-black py-3 px-5 rounded-2xl shadow-2xl border border-[#f2b921]/30 flex items-center gap-3 transition-transform transform hover:scale-105">
-        <i class="fa-solid fa-download text-xl animate-bounce"></i>
-        <span>تثبيت التطبيق</span>
-    </button>
-
-    <script src="js/config.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/admin.js"></script>
-
-    <script>
-      let deferredPrompt;
-      const installBtn = document.getElementById('install-app-btn');
-
-      // 1. تسجيل العقل المدبر للتطبيق
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('./sw.js')
@@ -522,26 +508,23 @@
         });
       }
 
-      // 2. اصطياد جاهزية المتصفح وإظهار الزرار
       window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); // منع الرسالة الافتراضية
-        deferredPrompt = e; // حفظ الأمر
-        if(installBtn) installBtn.classList.remove('hidden'); // إظهار زرارنا الشيك
+        e.preventDefault(); 
+        deferredPrompt = e; 
+        if(installBtn) installBtn.classList.remove('hidden'); 
       });
 
-      // 3. لما العميل يدوس على الزرار
       if(installBtn) {
         installBtn.addEventListener('click', async () => {
           if (deferredPrompt) {
-            deferredPrompt.prompt(); // إظهار شاشة التثبيت
+            deferredPrompt.prompt(); 
             const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null; // تصفير الأمر
-            installBtn.classList.add('hidden'); // إخفاء الزرار
+            deferredPrompt = null; 
+            installBtn.classList.add('hidden'); 
           }
         });
       }
 
-      // 4. إخفاء الزرار لو التطبيق نزل خلاص
       window.addEventListener('appinstalled', () => {
         if(installBtn) installBtn.classList.add('hidden');
         deferredPrompt = null;
