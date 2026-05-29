@@ -486,27 +486,34 @@
                 if(touchEndX > touchStartX + 30) moveSlider(1);  
             }, {passive: true});
         }
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => {
-          console.log('App Ready');
-          // تنبيه بسيط عشان نعرف إنه لقط الملف
-          // showAlert("تطبيق سمان ههيا", "جاهز للتثبيت على موبايلك"); 
-        })
-        .catch(err => alert('فشل الربط: ' + err));
-    });
-  }
+    <script src="js/config.js"></script>
+    <script src="js/app.js"></script>
+    <script src="js/admin.js"></script>
 
-  // كود إضافي عشان نجبر المتصفح يظهر رسالة التثبيت
-  let deferredPrompt;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    console.log('Ready to install...');
-  });
-</script>
+    <script>
+      // 1. تسجيل العقل المدبر للتطبيق
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => {
+              console.log('Sman Hhya App Registered successfully! ✅');
+            })
+            .catch(err => {
+              console.log('PWA registration failed ❌:', err);
+            });
+        });
+      }
+
+      // 2. اصطياد رسالة التثبيت من المتصفح
+      let deferredPrompt;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        // بنمنع المتصفح يظهر الرسالة بمزاجه عشان نتحكم فيها إحنا
+        e.preventDefault();
+        deferredPrompt = e;
+        console.log('التطبيق جاهز للتثبيت دلوقتي! 🚀');
+      });
+    </script>
+
 
 
 </body>
