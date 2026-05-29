@@ -940,3 +940,4 @@ window.finalCheckoutStep = async function() {
         md.classList.remove('hidden'); 
         setTimeout(() => md.classList.remove('opacity-0'), 10);
     }
+};
