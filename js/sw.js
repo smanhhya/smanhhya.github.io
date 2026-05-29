@@ -1,10 +1,10 @@
 const CACHE_NAME = 'sman-hhya-v1';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/js/config.js',
-  '/js/app.js',
-  '/js/admin.js'
+  './',
+  './index.html',
+  './js/config.js',
+  './js/app.js',
+  './js/admin.js'
 ];
 
 // تثبيت الـ Service Worker
