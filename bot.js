@@ -1,11 +1,9 @@
 async function runBot() {
-    // المفاتيح السرية
     const projectId = process.env.FIREBASE_PROJECT_ID; 
     const phoneId = process.env.PHONE_ID;
     const metaToken = process.env.META_TOKEN;
-    const firebaseApiKey = process.env.FIREBASE_API_KEY; // ضفنا المتغير ده
+    const firebaseApiKey = process.env.FIREBASE_API_KEY;
 
-    // الرابط الجديد اللي بيستخدم الـ API Key
     const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/orders?key=${firebaseApiKey}`;
 
     console.log("🚀 جاري فحص الأوردرات...");
@@ -14,7 +12,6 @@ async function runBot() {
         const response = await fetch(firestoreUrl);
         const data = await response.json();
 
-        // لو جاب إيرور في القراءة هيطبعه هنا
         if (data.error) {
              console.error("❌ خطأ في الوصول لقاعدة البيانات:", data.error.message);
              return;
@@ -25,19 +22,25 @@ async function runBot() {
             return;
         }
 
-        // ... (باقي الكود زي ما هو)
         for (const doc of data.documents) {
             const fields = doc.fields;
             
             const customerName = fields.customerName ? fields.customerName.stringValue : "يا فندم";
             const phone = fields.customerPhone ? fields.customerPhone.stringValue : "";
-            const status = fields.status ? fields.status.stringValue : ""; 
+            
+            // هنركز على اللي حالتهم completed بس
+            let status = "";
+            if (fields.status) {
+                status = fields.status.stringValue.toLowerCase(); // بنخليها سمول عشان لو مكتوبة كابيتال يقراها
+            }
+            
             const isFollowUpSent = fields.isFollowUpSent ? fields.isFollowUpSent.booleanValue : false;
 
-            if (status === "completed" && !isFollowUpSent && phone) { // عدلتها لـ "completed" زي ما هي في صورتك التانية
+            if (status === "completed" && !isFollowUpSent && phone) {
                 
                 let formattedPhone = phone.startsWith("0") ? "2" + phone : phone;
                 const messageText = `أهلاً بك ${customerName} 🌟\nنتمنى تكون منتجات سمان ههيا عجبتك!\nعشان دايماً بنسعى نقدم الأفضل، رأيك في الأوردر يهمنا جداً.`;
+                
                 const whatsappUrl = `https://graph.facebook.com/v17.0/${phoneId}/messages`;
                 
                 const metaResponse = await fetch(whatsappUrl, {
@@ -57,7 +60,10 @@ async function runBot() {
                 if (metaResponse.ok) {
                     console.log(`✅ تم إرسال رسالة التقييم للعميل: ${customerName} على الرقم (${formattedPhone})`);
                 } else {
+                    // هنا التعديل السحري اللي هيطبع سبب الرفض
+                    const errorData = await metaResponse.json();
                     console.log(`❌ فشل إرسال الرسالة للعميل: ${customerName}`);
+                    console.log("⚠️ سبب الرفض من ميتا:", JSON.stringify(errorData.error.message));
                 }
             }
         }
