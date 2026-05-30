@@ -512,6 +512,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // إعدادات فايربيز الشخصية لموقعك
         const firebaseConfig = {
             apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY",
             authDomain: "sman-ca8f8.firebaseapp.com",
@@ -538,7 +539,7 @@
         const checkoutBtn = document.getElementById('checkout-btn');
         const checkoutHint = document.getElementById('checkout-hint-step2');
 
-        // دالة فحص رقم الموبايل
+        // 1. دالة فحص رقم الموبايل والتعرف الذكي على العميل
         verifyBtn.addEventListener('click', async () => {
             const phone = phoneInput.value.trim();
             if(!phone || phone.length < 10) {
@@ -554,48 +555,58 @@
                 const docSnap = await getDoc(docRef);
 
                 if (docSnap.exists()) {
+                    // 🎉 العميل موجود! تفعيل وضع "الطلب بضغطة واحدة"
                     isOldCustomer = true;
                     const data = docSnap.data();
                     currentCustomerName = data.name;
                     
-                    welcomeMsg.innerHTML = `أهلاً بك مجدداً يا <span class="text-brand-navy">${data.name}</span>! <br><span class="text-[10px] text-gray-600">طيورنا في انتظارك.</span>`;
+                    // إظهار رسالة الترحيب وتأكيد البيانات وتوضيح الخط
+                    welcomeMsg.innerHTML = `
+                        <div class="text-right">
+                            <p class="text-base font-black text-brand-navy mb-1">🎯 أهلاً بك مجدداً يا ${data.name}!</p>
+                            <p class="text-xs text-gray-600 font-bold">خط التوصيل المسجل لديك: <span class="text-brand-cyanDark">${data.region}</span></p>
+                            <p class="text-[11px] text-green-600 font-bold mt-1">✓ إنت مش محتاج تكتب بياناتك تاني.. اضغط على الزرار الأخضر تحت فوراً لتأكيد طلبك!</p>
+                        </div>
+                    `;
                     welcomeMsg.classList.remove('hidden');
-                    newCustomerDetails.classList.remove('hidden');
                     
-                    nameFieldContainer.classList.add('hidden');
+                    // إخفاء كل خانات الأسئلة تماماً (الاسم والعنوان) عشان ميزعجش العميل
+                    newCustomerDetails.classList.add('hidden');
+                    if(nameFieldContainer) nameFieldContainer.classList.add('hidden');
                     
-                    // --- الحل الإجباري لفتح الزرار الأخضر ---
+                    // ملاءمة حقل الاسم مخفياً عشان نخدع ملف app.js القديم ويوافق يفتح الزرار
                     nameInput.value = data.name; 
-                    // السطرين دول بيفوقوا ملف app.js القديم عشان يحس إن الخانة اتكتب فيها
-                    nameInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    nameInput.dispatchEvent(new Event('change', { bubbles: true }));
 
-                    if(checkoutBtn) {
-                        checkoutBtn.disabled = false;
-                        checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-                    }
-                    const hint = document.getElementById('checkout-hint-step2');
-                    if(hint) hint.classList.add('hidden');
-                    // ----------------------------------------
-
+                    // أوتوماتيك نختار منطقة التوصيل القديمة بتاعته في القائمة
                     if(deliveryZone && data.region) {
                         for(let i=0; i<deliveryZone.options.length; i++) {
                             if(deliveryZone.options[i].text.includes(data.region) || deliveryZone.options[i].value === data.region) {
                                 deliveryZone.selectedIndex = i;
-                                if(typeof window.updateUI === 'function') window.updateUI();
                                 break;
                             }
                         }
                     }
+
+                    // تحديث واجهة الحسابات الأصلية عشان تحسب السعر الإجمالي صح بالتوصيل
+                    if(typeof window.updateUI === 'function') window.updateUI();
+
+                    // 🔥 إجبار الزرار الأخضر إنه يفتح فوراً ويختفي التحذير الأحمر
+                    if(checkoutBtn) {
+                        checkoutBtn.disabled = false;
+                        checkoutBtn.style.display = 'flex';
+                        checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                    }
+                    if(checkoutHint) checkoutHint.classList.add('hidden');
+
                 } else {
+                    // 🆕 عميل جديد لأول مرة -> نفتحله الخانات يكتب بياناته طبيعي
                     isOldCustomer = false;
                     welcomeMsg.classList.add('hidden');
                     newCustomerDetails.classList.remove('hidden');
-                    nameFieldContainer.classList.remove('hidden');
+                    if(nameFieldContainer) nameFieldContainer.classList.remove('hidden');
                     nameInput.value = ""; 
+                    if(checkoutBtn) checkoutBtn.style.display = 'flex';
                 }
-                
-                if(checkoutBtn) checkoutBtn.style.display = 'flex';
                 
             } catch (error) {
                 console.error("خطأ في جلب بيانات العميل:", error);
@@ -606,32 +617,30 @@
             verifyBtn.disabled = false;
         });
 
-        // دالة تأكيد وإرسال الطلب (ترفع لفايربيز ثم تشغل رسالة الواتساب)
+        // 2. دالة تأكيد وإرسال الطلب النهائية (تخزن في فايربيز + تشحن لتيك تيك بـ Web3Forms)
         window.firebaseCheckout = async function() {
             const phone = phoneInput.value.trim();
             let name = isOldCustomer ? currentCustomerName : nameInput.value.trim();
             let region = deliveryZone ? deliveryZone.options[deliveryZone.selectedIndex].text : "غير محدد";
             let address = document.getElementById('customer-address').value.trim();
             
-            // قراءة إجمالي الفاتورة
             let totalVal = document.getElementById('cart-total') ? document.getElementById('cart-total').innerText : "";
-            let orderSummary = `طلب من الموقع بإجمالي: ${totalVal} ج.م`;
+            let orderSummary = `طلب من الموقع بقيمة: ${totalVal} ج.م`;
 
-            // تحقق من البيانات الأساسية
             if (!isOldCustomer && !name) {
                 alert("برجاء إدخال الاسم الكريم.");
                 return;
             }
 
             try {
-                // تغيير شكل الزر
+                // تغيير شكل الزرار أثناء الحفظ
                 const btnIcon = document.getElementById('btn-icon');
                 const btnText = document.getElementById('btn-text');
                 if(btnIcon) btnIcon.className = "fa-solid fa-spinner fa-spin text-2xl";
-                if(btnText) btnText.innerText = "جاري الحفظ...";
+                if(btnText) btnText.innerText = "جاري إرسال طلبك...";
                 checkoutBtn.disabled = true;
 
-                // 1. تسجيل الأوردر في جدول الطلبات عشان الأتمتة
+                // أولاً: حفظ الأوردر في فايربيز للتوثيق
                 await addDoc(collection(db, "orders"), {
                     customer_name: name,
                     customer_phone: phone,
@@ -642,29 +651,27 @@
                     created_at: serverTimestamp()
                 });
 
-                // 2. تحديث بيانات العميل في جدول العملاء
+                // ثانياً: لو عميل جديد نحفظه في جدول العملاء عشان المرة الجاية يعرفه
                 if(!isOldCustomer) {
                     await setDoc(doc(db, "customers", phone), {
                         name: name,
                         phone: phone,
                         region: region,
                         order_count: 1,
-                        notes: "عميل جديد من الموقع"
+                        notes: "عميل جديد سجل من الموقع"
                     });
                 }
 
-                // 3. استدعاء دالة الدفع الأصلية الخاصة بك
+                // ثالثاً: تشغيل نظامك الأصلي (Web3Forms) عشان يبعت الأوردر فوراً لإيميل تيك تيك!
                 if (typeof window.initiateCheckout === 'function') {
                     window.initiateCheckout();
                 } else {
-                    alert("تم حفظ طلبك بنجاح!");
+                    alert("تم تسجيل طلبك بنجاح!");
                 }
 
             } catch(error) {
                 console.error("خطأ أثناء حفظ الطلب:", error);
-                alert("حدث خطأ أثناء حفظ الطلب، يرجى المحاولة مرة أخرى.");
-                
-                // إعادة الزر لشكله الطبيعي
+                alert("حدث خطأ، يرجى إعادة المحاولة.");
                 if(btnIcon) btnIcon.className = "fa-brands fa-whatsapp text-2xl";
                 if(btnText) btnText.innerText = "تأكيد وإرسال الطلب";
                 checkoutBtn.disabled = false;
