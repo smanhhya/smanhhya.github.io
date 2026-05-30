@@ -49,6 +49,7 @@ function applyUITexts() {
     setTxt('lbl-menu-title', getT('menuTitle')); 
     setTxt('lbl-extras-title', getT('extrasTitle'));
 
+    // تطبيق المربعات الأربعة من config
     if(globalSettings.trustBadges && globalSettings.trustBadges.length === 4) {
         for(let i=1; i<=4; i++) {
             const badge = globalSettings.trustBadges[i-1];
@@ -60,7 +61,7 @@ function applyUITexts() {
     }
 }
 
-// --- نافذة تكبير الصور ---
+// --- نافذة تكبير الصور (التفاعلية) مع دعم زر الرجوع للموبايل ---
 window.openImageModal = function(imgSrc) {
     if(!imgSrc || imgSrc.trim() === '') return;
     let modal = document.getElementById('image-viewer-modal');
@@ -70,13 +71,15 @@ window.openImageModal = function(imgSrc) {
         modal.id = 'image-viewer-modal';
         modal.className = 'fixed inset-0 z-[100] bg-brand-navy/95 flex items-center justify-center hidden opacity-0 transition-all duration-300 backdrop-blur-md p-4 cursor-zoom-out';
         
+        // القفل عند الضغط على الشاشة
         modal.onclick = function() {
             closeImageViewer();
             if(window.location.hash === '#catalog') {
-                history.back(); 
+                history.back(); // يرجع خطوة في السجل عشان ينظف الرابط
             }
         };
         
+        // ضفنا علامة تحميل (Spinner) ورا الصورة عشان لو النت بطيء
         modal.innerHTML = `
             <div class="relative w-full max-w-3xl h-full flex items-center justify-center">
                 <i class="fa-solid fa-spinner fa-spin absolute text-brand-yellow text-4xl z-0" id="img-loader"></i>
@@ -92,7 +95,7 @@ window.openImageModal = function(imgSrc) {
     const imgEl = document.getElementById('image-viewer-img');
     const loader = document.getElementById('img-loader');
     
-    if(loader) loader.style.display = 'block'; 
+    if(loader) loader.style.display = 'block'; // تشغيل علامة التحميل
     imgEl.src = imgSrc;
     imgEl.classList.remove('scale-100');
     imgEl.classList.add('scale-95');
@@ -105,9 +108,11 @@ window.openImageModal = function(imgSrc) {
         imgEl.classList.add('scale-100');
     }, 10);
 
+    // خدعة المتصفح: نضيف خطوة وهمية في السجل عشان زرار الرجوع يشتغل
     history.pushState({ modalOpen: true }, "", "#catalog");
 };
 
+// دالة إغلاق الصورة (مساعدة)
 function closeImageViewer() {
     let modal = document.getElementById('image-viewer-modal');
     if (modal && !modal.classList.contains('hidden')) {
@@ -117,12 +122,13 @@ function closeImageViewer() {
     }
 }
 
+// مراقبة زرار "الرجوع" في الموبايل
 window.addEventListener('popstate', function(event) {
-    closeImageViewer(); 
+    closeImageViewer(); // لو العميل داس رجوع، اقفل الصورة بس وماتطلعش من الموقع
 });
 
 
-// --- تشغيل الميزات المرئية الذكية ---
+// --- تشغيل الميزات المرئية الذكية (سلايدر، شريط أخبار، إشعارات) ---
 window.currentSlide = 0;
 window.sliderImages = [];
 
@@ -134,7 +140,7 @@ window.moveSlider = function(direction) {
 
 window.updateSliderView = function() {
     const track = document.getElementById('slider-track');
-    if(track) track.style.transform = `translateX(${window.currentSlide * 100}%)`; 
+    if(track) track.style.transform = `translateX(${window.currentSlide * 100}%)`; // تم ضبط الحركة للغة العربية
     
     const dots = document.querySelectorAll('.slider-dot');
     dots.forEach((dot, index) => {
@@ -158,6 +164,7 @@ function renderSlider() {
         return;
     }
 
+    // إدراج الصور لتظهر بالكامل (object-contain)
     images.forEach((img, idx) => {
         track.innerHTML += `
         <div class="w-full shrink-0 h-[400px] bg-[#fdfbf7] overflow-hidden relative flex justify-center items-center p-2" onclick="openImageModal('${img}')">
@@ -169,6 +176,7 @@ function renderSlider() {
         }
     });
 
+    // إخفاء أسهم التقليب لو مفيش غير صورة واحدة
     const sliderContainer = document.getElementById('main-slider-container');
     if (sliderContainer) {
         const buttons = sliderContainer.querySelectorAll('button');
@@ -184,6 +192,7 @@ function renderSlider() {
     window.currentSlide = 0;
     window.updateSliderView();
     
+    // تفعيل السحب بالإصبع
     let touchStartX = 0; let touchEndX = 0;
     const sliderViewport = document.getElementById('slider-viewport');
     if(sliderViewport) {
@@ -245,6 +254,7 @@ function startLiveNotifications() {
     }, 10000);
 }
 
+// --- تطبيق الإعدادات العامة على الواجهة ---
 function applySettingsToUI() {
     const savedNavy = localStorage.getItem('theme_navy');
     if(savedNavy) document.documentElement.style.setProperty('--brand-navy', savedNavy);
@@ -320,6 +330,7 @@ function renderDeliveryZones() {
     if (currentVal && globalDeliveryZones.find(z => z.id === currentVal)) select.value = currentVal;
 }
 
+// --- بداية تشغيل الموقع ---
 document.addEventListener('DOMContentLoaded', () => { 
     renderDeliveryZones(); 
     loadCart(); 
@@ -339,10 +350,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 3000);
 });
 
-// متغيرات للعميل الذكي 
-window.isOldCustomer = false;
-window.currentCustomerName = "";
-
 window.setupEventListeners = function() {
     const ids = ['customer-name', 'customer-phone', 'customer-address'];
     ids.forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener('input', updateUI); });
@@ -359,97 +366,7 @@ window.setupEventListeners = function() {
             } 
         });
     }
-
-    // ربط زر التحقق من العميل
-    const verifyBtn = document.getElementById('btn-verify-phone');
-    if(verifyBtn) {
-        verifyBtn.addEventListener('click', verifyCustomerPhone);
-    }
 }
-
-// دالة فحص العميل (بدل اللي كانت في index.html)
-window.verifyCustomerPhone = async function() {
-    const phoneInput = document.getElementById('customer-phone');
-    const verifyBtn = document.getElementById('btn-verify-phone');
-    const welcomeMsg = document.getElementById('welcome-msg');
-    const newCustomerDetails = document.getElementById('new-customer-details');
-    const nameFieldContainer = document.getElementById('name-field-container');
-    const nameInput = document.getElementById('customer-name');
-    const deliveryZone = document.getElementById('delivery-zone'); 
-    const checkoutBtn = document.getElementById('checkout-btn');
-    const checkoutHint = document.getElementById('checkout-hint-step2');
-
-    const phone = phoneInput.value.trim();
-    if(!phone || phone.length < 10) {
-        alert("برجاء إدخال رقم هاتف صحيح");
-        return;
-    }
-
-    verifyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>';
-    verifyBtn.disabled = true;
-
-    try {
-        if(!db) throw new Error("قاعدة البيانات غير متصلة");
-        const docRef = db.collection("customers").doc(phone);
-        const docSnap = await docRef.get();
-
-        if (docSnap.exists) {
-            window.isOldCustomer = true;
-            const data = docSnap.data();
-            window.currentCustomerName = data.name;
-            
-            if(welcomeMsg) {
-                welcomeMsg.innerHTML = `
-                    <div class="text-right">
-                        <p class="text-base font-black text-brand-navy mb-1">🎯 أهلاً بك مجدداً يا ${data.name}!</p>
-                        <p class="text-xs text-gray-600 font-bold">خط التوصيل المسجل لديك: <span class="text-brand-cyanDark">${data.region}</span></p>
-                        <p class="text-[11px] text-green-600 font-bold mt-1">✓ إنت مش محتاج تكتب بياناتك تاني.. اضغط على الزرار الأخضر تحت فوراً لتأكيد طلبك!</p>
-                    </div>
-                `;
-                welcomeMsg.classList.remove('hidden');
-            }
-            
-            if(newCustomerDetails) newCustomerDetails.classList.add('hidden');
-            if(nameFieldContainer) nameFieldContainer.classList.add('hidden');
-            
-            if(nameInput) nameInput.value = data.name || 'عميل قديم';
-
-            if(deliveryZone && data.region) {
-                for(let i=0; i<deliveryZone.options.length; i++) {
-                    if(deliveryZone.options[i].text.includes(data.region) || deliveryZone.options[i].value === data.region) {
-                        deliveryZone.selectedIndex = i;
-                        break;
-                    }
-                }
-            }
-
-            if(checkoutBtn) {
-                checkoutBtn.disabled = false;
-                checkoutBtn.style.display = 'flex';
-                checkoutBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
-            if(checkoutHint) checkoutHint.classList.add('hidden');
-            
-            updateUI(); 
-
-        } else {
-            window.isOldCustomer = false;
-            if(welcomeMsg) welcomeMsg.classList.add('hidden');
-            if(newCustomerDetails) newCustomerDetails.classList.remove('hidden');
-            if(nameFieldContainer) nameFieldContainer.classList.remove('hidden');
-            if(nameInput) nameInput.value = ""; 
-            if(checkoutBtn) checkoutBtn.style.display = 'flex';
-            updateUI(); 
-        }
-        
-    } catch (error) {
-        console.error("خطأ:", error);
-        alert("حدث خطأ في الاتصال، يرجى المحاولة مرة أخرى.");
-    }
-    
-    verifyBtn.innerHTML = 'متابعة';
-    verifyBtn.disabled = false;
-};
 
 // --- تهيئة Firebase ---
 function initFirebase() {
@@ -527,6 +444,7 @@ window.applyPromoCode = function() {
     updateUI();
 };
 
+// --- محرك عرض المنتجات ---
 window.renderProducts = function() {
     if(!isStoreDataLoaded) return; 
     const container = document.getElementById('products-container'); 
@@ -564,6 +482,7 @@ window.renderProducts = function() {
         else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-orange-200">🔥 قرب يخلص</span>`;
         else if(item.tag === 'offer') customTagHtml = `<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-purple-200">⏱ عرض محدود</span>`;
 
+        // إدراج التعديل: تمديد الصورة وإزالة الهوامش وإضافة التفاعلية
         const cardHTML = `
             <div class="bg-white rounded-2xl shadow-sm border ${isDiscountActive ? 'border-red-200' : 'border-gray-200'} overflow-hidden flex flex-row h-[140px] relative transition-transform hover:shadow-md">
                 ${saleBadgeHtml}
@@ -600,6 +519,7 @@ window.renderProducts = function() {
     if(mainProductsCount === 0) container.innerHTML = `<div class="text-center py-10 text-gray-400 font-bold">${globalSettings.uiTexts?.emptyMenuMsg || "لا توجد منتجات حالياً"}</div>`;
 };
 
+// --- منطق السلة والكميات ---
 window.getCardActionHTML = function(id) {
     if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-xs text-center">مغلق</div>`;
     const inCart = cart[id]?.quantity || 0; 
@@ -643,6 +563,7 @@ window.updateQuantity = function(id, delta) {
     renderProducts(); 
 };
 
+// --- التنقل بين خطوات السلة وتغيير الشاشات ---
 window.goToCheckoutStep2 = function() {
     document.getElementById('checkout-step-1').classList.add('hidden');
     document.getElementById('checkout-step-2').classList.remove('hidden');
@@ -673,6 +594,7 @@ window.backToCart = function() {
     updateUI();
 };
 
+// --- تحديث واجهة السلة وحساب الحسابات ---
 window.updateUI = function() {
     let totalItems = 0, subTotalPrice = 0; 
     const cartItemsContainer = document.getElementById('cart-items'); 
@@ -778,22 +700,19 @@ window.updateUI = function() {
     }
 
     if (checkoutBtn && checkoutHintStep2) {
-        // تم إلغاء شرط طول الاسم للعميل القديم عشان يقدر يقدم الطلب
         let validForm = false;
-        const phoneVal = document.getElementById('customer-phone')?.value.trim();
         const nameVal = document.getElementById('customer-name')?.value.trim();
-        
-        if (totalItems > 0 && deliverySelect && deliverySelect.value !== "" && meetsMinOrder && phoneVal && phoneVal.length >= 10) {
-            // لو عميل قديم مش محتاجين نتأكد من طول اسمه، هو متسجل. لو جديد نتأكد إن كتب اسم
-            if(window.isOldCustomer) validForm = true;
-            else if(nameVal && nameVal.length >= 3) validForm = true;
+        const phoneVal = document.getElementById('customer-phone')?.value.trim();
+        if (totalItems > 0 && deliverySelect && deliverySelect.value !== "" && meetsMinOrder) {
+            if (nameVal && nameVal.length >= 3 && phoneVal && phoneVal.length >= 10) validForm = true;
         }
         checkoutBtn.disabled = !validForm;
-        if(!validForm && totalItems > 0 && !window.isOldCustomer) checkoutHintStep2.classList.remove('hidden'); 
+        if(!validForm && totalItems > 0) checkoutHintStep2.classList.remove('hidden'); 
         else checkoutHintStep2.classList.add('hidden');
     }
 };
 
+// --- نوافذ وتنبيهات ---
 window.toggleCart = function() { 
     const sidebar = document.getElementById('cart-sidebar'); 
     const overlay = document.getElementById('cart-overlay'); 
@@ -803,7 +722,7 @@ window.toggleCart = function() {
         overlay.classList.remove('hidden'); 
         setTimeout(() => overlay.classList.remove('opacity-0'), 10); 
         document.body.style.overflow = 'hidden'; 
-        backToCart(); 
+        backToCart(); // يفتح دايماً على الخطوة الأولى
     } else { 
         sidebar.classList.add('translate-x-full'); 
         overlay.classList.add('opacity-0'); 
@@ -813,6 +732,7 @@ window.toggleCart = function() {
 };
 
 window.showAlert = function(t, m) { 
+    // 1. إرجاع الأيقونة الافتراضية
     const iconCont = document.getElementById('alert-icon-container');
     if(iconCont) {
         iconCont.className = "w-16 h-16 bg-brand-light text-brand-cyanDark rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"; 
@@ -821,14 +741,17 @@ window.showAlert = function(t, m) {
     const icon = document.getElementById('alert-icon');
     if(icon) icon.className = "fa-solid fa-bell"; 
     
+    // 2. إرجاع العنوان
     const title = document.getElementById('alert-title');
     if(title) {
         title.innerText = t;
         title.classList.remove('hidden');
     }
     
+    // 3. وضع الرسالة
     document.getElementById('alert-message').innerText = m; 
     
+    // 4. إظهار زرار "حسناً" الإجباري
     const btn = document.querySelector('#alert-box button'); 
     if(btn) { 
         btn.className = "bg-brand-navy hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl w-full transition-opacity"; 
@@ -837,6 +760,7 @@ window.showAlert = function(t, m) {
         btn.classList.remove('hidden');
     }
 
+    // فتح الشاشة
     const md = document.getElementById('alert-modal'); 
     md.classList.remove('hidden'); 
     setTimeout(()=>md.classList.remove('opacity-0'),10); 
@@ -848,6 +772,8 @@ window.closeAlert = function() {
         document.getElementById('alert-modal').classList.add('hidden'); 
     }, 300); 
 };
+
+
 
 window.openVipPreOrder = function(id) {
     const item = productsInfo[id];
@@ -868,29 +794,35 @@ window.sendVipWhatsApp = function(itemName) {
     closeAlert(); 
 };
 
-// دالة تأكيد وإرسال الطلب تم ربطها مباشرة للعمل مع فايربيز وتيك تيك
-window.firebaseCheckout = async function() {
+// --- إتمام الطلب وحفظ الكوبونات ---
+window.initiateCheckout = function() {
+    if (globalSettings.crossSellActive && globalSettings.crossSellProductId && productsInfo[globalSettings.crossSellProductId] && !cart[globalSettings.crossSellProductId] && getAvailableStock(globalSettings.crossSellProductId) > 0) {
+        const item = productsInfo[globalSettings.crossSellProductId]; 
+        document.getElementById('cross-sell-title').innerText = globalSettings.crossSellTitle || `جرب ${item.name}؟`; 
+        document.getElementById('cross-sell-desc').innerText = globalSettings.crossSellDesc || 'مغذي جداً للأطفال وطعمه حكاية!'; 
+        document.getElementById('cross-sell-price').innerText = globalPrices[globalSettings.crossSellProductId] || item.basePrice; 
+        document.getElementById('cross-sell-img').src = (item.images && item.images.length>0) ? item.images[0] : '';
+        const modal = document.getElementById('cross-sell-modal'); const box = document.getElementById('cross-sell-box'); modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
+    } else finalCheckoutStep();
+};
+
+window.acceptCrossSell = function() { addToCart(globalSettings.crossSellProductId); const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
+window.declineCrossSell = function() { const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
+
+window.finalCheckoutStep = async function() {
     const checkoutBtn = document.getElementById('checkout-btn'); 
     const originalBtnHtml = checkoutBtn.innerHTML;
-    checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري إرسال طلبك...'; 
-    checkoutBtn.disabled = true;
+    checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; checkoutBtn.disabled = true;
 
     const deliverySelect = document.getElementById('delivery-zone');
     const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value);
     const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; const deliveryFee = selectedZone ? selectedZone.price : 0;
     
-    // سحب الاسم بناءً على هل هو عميل قديم أم جديد
-    let customerName = window.isOldCustomer ? window.currentCustomerName : document.getElementById('customer-name').value.trim(); 
+    let customerName = document.getElementById('customer-name').value.trim(); 
     let customerPhone = document.getElementById('customer-phone').value.trim(); 
     let customerAddress = document.getElementById('customer-address').value.trim();
 
-    // إزالة قيد التحقق الصارم للاسم في حالة العميل القديم
-    if (!window.isOldCustomer) {
-        if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { 
-            showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); 
-            checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; 
-        }
-    }
+    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
 
     if (appliedPromo && appliedPromo.customerPhone) {
         let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); let userPhone = customerPhone.replace(/\D/g, '').slice(-10);
@@ -934,12 +866,13 @@ window.firebaseCheckout = async function() {
 
     let promoUpdated = false;
     
+    // --- تحديث الأكواد بعد الاستخدام وحفظها في قاعدة البيانات ---
     if (appliedPromo) {
         let pIndex = globalSettings.promoCodes.findIndex(p => p.code === appliedPromo.code);
         if (pIndex !== -1) {
             let pObj = globalSettings.promoCodes[pIndex];
             if (pObj.usesLeft !== null && pObj.usesLeft !== undefined) { 
-                pObj.usesLeft -= 1; 
+                pObj.usesLeft -= 1; // الكود بيتقلب "تم الاستخدام"
             }
             promoUpdated = true;
         }
@@ -954,7 +887,7 @@ window.firebaseCheckout = async function() {
         const maxDisc = globalSettings.rewardMaxDiscount || 0;
         const newPromoObj = { code: newPromoCode, type: globalSettings.rewardType, discount: globalSettings.rewardValue, isAuto: true, usesLeft: 1, customerPhone: customerPhone, minOrder: 0, maxDiscount: maxDisc, expiryDate: '' };
         if(!globalSettings.promoCodes) globalSettings.promoCodes = []; 
-        globalSettings.promoCodes.push(newPromoObj); 
+        globalSettings.promoCodes.push(newPromoObj); // إضافة الكود الجديد للقائمة
         if (globalSettings.rewardMaxGenerations > 0) { globalSettings.rewardMaxGenerations -= 1; }
         promoUpdated = true;
     }
@@ -976,22 +909,12 @@ window.firebaseCheckout = async function() {
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
+            // --- إجبار قاعدة البيانات على حفظ الأكواد الجديدة والمحروقة ---
             let promises = [];
             promises.push(db.collection("orders").add(orderData));
-            
-            // حفظ بيانات العميل الجديد 
-            if(!window.isOldCustomer) {
-                promises.push(db.collection("customers").doc(customerPhone).set({
-                    name: customerName,
-                    phone: customerPhone,
-                    region: zoneName,
-                    order_count: 1,
-                    notes: "عميل جديد سجل من الموقع"
-                }));
-            }
-
             promises.push(db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true }));
             
+            // لو تم تحديث الكوبونات (استخدام قديم أو توليد جديد)، احفظها فوراً
             if(promoUpdated) {
                 promises.push(db.collection("inventory").doc("settings").set({ 
                     promoCodes: globalSettings.promoCodes, 
@@ -1019,19 +942,23 @@ window.firebaseCheckout = async function() {
         alertBtn.onclick = () => { closeAlert(); window.location.href = `https://api.whatsapp.com/send?phone=20${globalSettings.storePhone}&text=${encodeURIComponent(message)}`; };
         const md = document.getElementById('alert-modal'); md.classList.remove('hidden'); setTimeout(()=>md.classList.remove('opacity-0'),10);
     } else {
+        // حساب يوم الاستلام (بكرة)
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         const deliveryDay = tomorrow.toLocaleDateString('ar-EG', { weekday: 'long' });
 
+        // جلب الكلام من القاموس
         const uiTexts = globalSettings.uiTexts || {};
         const titleText = uiTexts['successTitle'] || 'تم تأكيد أوردرك بنجاح! 🎉';
         let bodyTemplate = uiTexts['successMsgTemplate'] || 'أوردرك اتسجل في السيستم عندنا خلاص ومفيش حاجة تانية مطلوبة منك. هيتم التجهيز عشان تستلمه إن شاء الله غداً (يوم {اليوم}).<br><br>لو حابب تتواصل معانا أو تتابع الأوردر، تقدر تكلمنا ع الواتساب.';
         
+        // تبديل كلمة {اليوم} باليوم الحقيقي
         const bodyText = bodyTemplate.replace(/{اليوم}/g, deliveryDay);
         
         const waBtnText = uiTexts['waFollowUpBtn'] || 'التواصل والمتابعة ع الواتساب';
         const closeBtnText = uiTexts['closeFollowUpBtn'] || 'تمام، شكراً 👍';
 
+        // تخزين رابط الواتساب في الذاكرة
         window.currentOrderWaLink = `https://api.whatsapp.com/send?phone=20${globalSettings.storePhone}&text=${encodeURIComponent(message)}`;
 
         const msgHTML = `
@@ -1061,29 +988,18 @@ window.firebaseCheckout = async function() {
             </div>
         `;
         
+        // 1. إخفاء الزرار القديم "حسناً" الأول (السر هنا!)
         const alertBtn = document.querySelector('#alert-box button');
         if(alertBtn) alertBtn.classList.add('hidden');
         
+        // 2. تركيب الشاشة الجديدة اللي فيها الزراير الصح
         document.getElementById('alert-icon-container').classList.add('hidden'); 
         document.getElementById('alert-title').classList.add('hidden'); 
         document.getElementById('alert-message').innerHTML = msgHTML;
         
+        // إظهار الشاشة
         const md = document.getElementById('alert-modal'); 
         md.classList.remove('hidden'); 
         setTimeout(() => md.classList.remove('opacity-0'), 10);
     }
 };
-
-window.initiateCheckout = function() {
-    if (globalSettings.crossSellActive && globalSettings.crossSellProductId && productsInfo[globalSettings.crossSellProductId] && !cart[globalSettings.crossSellProductId] && getAvailableStock(globalSettings.crossSellProductId) > 0) {
-        const item = productsInfo[globalSettings.crossSellProductId]; 
-        document.getElementById('cross-sell-title').innerText = globalSettings.crossSellTitle || `جرب ${item.name}؟`; 
-        document.getElementById('cross-sell-desc').innerText = globalSettings.crossSellDesc || 'مغذي جداً للأطفال وطعمه حكاية!'; 
-        document.getElementById('cross-sell-price').innerText = globalPrices[globalSettings.crossSellProductId] || item.basePrice; 
-        document.getElementById('cross-sell-img').src = (item.images && item.images.length>0) ? item.images[0] : '';
-        const modal = document.getElementById('cross-sell-modal'); const box = document.getElementById('cross-sell-box'); modal.classList.remove('hidden'); setTimeout(() => { modal.classList.remove('opacity-0'); box.classList.remove('scale-95'); box.classList.add('scale-100'); }, 10);
-    } else window.firebaseCheckout(); // هنا التعديل عشان يشغل الدالة الجديدة الخاصة بفايربيز
-};
-
-window.acceptCrossSell = function() { addToCart(globalSettings.crossSellProductId); const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); window.firebaseCheckout(); }, 300); };
-window.declineCrossSell = function() { const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); window.firebaseCheckout(); }, 300); };
