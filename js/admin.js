@@ -1,5 +1,3 @@
-// js/admin.js
-
 function debounce(func, delay) {
     let timeout;
     return function(...args) {
@@ -159,6 +157,7 @@ const buildDashboardUI = () => {
                 <button onclick="filterOrders('new')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-100 text-red-700">جديد</button>
                 <button onclick="filterOrders('processing')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-yellow-100 text-yellow-700">قيد التجهيز</button>
                 <button onclick="filterOrders('completed')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-green-100 text-green-700">مكتمل</button>
+                <button onclick="filterOrders('canceled')" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-gray-100 text-gray-600 border border-gray-300">ملغي</button>
             </div>
             <div id="orders-list-container" class="space-y-3"></div>
         `;
@@ -343,7 +342,7 @@ const buildDashboardUI = () => {
 };
 
 window.openAdminDashboard = () => {
-    buildDashboardUI(); // بناء الهياكل لتفادي أي خطأ DOM
+    buildDashboardUI(); 
 
     // زر الخروج
     const headerDiv = document.querySelector('#admin-dashboard-modal .flex.items-center.gap-3');
@@ -365,7 +364,6 @@ window.openAdminDashboard = () => {
         storeOpenLabel.className = (globalSettings.storeOpen !== false) ? 'mr-3 text-sm font-black text-green-600 w-12' : 'mr-3 text-sm font-black text-red-600 w-12';
     }
 
-    // إعدادات المتجر والمربعات
     setVal('admin-store-name', globalSettings.storeName || ''); 
     setVal('admin-store-desc', globalSettings.storeDesc || ''); 
     setVal('admin-store-phone', globalSettings.storePhone || ''); 
@@ -386,7 +384,6 @@ window.openAdminDashboard = () => {
         setVal(`admin-badge-${i}-desc`, badges[i-1].desc);
     }
     
-    // التسويق والمتقدم
     setCheck('admin-reward-active', globalSettings.rewardActive);
     setVal('admin-reward-type', globalSettings.rewardType || 'fixed');
     setVal('admin-reward-value', globalSettings.rewardValue || 0);
@@ -534,7 +531,6 @@ window.syncAdminProductsFromDOM = () => {
     globalSettings.bestSellers = newBest;
 };
 
-// --- السلايدر ---
 window.renderGalleryTabUI = () => {
     const c = document.getElementById('admin-gallery-list'); if(!c) return;
     if(!globalSettings.galleryImages) globalSettings.galleryImages = ["all-sizes.jpg"];
@@ -547,14 +543,12 @@ window.renderGalleryTabUI = () => {
     `).join('');
 };
 
-// --- المناطق ---
 window.renderAdminZones = () => { 
     const c = document.getElementById('admin-zones-container'); if(!c) return; c.innerHTML=''; 
     tempAdminZones.forEach((z,i) => c.innerHTML += `<div class="flex gap-2 items-center"><input type="text" value="${z.name}" class="flex-1 border rounded p-2 text-sm font-bold text-brand-navy outline-none" onchange="tempAdminZones[${i}].name=this.value"><input type="number" value="${z.price}" class="w-16 border rounded p-2 text-sm text-center font-bold text-brand-cyanDark outline-none" onchange="tempAdminZones[${i}].price=parseInt(this.value)"><button onclick="tempAdminZones.splice(${i},1);renderAdminZones()" class="text-red-500 hover:bg-red-50 rounded w-8 h-8 transition-colors"><i class="fa-solid fa-trash"></i></button></div>`); 
 };
 window.addNewAdminZone = () => { tempAdminZones.push({id:'z_'+Date.now(), name:'', price:0}); renderAdminZones(); };
 
-// --- المناديب (Drivers) ---
 window.renderAdminDrivers = () => {
     const c = document.getElementById('admin-drivers-container'); 
     const sel = document.getElementById('dispatch-driver-select');
@@ -587,16 +581,16 @@ window.renderAdminPromos = () => {
         if(p.usesLeft === undefined) p.usesLeft = p.isAuto ? 1 : null;
         p.minOrder = p.minOrder || 0;
         p.maxDiscount = p.maxDiscount || 0;
-        const isUsed = p.usesLeft === 0;
+        const isUsed = p.usesLeft !== null && p.usesLeft !== undefined && Number(p.usesLeft) <= 0;
         
-            let badgeHtml = '';
-            if (p.usesLeft !== null && p.usesLeft !== undefined && Number(p.usesLeft) <= 0) { 
-                badgeHtml = `<span class="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🔴 تم استهلاك الكود (مغلق)</span>`; 
-            } else if (p.isAuto) { 
-                badgeHtml = `<span class="bg-green-100 text-green-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🟢 صالح لم يُستخدم</span>`; 
-            } else { 
-                badgeHtml = `<span class="bg-gray-200 text-gray-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">⚙️ كود ثابت (متاح)</span>`; 
-            }
+        let badgeHtml = '';
+        if (isUsed) { 
+            badgeHtml = `<span class="bg-red-100 text-red-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🔴 تم استهلاك الكود (مغلق)</span>`; 
+        } else if (p.isAuto) { 
+            badgeHtml = `<span class="bg-green-100 text-green-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">🟢 صالح لم يُستخدم</span>`; 
+        } else { 
+            badgeHtml = `<span class="bg-gray-200 text-gray-700 text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">⚙️ كود ثابت (متاح)</span>`; 
+        }
 
         c.innerHTML += `
         <div class="flex flex-col gap-2 ${p.isAuto ? 'bg-blue-50/50' : 'bg-gray-50'} p-3 border border-gray-200 rounded-xl mb-3 relative overflow-hidden shadow-sm">
@@ -638,7 +632,7 @@ window.exportOrdersToCSV = () => {
     csv += "التاريخ والوقت,الاسم,الموبايل,المنطقة,العنوان,الطلبات,الإجمالي (ج.م),الخصم,الحالة\n";
     ordersList.forEach(o => {
         let items = o.items.map(i => `${i.quantity} ${i.name}`).join(' + ');
-        let status = o.status === 'new' ? 'جديد' : (o.status === 'processing' ? 'قيد التجهيز' : 'مكتمل');
+        let status = o.status === 'new' ? 'جديد' : (o.status === 'processing' ? 'قيد التجهيز' : (o.status === 'canceled' ? 'ملغي' : 'مكتمل'));
         let date = (o.orderDate || '') + " " + (o.orderTime || '');
         let discount = o.discount ? o.discount : 0;
         let address = o.customerAddress ? o.customerAddress.replace(/,/g, '-') : '';
@@ -695,13 +689,13 @@ window.renderOrdersList = () => {
     }
 
     container.innerHTML = filtered.map(order => {
-        let statusColor = order.status === 'new' ? 'bg-red-100 text-red-700 border-red-200' : (order.status === 'processing' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : 'bg-green-100 text-green-700 border-green-200');
-        let statusText = order.status === 'new' ? 'جديد' : (order.status === 'processing' ? 'قيد التجهيز' : 'مكتمل');
+        let statusColor = order.status === 'new' ? 'bg-red-100 text-red-700 border-red-200' : (order.status === 'processing' ? 'bg-yellow-100 text-yellow-700 border-yellow-200' : (order.status === 'canceled' ? 'bg-gray-200 text-gray-500 border-gray-300' : 'bg-green-100 text-green-700 border-green-200'));
+        let statusText = order.status === 'new' ? 'جديد' : (order.status === 'processing' ? 'قيد التجهيز' : (order.status === 'canceled' ? 'ملغي' : 'مكتمل'));
         let itemsHtml = order.items.map(i => `<div class="flex justify-between text-xs text-gray-700 font-bold border-b border-gray-100 pb-1 mb-1 last:border-0 last:pb-0 last:mb-0"><span><span class="text-brand-cyanDark">${i.quantity}x</span> ${i.name}</span><span>${i.quantity*i.price} ج</span></div>`).join('');
 
         return `
-        <div class="bg-white border rounded-xl p-4 shadow-sm relative overflow-hidden mb-3">
-            <div class="absolute top-0 right-0 w-1 h-full ${order.status === 'new' ? 'bg-red-500' : (order.status === 'processing' ? 'bg-yellow-500' : 'bg-green-500')}"></div>
+        <div class="bg-white border rounded-xl p-4 shadow-sm relative overflow-hidden mb-3 ${order.status === 'canceled' ? 'opacity-70' : ''}">
+            <div class="absolute top-0 right-0 w-1 h-full ${order.status === 'new' ? 'bg-red-500' : (order.status === 'processing' ? 'bg-yellow-500' : (order.status === 'canceled' ? 'bg-gray-400' : 'bg-green-500'))}"></div>
             <div class="flex justify-between items-start mb-3">
                 <div>
                     <div class="font-black text-brand-navy">${order.customerName}</div>
@@ -728,9 +722,11 @@ window.renderOrdersList = () => {
             </div>
             
             <div class="flex gap-2 flex-wrap">
-                ${order.status === 'new' ? `<button onclick="updateOrderStatus('${order.id}', 'processing')" class="flex-1 bg-yellow-500 hover:bg-yellow-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">قيد التجهيز</button>` : ''}
-                ${order.status === 'processing' ? `<button onclick="updateOrderStatus('${order.id}', 'completed')" class="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">تم التوصيل</button>` : ''}
+                ${order.status === 'new' ? `<button onclick="updateOrderStatus('${order.id}', 'processing', ${order.total || 0})" class="flex-1 bg-yellow-500 hover:bg-yellow-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">قيد التجهيز</button>` : ''}
+                ${order.status === 'processing' ? `<button onclick="updateOrderStatus('${order.id}', 'completed', ${order.total || 0})" class="flex-1 bg-green-500 hover:bg-green-600 transition-colors text-white py-2 rounded-lg text-xs font-black shadow-sm">تم التوصيل</button>` : ''}
+                ${(order.status === 'new' || order.status === 'processing') ? `<button onclick="updateOrderStatus('${order.id}', 'canceled', ${order.total || 0})" class="flex-1 bg-red-50 hover:bg-red-100 transition-colors text-red-600 py-2 rounded-lg text-xs font-black shadow-sm border border-red-200">إلغاء</button>` : ''}
                 ${order.status === 'completed' ? `<button onclick="sendRatingRequest('${order.customerPhone}', ordersList.find(o=>o.id==='${order.id}'))" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg text-xs font-black"><i class="fa-solid fa-star"></i> إرسال تقييم</button>` : ''}
+                ${order.status === 'canceled' ? `<div class="flex-1 text-center bg-gray-100 text-red-500 py-2 rounded-lg text-xs font-black italic">❌ تم إلغاء الطلب</div>` : ''}
             </div>
         </div>`;
     }).join('');
@@ -751,16 +747,42 @@ async function loadOrders() {
 }
 
 window.filterOrders = (f) => { orderFilter=f; renderOrdersList(); };
-window.updateOrderStatus = async (id, s) => { 
+
+// الدالة المسئولة عن تغيير حالة الأوردر (متضاف فيها كود خصم الإلغاء)
+window.updateOrderStatus = async (id, s, amount = 0) => { 
+    if (s === 'canceled') {
+        if (!confirm("تأكيد: هل تريد إلغاء الأوردر؟ (سيتم خصم قيمته تلقائياً من إحصائيات المبيعات)")) return;
+    }
+    
     if(db){ 
-        const btn = event.target; const origText = btn.innerText; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; btn.disabled = true;
-        await db.collection("orders").doc(id).update({status:s}); 
-        loadOrders();
+        const btn = event.currentTarget; 
+        const origText = btn.innerHTML; 
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; 
+        btn.disabled = true;
+        
+        try {
+            await db.collection("orders").doc(id).update({status:s}); 
+            
+            // لو الأوردر اتلغى، نطرح الفلوس من الإحصائيات الرئيسية
+            if (s === 'canceled' && amount > 0) {
+                await db.collection("inventory").doc("stats").update({ 
+                    sales: firebase.firestore.FieldValue.increment(-amount),
+                    orders: firebase.firestore.FieldValue.increment(-1)
+                });
+            }
+            
+            loadOrders();
+        } catch (e) {
+            console.error(e);
+            btn.innerHTML = origText; 
+            btn.disabled = false;
+            showAlert("خطأ", "حدث مشكلة أثناء التحديث");
+        }
     } 
 };
 
 window.deleteAllOrders = async () => {
-    if(!confirm("⚠️ تحذير: هل أنت متأكد من مسح جميع الطلبات من السجل؟ لا يمكن التراجع عن هذا الإجراء!")) return;
+    if(!confirm("⚠️ تحذير: هل أنت متأكد من مسح جميع الطلبات من السجل؟ (هذا لن يصفر إحصائيات المبيعات، استخدم التصفير أولاً إذا أردت)")) return;
     const btn = document.querySelector('button[onclick="deleteAllOrders()"]'); 
     let originalHtml = '';
     if(btn) { originalHtml = btn.innerHTML; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري المسح...'; }
@@ -959,11 +981,17 @@ window.saveAdminData = async () => {
         { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية' }
     ];
 
-    // فلترة الأكواد وحفظها بدون فقدان
-const finalPromoCodes = tempPromoCodes.filter(p => p.code && p.code.trim() !== '');
+    // فلترة الأكواد وحفظها بدون فقدان (مع إجبار تحويلها لأرقام لمنع التعليق)
+    const finalPromoCodes = tempPromoCodes.filter(p => p.code && p.code.trim() !== '').map(p => ({
+        ...p,
+        discount: parseFloat(p.discount) || 0,
+        minOrder: parseFloat(p.minOrder) || 0,
+        maxDiscount: parseFloat(p.maxDiscount) || 0,
+        usesLeft: p.usesLeft === '' || p.usesLeft === null ? null : parseInt(p.usesLeft)
+    }));
 
     const newSettings = {
-        ...globalSettings, // بيحافظ على أي إعداد قديم
+        ...globalSettings, 
         storeOpen: getSafeCheck('admin-store-open', globalSettings.storeOpen), 
         storeName: getSafeVal('admin-store-name', globalSettings.storeName), 
         storeDesc: getSafeVal('admin-store-desc', globalSettings.storeDesc), 
@@ -972,7 +1000,7 @@ const finalPromoCodes = tempPromoCodes.filter(p => p.code && p.code.trim() !== '
         freeDeliveryActive: getSafeCheck('admin-free-delivery-active', globalSettings.freeDeliveryActive), 
         freeDeliveryThreshold: parseInt(getSafeVal('admin-free-delivery-threshold', globalSettings.freeDeliveryThreshold)) || 0, 
         deliveryZones: tempAdminZones.filter(z => z.name.trim()),
-        drivers: (window.tempDrivers || []).filter(d => d.name.trim() || d.phone.trim()), // بيحفظ المناديب
+        drivers: (window.tempDrivers || []).filter(d => d.name.trim() || d.phone.trim()), 
         
         trustBadges: [
             { icon: getSafeVal('admin-badge-1-icon', defaultBadges[0].icon), title: getSafeVal('admin-badge-1-title', defaultBadges[0].title), desc: getSafeVal('admin-badge-1-desc', defaultBadges[0].desc) },
