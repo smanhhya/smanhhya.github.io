@@ -1048,14 +1048,17 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // 3. البحث في فايربيز وعرض الرسائل الشيك
+// 3. البحث في فايربيز وعرض الرسائل الشيك (معدل للاكتفاء بالبيانات الجديدة فقط)
 window.checkCustomerLoyalty = async function(cleanPhone) {
     if(!hasCloud || !db) return;
     try {
-        // بنبحث في كولكشن customers اللي إنت ضفته في الـ Rules
         const doc = await db.collection('customers').doc(cleanPhone).get();
         
-        if(doc.exists) {
+        // تعديل: بنتأكد إن العميل عنده حقل "lastOrder" (يعني طلب وسجل بنفسه في النظام الجديد)
+        // ومفهوش علامة "imported" بتاعة الداتا القديمة
+        if(doc.exists && doc.data().lastOrder && !doc.data().imported) {
             const data = doc.data();
+            
             // أوتو-فيل (تعبئة تلقائية) للبيانات
             if(data.name) document.getElementById('customer-name').value = data.name;
             if(data.address && document.getElementById('customer-address')) document.getElementById('customer-address').value = data.address;
@@ -1064,17 +1067,18 @@ window.checkCustomerLoyalty = async function(cleanPhone) {
                 renderDeliveryZones(); // تحديث السعر
             }
             
-            // رسالة الترحيب للعميل اللي طلب قبل كده
+            // رسالة الترحيب للعميل الجديد المعتمد
             let firstName = data.name.split(' ')[0];
             showCustomerWelcome(`أهلاً بيك مرة تانية في بيتك يا ${firstName}! 👑 جهزنا بياناتك عشان متتعبش.`, 'bg-green-50', 'text-green-700', 'border-green-200');
             updateUI(); // تفعيل زرار المتابعة
             
         } else {
-            // رسالة الترحيب للعميل الجديد (أول مرة يطلب)
+            // لو العميل مش موجود، أو جاي من داتا قديمة، هيتعامل كأنه عميل جديد تماماً لأول مرة
             showCustomerWelcome(`نورت عيلة سمان ههيا لأول مرة! ✨ كمل بياناتك عشان تتسجل في الـ VIP.`, 'bg-blue-50', 'text-blue-700', 'border-blue-200');
         }
     } catch(e) { console.log("Customer lookup error", e); }
 };
+
 
 // 4. رسم رسالة الترحيب فوق حقل الاسم
 window.showCustomerWelcome = function(text, bgColor, textColor, borderColor) {
