@@ -900,7 +900,9 @@ window.finalCheckoutStep = async function() {
     let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', notesText).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
 
     try {
-        fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ access_key: WEB3FORMS_ACCESS_KEY, subject: `🛒 ${itemsSummaryArray.join(' ')}`, "التفاصيل": orderDetailsForTickTick }) }).catch(e=>console.log(e));
+        if(typeof WEB3FORMS_ACCESS_KEY !== 'undefined') {
+            fetch('https://api.web3forms.com/submit', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }, body: JSON.stringify({ access_key: WEB3FORMS_ACCESS_KEY, subject: `🛒 ${itemsSummaryArray.join(' ')}`, "التفاصيل": orderDetailsForTickTick }) }).catch(e=>console.log(e));
+        }
 
         if (hasCloud && db) {
             const orderData = { 
@@ -909,12 +911,15 @@ window.finalCheckoutStep = async function() {
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
-            // --- إجبار قاعدة البيانات على حفظ الأكواد الجديدة والمحروقة ---
             let promises = [];
             promises.push(db.collection("orders").add(orderData));
             promises.push(db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true }));
             
-            // لو تم تحديث الكوبونات (استخدام قديم أو توليد جديد)، احفظها فوراً
+            // 👇👇 السطرين الجداد بتوع حفظ بيانات العميل الـ VIP اتحطوا هنا 👇👇
+            let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
+            promises.push(db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+            // 👆👆 ------------------------------------------------ 👆👆
+
             if(promoUpdated) {
                 promises.push(db.collection("inventory").doc("settings").set({ 
                     promoCodes: globalSettings.promoCodes, 
@@ -926,6 +931,7 @@ window.finalCheckoutStep = async function() {
             let updates = {}; for (let id in cart) updates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); await db.collection('inventory').doc('stock').update(updates);
         }
     } catch(e) { console.log("Sync Error", e); }
+
 
     cart = {}; saveCart(); appliedPromo = null; if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
     document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
