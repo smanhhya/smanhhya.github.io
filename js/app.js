@@ -1003,3 +1003,88 @@ window.finalCheckoutStep = async function() {
         }
     }
 };
+ // === نظام التعرف الذكي على العملاء (VIP & الجدد) ===
+
+// 1. فلتر تنظيف رقم الموبايل (عربي، إنجليزي، مسافات، واتساب)
+window.formatPhoneNumber = function(phone) {
+    if(!phone) return '';
+    // تحويل الأرقام العربية إلى إنجليزية
+    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    let cleaned = phone.replace(/[٠-٩]/g, w => arabicNumbers.indexOf(w));
+    // إزالة أي مسافات، أقواس، أو علامة +
+    cleaned = cleaned.replace(/\D/g, '');
+    // لو الرقم مكتوب بكود مصر 2012 نخليه 012
+    if (cleaned.startsWith('201') && cleaned.length === 12) {
+        cleaned = '0' + cleaned.substring(2);
+    }
+    return cleaned;
+};
+
+// 2. مراقبة حقل الموبايل وهو بيكتب
+let phoneTimeout;
+document.addEventListener('DOMContentLoaded', () => {
+    const phoneInput = document.getElementById('customer-phone');
+    if(phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            clearTimeout(phoneTimeout);
+            let cleanPhone = formatPhoneNumber(e.target.value);
+            
+            // لو الرقم اكتمل (10 أو 11 رقم)، ندور عليه في قاعدة البيانات
+            if(cleanPhone.length >= 10) {
+                phoneTimeout = setTimeout(() => {
+                    checkCustomerLoyalty(cleanPhone);
+                }, 800); // بيستنى أقل من ثانية بعد ما العميل يوقف كتابة
+            } else {
+                hideCustomerWelcome();
+            }
+        });
+    }
+});
+
+// 3. البحث في فايربيز وعرض الرسائل الشيك
+window.checkCustomerLoyalty = async function(cleanPhone) {
+    if(!hasCloud || !db) return;
+    try {
+        // بنبحث في كولكشن customers اللي إنت ضفته في الـ Rules
+        const doc = await db.collection('customers').doc(cleanPhone).get();
+        
+        if(doc.exists) {
+            const data = doc.data();
+            // أوتو-فيل (تعبئة تلقائية) للبيانات
+            if(data.name) document.getElementById('customer-name').value = data.name;
+            if(data.address && document.getElementById('customer-address')) document.getElementById('customer-address').value = data.address;
+            if(data.zone && document.getElementById('delivery-zone')) {
+                document.getElementById('delivery-zone').value = data.zone;
+                renderDeliveryZones(); // تحديث السعر
+            }
+            
+            // رسالة الترحيب للعميل اللي طلب قبل كده
+            let firstName = data.name.split(' ')[0];
+            showCustomerWelcome(`أهلاً بيك مرة تانية في بيتك يا ${firstName}! 👑 جهزنا بياناتك عشان متتعبش.`, 'bg-green-50', 'text-green-700', 'border-green-200');
+            updateUI(); // تفعيل زرار المتابعة
+            
+        } else {
+            // رسالة الترحيب للعميل الجديد (أول مرة يطلب)
+            showCustomerWelcome(`نورت عيلة سمان ههيا لأول مرة! ✨ كمل بياناتك عشان تتسجل في الـ VIP.`, 'bg-blue-50', 'text-blue-700', 'border-blue-200');
+        }
+    } catch(e) { console.log("Customer lookup error", e); }
+};
+
+// 4. رسم رسالة الترحيب فوق حقل الاسم
+window.showCustomerWelcome = function(text, bgColor, textColor, borderColor) {
+    let msgEl = document.getElementById('smart-welcome-msg');
+    if(!msgEl) {
+        msgEl = document.createElement('div');
+        msgEl.id = 'smart-welcome-msg';
+        const nameInput = document.getElementById('customer-name');
+        nameInput.parentNode.insertBefore(msgEl, nameInput); // بيحط الرسالة فوق خانة الاسم
+    }
+    msgEl.className = `p-3 mb-4 rounded-xl border text-xs font-black shadow-sm transition-all duration-300 ${bgColor} ${textColor} ${borderColor}`;
+    msgEl.innerHTML = text;
+    msgEl.classList.remove('hidden');
+};
+
+window.hideCustomerWelcome = function() {
+    const msgEl = document.getElementById('smart-welcome-msg');
+    if(msgEl) msgEl.classList.add('hidden');
+};
