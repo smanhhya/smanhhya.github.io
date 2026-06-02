@@ -1074,7 +1074,7 @@ window.checkCustomerLoyalty = async function(cleanPhone) {
             
         } else {
             // لو العميل مش موجود، أو جاي من داتا قديمة، هيتعامل كأنه عميل جديد تماماً لأول مرة
-            showCustomerWelcome(`نورت عيلة سمان ههيا لأول مرة! ✨ كمل بياناتك عشان تتسجل في الـ VIP.`, 'bg-blue-50', 'text-blue-700', 'border-blue-200');
+            showCustomerWelcome(`نورت عيلة سمان ههيا ! ✨ كمل بياناتك عشان تتسجل في الـ VIP.`, 'bg-blue-50', 'text-blue-700', 'border-blue-200');
         }
     } catch(e) { console.log("Customer lookup error", e); }
 };
