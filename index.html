@@ -334,6 +334,7 @@
                 <div>المتجر مغلق حالياً، نعود قريباً!</div>
             </div>
 
+            <!-- ستايل السلايدر المخصص -->
             <style>
                 #slider-track > img, 
                 #slider-track > div {
@@ -355,6 +356,7 @@
                     </div>
                 </div>
                 
+                <!-- زراير التقليب -->
                 <button class="absolute top-1/2 -translate-y-1/2 right-3 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-colors z-10" onclick="moveSlider(-1)">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
@@ -362,25 +364,12 @@
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 
+                <!-- نقاط السلايدر -->
                 <div class="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-2 z-10" id="slider-dots"></div>
                 
+                <!-- شريط الإرشادات السفلي -->
                 <div class="p-3 bg-brand-light/80 backdrop-blur-sm border-t border-brand-cyan/20 text-center relative z-20">
                     <p class="text-brand-navy font-bold text-sm"><i class="fa-solid fa-images text-brand-cyanDark ml-1"></i> <span id="lbl-size-guide">اسحب لمشاهدة الكتالوج ودليل الأحجام</span></p>
-                </div>
-            </div>
-
-                
-                <button class="absolute top-1/2 -translate-y-1/2 right-2 w-8 h-8 bg-white/80 backdrop-blur text-brand-navy rounded-full shadow flex justify-center items-center hover:bg-white z-10" onclick="moveSlider(-1)">
-                    <i class="fa-solid fa-chevron-right text-sm"></i>
-                </button>
-                <button class="absolute top-1/2 -translate-y-1/2 left-2 w-8 h-8 bg-white/80 backdrop-blur text-brand-navy rounded-full shadow flex justify-center items-center hover:bg-white z-10" onclick="moveSlider(1)">
-                    <i class="fa-solid fa-chevron-left text-sm"></i>
-                </button>
-                
-                <div class="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10" id="slider-dots"></div>
-                
-                <div class="p-3 bg-brand-light/50 border-t border-gray-100 text-center relative z-20">
-                    <p class="text-brand-navy font-bold text-sm"><i class="fa-solid fa-images text-brand-cyanDark"></i> <span id="lbl-size-guide">اسحب لمشاهدة الكتالوج ودليل الأحجام</span></p>
                 </div>
             </div>
 
@@ -391,6 +380,7 @@
             <div class="flex flex-col gap-4" id="extras-container"></div>
         </div>
     </section>
+
 
     <footer class="bg-brand-navy text-gray-400 py-8 border-t border-[#143024] mt-10">
         <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
