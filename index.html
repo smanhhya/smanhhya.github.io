@@ -334,12 +334,41 @@
                 <div>المتجر مغلق حالياً، نعود قريباً!</div>
             </div>
 
+            <style>
+                #slider-track > img, 
+                #slider-track > div {
+                    width: 100% !important;
+                    height: auto !important;
+                    max-height: 85vh;
+                    object-fit: contain;
+                    background-color: #f9fafb;
+                }
+            </style>
+
             <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8 relative group" id="main-slider-container">
                 <div class="overflow-hidden relative touch-pan-y" id="slider-viewport">
-                    <div class="slider-wrapper" id="slider-track">
-                        <div class="w-full shrink-0 h-64 bg-gray-100 flex items-center justify-center text-gray-400"><i class="fa-solid fa-image text-4xl"></i></div>
+                    <div class="slider-wrapper items-center" id="slider-track">
+                        <div class="w-full shrink-0 aspect-[3/4] sm:aspect-[4/3] bg-gray-50 flex flex-col items-center justify-center text-brand-cyan/50">
+                            <i class="fa-regular fa-image text-5xl mb-2"></i>
+                            <span class="text-xs font-bold text-gray-400 mt-2">جاري تحميل الكتالوج...</span>
+                        </div>
                     </div>
                 </div>
+                
+                <button class="absolute top-1/2 -translate-y-1/2 right-3 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-colors z-10" onclick="moveSlider(-1)">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button class="absolute top-1/2 -translate-y-1/2 left-3 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-colors z-10" onclick="moveSlider(1)">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                
+                <div class="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-2 z-10" id="slider-dots"></div>
+                
+                <div class="p-3 bg-brand-light/80 backdrop-blur-sm border-t border-brand-cyan/20 text-center relative z-20">
+                    <p class="text-brand-navy font-bold text-sm"><i class="fa-solid fa-images text-brand-cyanDark ml-1"></i> <span id="lbl-size-guide">اسحب لمشاهدة الكتالوج ودليل الأحجام</span></p>
+                </div>
+            </div>
+
                 
                 <button class="absolute top-1/2 -translate-y-1/2 right-2 w-8 h-8 bg-white/80 backdrop-blur text-brand-navy rounded-full shadow flex justify-center items-center hover:bg-white z-10" onclick="moveSlider(-1)">
                     <i class="fa-solid fa-chevron-right text-sm"></i>
