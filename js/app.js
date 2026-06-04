@@ -331,23 +331,12 @@ function renderDeliveryZones() {
 }
 
 // --- بداية تشغيل الموقع ---
+// --- بداية تشغيل الموقع (سريع وبدون انتظار وهمي) ---
 document.addEventListener('DOMContentLoaded', () => { 
     renderDeliveryZones(); 
     loadCart(); 
     setupEventListeners(); 
     initFirebase(); 
-    setTimeout(() => { 
-        if(!isStoreDataLoaded) { 
-            isStoreDataLoaded = true; 
-            Object.keys(productsInfo).forEach(id => { 
-                if(globalStock[id] === undefined) globalStock[id] = 0; 
-                if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice; 
-            }); 
-            renderProducts(); 
-            applySettingsToUI(); 
-            startLiveNotifications();
-        } 
-    }, 3000);
 });
 
 window.setupEventListeners = function() {
@@ -390,6 +379,28 @@ function initFirebase() {
 
 function listenToDatabase() {
     if(!db) return;
+    
+    let settingsLoaded = false;
+    let stockLoaded = false;
+
+    // دالة ذكية لعرض المنتجات فوراً عند اكتمال تحميل الأساسيات فقط
+    const checkAndRender = () => {
+        if (settingsLoaded && stockLoaded && !isStoreDataLoaded) {
+            isStoreDataLoaded = true;
+            Object.keys(productsInfo).forEach(id => { 
+                if(globalStock[id] === undefined) globalStock[id] = 0; 
+                if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice; 
+            }); 
+            renderProducts(); 
+            applySettingsToUI(); 
+            startLiveNotifications();
+            updateUI();
+        } else if (isStoreDataLoaded) {
+            renderProducts();
+            updateUI();
+        }
+    };
+
     db.collection('inventory').doc('settings').onSnapshot(doc => { 
         if(doc.exists) { 
             const data = doc.data(); 
@@ -398,20 +409,32 @@ function listenToDatabase() {
             if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; 
             applySettingsToUI(); 
             renderDeliveryZones(); 
-            updateUI(); 
+            
+            settingsLoaded = true;
+            checkAndRender();
         } 
     });
-    db.collection('inventory').doc('prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalPrices, doc.data()); renderProducts(); } });
-    db.collection('inventory').doc('discounts_status').onSnapshot(doc => { if(doc.exists) { Object.assign(globalDiscounts, doc.data()); renderProducts(); } });
-    db.collection('inventory').doc('old_prices').onSnapshot(doc => { if(doc.exists) { Object.assign(globalOldPrices, doc.data()); renderProducts(); } });
+
     db.collection('inventory').doc('stock').onSnapshot(doc => { 
         if(doc.exists) { 
             Object.assign(globalStock, doc.data()); 
-            isStoreDataLoaded = true;
-            renderProducts(); 
-            updateUI(); 
+            stockLoaded = true;
+            checkAndRender();
         } 
     });
+
+    db.collection('inventory').doc('prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('discounts_status').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+
     db.collection('inventory').doc('stats').onSnapshot(doc => { 
         if(doc.exists) { 
             dailyStats = doc.data(); 
