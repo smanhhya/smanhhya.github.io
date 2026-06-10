@@ -36,20 +36,19 @@ function getAvailableStock(id) {
     const batchSelect = document.getElementById('user-batch-select');
     const batchId = batchSelect ? batchSelect.value : '';
     
-    // لو العميل مختار دفعة معينة، اقرأ من مخزن الدفعة دي
+    // قراءة المخزن من الدفعة المختارة (المخزن الأصلي - المحجوز - اللي في السلة دلوقتي)
     if (batchId && globalBatches[batchId]) {
         const batch = globalBatches[batchId];
-        const bStock = (batch.stock && batch.stock[id]) ? batch.stock[id] : 0;
-        const bBooked = (batch.booked && batch.booked[id]) ? batch.booked[id] : 0;
+        const bStock = (batch.stock && batch.stock[id]) ? parseInt(batch.stock[id]) : 0;
+        const bBooked = (batch.booked && batch.booked[id]) ? parseInt(batch.booked[id]) : 0;
         const remainingInBatch = Math.max(0, bStock - bBooked);
         return Math.max(0, remainingInBatch - inCart);
     }
     
-    // لو مش مختار دفعة (طلب عام)، اقرأ من المخزن الأساسي
+    // لو مفيش دفعة، اقرأ من المخزن الأساسي
     return Math.max(0, (globalStock[id] || 0) - inCart); 
 }
 
-// --- تطبيق نصوص الواجهة والمربعات الأربعة (Trust Badges) ---
 function applyUITexts() {
     const t = globalSettings.uiTexts || {};
     const defaultTexts = {
@@ -440,7 +439,7 @@ function listenToDatabase() {
         } 
     });
 
-    // 🌟 التعديل الذكي الثالث: تخزين الدفعات كاملة بالكميات 🌟
+    // 🌟 تحديث الدفعات وإجبار العميل على اختيار دفعة مفتوحة فقط 🌟
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
@@ -448,26 +447,33 @@ function listenToDatabase() {
             let batchContainer = document.getElementById('batch-selection-container');
             if(batchSelect && batchContainer) {
                 let currentVal = batchSelect.value;
-                batchSelect.innerHTML = '<option value="" selected>بدون حجز مسبق (طلب عادي)</option>';
+                batchSelect.innerHTML = ''; // مسحنا خيار "بدون حجز مسبق"
                 let openBatchesCount = 0;
+                let firstOpenBatch = null;
+                
                 Object.keys(globalBatches).forEach(bId => {
                     if(globalBatches[bId].isOpen) {
+                        if(!firstOpenBatch) firstOpenBatch = bId;
                         batchSelect.innerHTML += `<option value="${bId}">${globalBatches[bId].name}</option>`;
                         openBatchesCount++;
                     }
                 });
-                // الحفاظ على اختيار العميل لو كان اختار دفعة
+
+                // اختيار أول دفعة أوتوماتيك لو العميل لسة مختارش
                 if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
                     batchSelect.value = currentVal;
+                } else if (firstOpenBatch) {
+                    batchSelect.value = firstOpenBatch;
                 }
+
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
                 else batchContainer.style.display = 'none';
                 
-                // تحديث العرض عشان لو الدفعة نقصت قدام الزبون لايف
                 if(isStoreDataLoaded) { renderProducts(); updateUI(); }
             }
         }
     });
+
 }
 
 // --- نظام الكوبونات والخصم ---
@@ -877,18 +883,16 @@ window.finalCheckoutStep = async function() {
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
             promises.push(db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true }));
             
+            // --- الخصم من الدفعة بشكل فوري وصحيح ---
             if(batchId) {
-                const batchRef = db.collection("inventory").doc("batches");
-                const docSnap = await batchRef.get();
-                if(docSnap.exists) {
-                    let batchesData = docSnap.data();
-                    if(batchesData[batchId]) {
-                        if(!batchesData[batchId].booked) batchesData[batchId].booked = {};
-                        for (let id in cart) { batchesData[batchId].booked[id] = (batchesData[batchId].booked[id] || 0) + cart[id].quantity; }
-                        promises.push(batchRef.update(batchesData));
-                    }
+                let batchUpdates = {};
+                for (let id in cart) {
+                    // أمر صارم لفايربيس بزيادة العداد فوراً بدون قراءة مسبقة
+                    batchUpdates[`${batchId}.booked.${id}`] = firebase.firestore.FieldValue.increment(cart[id].quantity);
                 }
+                promises.push(db.collection("inventory").doc("batches").update(batchUpdates));
             }
+
 
             if(promoUpdated) { promises.push(db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true })); }
             
