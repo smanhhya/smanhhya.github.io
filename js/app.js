@@ -1,6 +1,9 @@
 // js/app.js
 // المتغيرات الأساسية (cart, productsInfo, globalSettings...) بيتم قراءتها تلقائياً من ملف config.js
 
+// --- إضافة متغير الدفعات العالمي ---
+let globalBatches = {};
+
 // --- دوال الحفظ والتحميل ---
 function saveCart() { try { localStorage.setItem('sman_cart', JSON.stringify(cart)); } catch(e) {} }
 
@@ -13,9 +16,24 @@ function loadCart() {
     catch (e) { cart = {}; localStorage.removeItem('sman_cart'); } 
 }
 
+// 🌟 التعديل الذكي الأول: المخزن دلوقتي بيتحسب بناءً على الدفعة المختارة 🌟
 function getAvailableStock(id) { 
     if(!productsInfo[id]) return 0; 
     const inCart = cart[id]?.quantity || 0; 
+    
+    const batchSelect = document.getElementById('user-batch-select');
+    const batchId = batchSelect ? batchSelect.value : '';
+    
+    // لو العميل مختار دفعة معينة، اقرأ من مخزن الدفعة دي
+    if (batchId && globalBatches[batchId]) {
+        const batch = globalBatches[batchId];
+        const bStock = (batch.stock && batch.stock[id]) ? batch.stock[id] : 0;
+        const bBooked = (batch.booked && batch.booked[id]) ? batch.booked[id] : 0;
+        const remainingInBatch = Math.max(0, bStock - bBooked);
+        return Math.max(0, remainingInBatch - inCart);
+    }
+    
+    // لو مش مختار دفعة (طلب عام)، اقرأ من المخزن الأساسي
     return Math.max(0, (globalStock[id] || 0) - inCart); 
 }
 
@@ -60,7 +78,6 @@ function applyUITexts() {
     }
 }
 
-// --- نافذة تكبير الصور (التفاعلية) ---
 window.openImageModal = function(imgSrc) {
     if(!imgSrc || imgSrc.trim() === '') return;
     let modal = document.getElementById('image-viewer-modal');
@@ -72,7 +89,7 @@ window.openImageModal = function(imgSrc) {
         
         modal.onclick = function() {
             closeImageViewer();
-            if(window.location.hash === '#catalog') history.back(); 
+            if(window.location.hash === '#catalog') { history.back(); }
         };
         
         modal.innerHTML = `
@@ -230,7 +247,6 @@ function startLiveNotifications() {
     setTimeout(() => { showRandomNoti(); setInterval(showRandomNoti, 25000); }, 10000);
 }
 
-// --- تطبيق الإعدادات العامة على الواجهة ---
 function applySettingsToUI() {
     const savedNavy = localStorage.getItem('theme_navy');
     if(savedNavy) document.documentElement.style.setProperty('--brand-navy', savedNavy);
@@ -311,6 +327,39 @@ window.setupEventListeners = function() {
             } 
         });
     }
+
+    // 🌟 التعديل الذكي الثاني: مراقبة تغيير الدفعة وتعديل السلة فوراً 🌟
+    const batchSelectEl = document.getElementById('user-batch-select');
+    if (batchSelectEl) {
+        batchSelectEl.addEventListener('change', () => {
+            let stockAdjusted = false;
+            for (let id in cart) {
+                // بنحسب المتاح الصافي في الدفعة الجديدة من غير ما نطرح السلة
+                let pureAvailable = 0;
+                const bId = batchSelectEl.value;
+                if (bId && globalBatches[bId]) {
+                    const bStock = globalBatches[bId].stock?.[id] || 0;
+                    const bBooked = globalBatches[bId].booked?.[id] || 0;
+                    pureAvailable = Math.max(0, bStock - bBooked);
+                } else {
+                    pureAvailable = globalStock[id] || 0;
+                }
+                
+                // لو السلة فيها أكتر من الدفعة الجديدة، نزل الكمية
+                if (cart[id].quantity > pureAvailable) {
+                    cart[id].quantity = pureAvailable;
+                    stockAdjusted = true;
+                    if (cart[id].quantity === 0) delete cart[id];
+                }
+            }
+            if (stockAdjusted) {
+                showAlert("تنبيه", "تم تعديل كميات السلة لتتناسب مع المخزون المتاح في الدفعة التي اخترتها.");
+                saveCart();
+            }
+            renderProducts();
+            updateUI();
+        });
+    }
 }
 
 // --- تهيئة Firebase ---
@@ -379,22 +428,31 @@ function listenToDatabase() {
         } 
     });
 
-    // سحب الدفعات المفتوحة لعرضها للزبون
+    // 🌟 التعديل الذكي الثالث: تخزين الدفعات كاملة بالكميات 🌟
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
-            let batches = doc.data() || {};
+            globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
             let batchContainer = document.getElementById('batch-selection-container');
             if(batchSelect && batchContainer) {
+                let currentVal = batchSelect.value;
                 batchSelect.innerHTML = '<option value="" selected>بدون حجز مسبق (طلب عادي)</option>';
                 let openBatchesCount = 0;
-                Object.keys(batches).forEach(bId => {
-                    if(batches[bId].isOpen) {
-                        batchSelect.innerHTML += `<option value="${bId}">${batches[bId].name}</option>`;
+                Object.keys(globalBatches).forEach(bId => {
+                    if(globalBatches[bId].isOpen) {
+                        batchSelect.innerHTML += `<option value="${bId}">${globalBatches[bId].name}</option>`;
                         openBatchesCount++;
                     }
                 });
-                if(openBatchesCount > 0) batchContainer.style.display = 'block'; else batchContainer.style.display = 'none';
+                // الحفاظ على اختيار العميل لو كان اختار دفعة
+                if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
+                    batchSelect.value = currentVal;
+                }
+                if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
+                else batchContainer.style.display = 'none';
+                
+                // تحديث العرض عشان لو الدفعة نقصت قدام الزبون لايف
+                if(isStoreDataLoaded) { renderProducts(); updateUI(); }
             }
         }
     });
@@ -744,8 +802,6 @@ window.finalCheckoutStep = async function() {
     let addressText = customerAddress ? `🏠 العنوان: ${customerAddress}` : "";
     let tickTickItemsStr = ""; for (let id in cart) { if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`; }
     let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
-    
-    // 🌟 إضافة اسم الدفعة بقوة في رسالة تيك تيك عشان يظهرك في الإشعار 🌟
     let batchTickTickLine = batchName ? `\n\n📌 **حجز تبع: ${batchName}**\n` : '';
     let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
@@ -769,7 +825,6 @@ window.finalCheckoutStep = async function() {
             promises.push(db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true }));
             
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
-            // 🌟 الإحلال: تحديث بيانات العميل بأحدث بيانات دخلها في الأوردر (لو كان تيك تيك بايظ هيتصلح هنا) 🌟
             promises.push(db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true }));
             
             if(batchId) {
@@ -827,6 +882,17 @@ window.finalCheckoutStep = async function() {
 
 // === نظام التعرف الذكي والفلترة على العملاء (VIP & الجدد) ===
 
+const invalidNameKeywords = ["جوز", "سمان", "طبق", "سوبر", "جامبو", "بيض", "دبح", "تنضيف", "كتاكيت", "سبشيال"];
+
+function isNameValid(name) {
+    if(!name || name.trim().length < 3) return false;
+    let cleanName = name.toLowerCase();
+    for(let keyword of invalidNameKeywords) {
+        if(cleanName.includes(keyword)) return false;
+    }
+    return true;
+}
+
 window.formatPhoneNumber = function(phone) {
     if(!phone) return '';
     const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
@@ -848,18 +914,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-// 🌟 الفلتر الذكي للأسماء (Blacklist) 🌟
-const invalidNameKeywords = ["جوز", "سمان", "طبق", "سوبر", "جامبو", "بيض", "دبح", "تنضيف", "كتاكيت", "سبشيال"];
-
-function isNameValid(name) {
-    if(!name || name.trim().length < 3) return false;
-    let cleanName = name.toLowerCase();
-    for(let keyword of invalidNameKeywords) {
-        if(cleanName.includes(keyword)) return false;
-    }
-    return true;
-}
-
 window.checkCustomerLoyalty = async function(cleanPhone) {
     if(!hasCloud || !db) return;
     try {
@@ -867,16 +921,14 @@ window.checkCustomerLoyalty = async function(cleanPhone) {
         if(doc.exists) {
             const data = doc.data();
             
-            // 🌟 الفلترة: لو العميل من تيك تيك واسمه مشوه مش هنعرضه عشان يكتبه نضيف 🌟
             if(data.name && isNameValid(data.name)) {
                 document.getElementById('customer-name').value = data.name;
             } else {
-                document.getElementById('customer-name').value = ''; // بنفضيها عشان يكتب صح
+                document.getElementById('customer-name').value = ''; 
             }
 
             if(data.address && document.getElementById('customer-address')) document.getElementById('customer-address').value = data.address;
             
-            // اختيار المنطقة أوتوماتيك وحساب التوصيل
             if(data.zone && document.getElementById('delivery-zone')) {
                 const zoneSelect = document.getElementById('delivery-zone');
                 let found = Array.from(zoneSelect.options).some(opt => opt.text.includes(data.zone));
@@ -886,7 +938,7 @@ window.checkCustomerLoyalty = async function(cleanPhone) {
                             zoneSelect.selectedIndex = i; break;
                         }
                     }
-                    renderDeliveryZones(); updateUI(); // تحديث الفلوس
+                    renderDeliveryZones(); updateUI(); 
                 }
             }
             
