@@ -179,7 +179,6 @@
         </div>
     </section>
 
-
     <div id="bottom-cart-bar" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_rgba(0,0,0,0.08)] p-4 flex justify-between items-center z-40 transform translate-y-full transition-transform duration-300">
         <div class="flex flex-col">
             <span class="text-xs text-gray-500 font-bold" id="lbl-cart-total">الإجمالي (بدون التوصيل)</span>
@@ -270,34 +269,28 @@
 
         <div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
             <div class="flex-1 overflow-y-auto p-4 cart-scroll bg-gray-50 space-y-4">
-                
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-brand-cyan/50" id="batch-selection-container" style="display: none;">
-                    <h3 class="font-black text-brand-navy text-sm mb-3 border-b border-gray-100 pb-2"><i class="fa-solid fa-calendar-check text-brand-yellow ml-2"></i>ميعاد الاستلام (حجز مسبق)</h3>
-                    <p class="text-[10px] text-gray-500 mb-3 font-bold">المنتجات دي بنوفرها طازة بالحجز، اختار الدفعة المناسبة ليك:</p>
-                    <div class="relative">
-                        <select id="user-batch-select" class="w-full border-2 border-brand-cyan/50 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-brand-light transition-all appearance-none shadow-sm"></select>
-                        <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-brand-navy"><i class="fa-solid fa-chevron-down text-sm"></i></div>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>منطقة التوصيل</h3>
-                    <div class="relative">
-                        <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
-                        <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-sm"></i></div>
-                    </div>
-                </div>
 
                 <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
                     <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-regular fa-address-card text-brand-cyanDark ml-2"></i>بيانات المستلم</h3>
                     <div id="unified-cust-fields" class="space-y-4">
                         <div>
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
+                            <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
+                        </div>
+                        <div>
                             <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">الاسم الكريم <span class="text-red-500">*</span></label>
                             <input type="text" id="customer-name" placeholder="محمد أحمد..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
-                            <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
+                    </div>
+                </div>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>عنوان التوصيل</h3>
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">منطقة التوصيل <span class="text-red-500">*</span></label>
+                            <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
+                            <div class="pointer-events-none absolute inset-y-0 left-4 top-6 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-sm"></i></div>
                         </div>
                         <div>
                             <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">العنوان بالتفصيل (اختياري)</label>
@@ -336,6 +329,18 @@
             
             <div id="store-closed-msg" class="store-closed-message hidden rounded-2xl">
                 <div>المتجر مغلق حالياً، نعود قريباً!</div>
+            </div>
+
+            <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-brand-navy mb-8" id="batch-selection-container" style="display: none;">
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fa-solid fa-calendar-check text-brand-yellow text-xl"></i>
+                    <h3 class="font-black text-brand-navy text-base">اختر ميعاد استلامك (حجز مسبق)</h3>
+                </div>
+                <p class="text-xs text-gray-500 mb-3 font-bold">المنتجات يتم تجهيزها طازجة حسب الحجز، برجاء اختيار الدفعة المتاحة لترى الكميات المتوفرة:</p>
+                <div class="relative">
+                    <select id="user-batch-select" onchange="renderProducts()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-brand-light transition-all appearance-none shadow-sm"></select>
+                    <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-brand-navy"><i class="fa-solid fa-chevron-down text-sm"></i></div>
+                </div>
             </div>
 
             <style>
@@ -381,7 +386,6 @@
         </div>
     </section>
 
-
     <footer class="bg-brand-navy text-gray-400 py-8 border-t border-[#143024] mt-10">
         <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
             <div><p class="font-black text-white" id="footer-store-name">سمان ههيا</p><p class="text-xs mt-1">جميع الحقوق محفوظة &copy; 2024</p></div>
@@ -392,197 +396,18 @@
         </div>
     </footer>
 
-    <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box">
-            <div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-brand-yellow text-brand-navy font-black text-xs px-4 py-1 rounded-full shadow-md border-2 border-white">اقتراح لحضرتك 💡</div>
-            <div class="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-brand-cyan/30 mt-4"><img id="cross-sell-img" src="" class="w-full h-full object-cover"></div>
-            <h3 class="text-xl font-black text-brand-navy mb-1" id="cross-sell-title">جربت بيض السمان؟</h3>
-            <p class="text-gray-500 text-sm font-bold mb-4" id="cross-sell-desc">مغذي جداً للأطفال وطعمه حكاية!</p>
-            <div class="font-black text-brand-cyanDark text-xl mb-5"><span id="cross-sell-price"></span> ج.م</div>
-            <div class="flex flex-col gap-2">
-                <button onclick="acceptCrossSell()" class="bg-brand-cyanDark hover:opacity-90 text-white font-black py-3 px-6 rounded-xl w-full transition-opacity flex justify-center items-center gap-2 shadow-md"><i class="fa-solid fa-plus"></i> ضيفه للسلة وكمل الأوردر</button>
-                <button onclick="declineCrossSell()" class="text-gray-400 hover:text-gray-600 font-bold py-2 text-sm transition-colors underline">لا شكراً، كمل الأوردر بتاعي</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="alert-modal" class="fixed inset-0 bg-brand-navy/80 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="alert-box">
-            <div class="w-16 h-16 bg-brand-light text-brand-cyanDark rounded-full flex items-center justify-center mx-auto mb-4 text-3xl" id="alert-icon-container"><i class="fa-solid fa-bell" id="alert-icon"></i></div>
-            <h3 class="text-xl font-black text-brand-navy mb-2" id="alert-title">تنبيه</h3>
-            <div class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</div>
-            <button onclick="closeAlert()" class="bg-brand-navy hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl w-full transition-opacity">حسناً</button>
-        </div>
-    </div>
-
-    <div id="admin-login-modal" class="fixed inset-0 bg-brand-navy/90 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm shadow-2xl">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-black text-brand-navy flex items-center gap-2"><i class="fa-solid fa-lock text-brand-yellow"></i> الإدارة الشاملة</h3>
-                <button onclick="closeAdminLogin()" class="text-gray-400 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <input type="email" id="admin-email-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-3 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="البريد الإلكتروني للإدارة" dir="ltr">
-            <input type="password" id="admin-password-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-4 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="كلمة المرور" dir="ltr">
-            <button onclick="verifyAdminPin()" class="w-full bg-brand-navy text-white font-bold py-4 rounded-xl transition-colors">دخول</button>
-        </div>
-    </div>
-
-    <div id="admin-dashboard-modal" class="fixed inset-0 bg-gray-50 z-[80] hidden opacity-0 transition-opacity duration-300 flex flex-col">
-        <div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm">
-            <div class="flex items-center gap-3">
-                <h2 class="text-lg font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2>
-            </div>
-            <button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-
-        <div class="bg-white p-3 flex justify-between items-center border-b border-gray-200 shadow-sm z-10">
-            <span class="font-black text-brand-navy text-sm"><i class="fa-solid fa-door-open text-brand-cyanDark ml-1"></i> استقبال الطلبات:</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-                <input type="checkbox" id="admin-store-open" class="sr-only peer">
-                <div class="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                <span class="mr-3 text-sm font-black text-gray-500 w-12" id="store-open-label">مغلق</span>
-            </label>
-        </div>
-
-        <div class="bg-white border-b border-gray-200 px-4 pt-3 pb-2 flex gap-1 overflow-x-auto cart-scroll" id="admin-tabs-container">
-            <button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors bg-brand-cyanDark text-white whitespace-nowrap"><i class="fa-solid fa-chart-pie"></i> إحصائيات</button>
-            <button onclick="switchAdminTab('store')" id="admin-tab-store" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-store"></i> المتجر</button>
-            <button onclick="switchAdminTab('gallery')" id="admin-tab-gallery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-images"></i> الكتالوج</button>
-            <button onclick="switchAdminTab('products')" id="admin-tab-products" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-box-open"></i> المنتجات</button>
-            <button onclick="switchAdminTab('orders')" id="admin-tab-orders" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap relative"><i class="fa-solid fa-clipboard-list"></i> الطلبات</button>
-            <button onclick="switchAdminTab('dispatch')" id="admin-tab-dispatch" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-truck-fast"></i> التوزيع</button>
-            <button onclick="switchAdminTab('delivery')" id="admin-tab-delivery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-motorcycle"></i> التوصيل</button>
-            <button onclick="switchAdminTab('marketing')" id="admin-tab-marketing" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> التسويق</button>
-            <button onclick="switchAdminTab('advanced')" id="admin-tab-advanced" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-gear"></i> متقدم</button>
-            <button onclick="switchAdminTab('texts')" id="admin-tab-texts" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-language"></i> القاموس</button>
-            <button onclick="switchAdminTab('theme')" id="admin-tab-theme" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-palette"></i> المظهر</button>
-        </div>
-
-        <div class="p-4 flex-1 overflow-y-auto cart-scroll">
-            <div class="max-w-2xl mx-auto">
-                <div id="admin-panel-stats" class="space-y-4"></div>
-                <div id="admin-panel-store" class="hidden space-y-4"></div>
-                <div id="admin-panel-gallery" class="hidden space-y-4"></div>
-                <div id="admin-panel-products" class="hidden space-y-4"></div>
-                <div id="admin-panel-orders" class="hidden space-y-4"></div>
-                <div id="admin-panel-dispatch" class="hidden space-y-4"></div>
-                <div id="admin-panel-delivery" class="hidden space-y-4"></div>
-                <div id="admin-panel-marketing" class="hidden space-y-4"></div>
-                <div id="admin-panel-advanced" class="hidden space-y-4"></div>
-                <div id="admin-panel-texts" class="hidden space-y-4"></div>
-                <div id="admin-panel-theme" class="hidden space-y-4"></div>
-                
-                <button onclick="saveAdminData()" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all transform hover:-translate-y-1 sticky bottom-4 z-50 border-2 border-white">
-                    <i class="fa-solid fa-floppy-disk text-xl"></i> حفظ جميع التعديلات
-                </button>
-            </div>
-        </div>
-    </div>
+    <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box"><div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-brand-yellow text-brand-navy font-black text-xs px-4 py-1 rounded-full shadow-md border-2 border-white">اقتراح لحضرتك 💡</div><div class="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-brand-cyan/30 mt-4"><img id="cross-sell-img" src="" class="w-full h-full object-cover"></div><h3 class="text-xl font-black text-brand-navy mb-1" id="cross-sell-title">جربت بيض السمان؟</h3><p class="text-gray-500 text-sm font-bold mb-4" id="cross-sell-desc">مغذي جداً للأطفال وطعمه حكاية!</p><div class="font-black text-brand-cyanDark text-xl mb-5"><span id="cross-sell-price"></span> ج.م</div><div class="flex flex-col gap-2"><button onclick="acceptCrossSell()" class="bg-brand-cyanDark hover:opacity-90 text-white font-black py-3 px-6 rounded-xl w-full transition-opacity flex justify-center items-center gap-2 shadow-md"><i class="fa-solid fa-plus"></i> ضيفه للسلة وكمل الأوردر</button><button onclick="declineCrossSell()" class="text-gray-400 hover:text-gray-600 font-bold py-2 text-sm transition-colors underline">لا شكراً، كمل الأوردر بتاعي</button></div></div></div>
+    <div id="alert-modal" class="fixed inset-0 bg-brand-navy/80 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="alert-box"><div class="w-16 h-16 bg-brand-light text-brand-cyanDark rounded-full flex items-center justify-center mx-auto mb-4 text-3xl" id="alert-icon-container"><i class="fa-solid fa-bell" id="alert-icon"></i></div><h3 class="text-xl font-black text-brand-navy mb-2" id="alert-title">تنبيه</h3><div class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</div><button onclick="closeAlert()" class="bg-brand-navy hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl w-full transition-opacity">حسناً</button></div></div>
+    
+    <div id="admin-login-modal" class="fixed inset-0 bg-brand-navy/90 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm shadow-2xl"><div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black text-brand-navy flex items-center gap-2"><i class="fa-solid fa-lock text-brand-yellow"></i> الإدارة الشاملة</h3><button onclick="closeAdminLogin()" class="text-gray-400 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full"><i class="fa-solid fa-xmark"></i></button></div><input type="email" id="admin-email-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-3 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="البريد الإلكتروني للإدارة" dir="ltr"><input type="password" id="admin-password-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-4 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="كلمة المرور" dir="ltr"><button onclick="verifyAdminPin()" class="w-full bg-brand-navy text-white font-bold py-4 rounded-xl transition-colors">دخول</button></div></div>
+    
+    <div id="admin-dashboard-modal" class="fixed inset-0 bg-gray-50 z-[80] hidden opacity-0 transition-opacity duration-300 flex flex-col"><div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><h2 class="text-lg font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2></div><button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div><div class="bg-white p-3 flex justify-between items-center border-b border-gray-200 shadow-sm z-10"><span class="font-black text-brand-navy text-sm"><i class="fa-solid fa-door-open text-brand-cyanDark ml-1"></i> استقبال الطلبات:</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="admin-store-open" class="sr-only peer"><div class="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div><span class="mr-3 text-sm font-black text-gray-500 w-12" id="store-open-label">مغلق</span></label></div><div class="bg-white border-b border-gray-200 px-4 pt-3 pb-2 flex gap-1 overflow-x-auto cart-scroll" id="admin-tabs-container"><button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors bg-brand-cyanDark text-white whitespace-nowrap"><i class="fa-solid fa-chart-pie"></i> إحصائيات</button><button onclick="switchAdminTab('store')" id="admin-tab-store" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-store"></i> المتجر</button><button onclick="switchAdminTab('gallery')" id="admin-tab-gallery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-images"></i> الكتالوج</button><button onclick="switchAdminTab('products')" id="admin-tab-products" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-box-open"></i> المنتجات</button><button onclick="switchAdminTab('orders')" id="admin-tab-orders" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap relative"><i class="fa-solid fa-clipboard-list"></i> الطلبات</button><button onclick="switchAdminTab('dispatch')" id="admin-tab-dispatch" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-truck-fast"></i> التوزيع</button><button onclick="switchAdminTab('delivery')" id="admin-tab-delivery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-motorcycle"></i> التوصيل</button><button onclick="switchAdminTab('marketing')" id="admin-tab-marketing" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> التسويق</button><button onclick="switchAdminTab('advanced')" id="admin-tab-advanced" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-gear"></i> متقدم</button><button onclick="switchAdminTab('texts')" id="admin-tab-texts" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-language"></i> القاموس</button><button onclick="switchAdminTab('theme')" id="admin-tab-theme" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-palette"></i> المظهر</button></div><div class="p-4 flex-1 overflow-y-auto cart-scroll"><div class="max-w-2xl mx-auto"><div id="admin-panel-stats" class="space-y-4"></div><div id="admin-panel-store" class="hidden space-y-4"></div><div id="admin-panel-gallery" class="hidden space-y-4"></div><div id="admin-panel-products" class="hidden space-y-4"></div><div id="admin-panel-orders" class="hidden space-y-4"></div><div id="admin-panel-dispatch" class="hidden space-y-4"></div><div id="admin-panel-delivery" class="hidden space-y-4"></div><div id="admin-panel-marketing" class="hidden space-y-4"></div><div id="admin-panel-advanced" class="hidden space-y-4"></div><div id="admin-panel-texts" class="hidden space-y-4"></div><div id="admin-panel-theme" class="hidden space-y-4"></div><button onclick="saveAdminData()" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all transform hover:-translate-y-1 sticky bottom-4 z-50 border-2 border-white"><i class="fa-solid fa-floppy-disk text-xl"></i> حفظ جميع التعديلات</button></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-
-    <script>
-        function updateThemeColor(cssVar, colorHex, storageKey) {
-            document.documentElement.style.setProperty(cssVar, colorHex);
-            localStorage.setItem(storageKey, colorHex);
-        }
-
-        function resetThemeColors() {
-            const defaults = { '--brand-navy': '#1b4332', '--brand-cyanDark': '#b91c1c', '--brand-yellow': '#f59e0b' };
-            document.getElementById('color-navy').value = defaults['--brand-navy'];
-            document.getElementById('color-cyanDark').value = defaults['--brand-cyanDark'];
-            document.getElementById('color-yellow').value = defaults['--brand-yellow'];
-            for (const [cssVar, color] of Object.entries(defaults)) {
-                document.documentElement.style.setProperty(cssVar, color);
-                localStorage.removeItem(cssVar.replace('--brand-', 'theme_'));
-            }
-            alert('تم استعادة ألوان سمان ههيا الافتراضية بنجاح!');
-        }
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            if(localStorage.getItem('theme_navy')) { const el = document.getElementById('color-navy'); if(el) el.value = localStorage.getItem('theme_navy'); }
-            if(localStorage.getItem('theme_cyanDark')) { const el = document.getElementById('color-cyanDark'); if(el) el.value = localStorage.getItem('theme_cyanDark'); }
-            if(localStorage.getItem('theme_yellow')) { const el = document.getElementById('color-yellow'); if(el) el.value = localStorage.getItem('theme_yellow'); }
-        });
-        
-        // -- برمجة السلايدر --
-        let currentSlide = 0;
-        let sliderImages = []; 
-        
-        function moveSlider(direction) {
-            if(sliderImages.length <= 1) return;
-            currentSlide = (currentSlide + direction + sliderImages.length) % sliderImages.length;
-            updateSliderView();
-        }
-        
-        function updateSliderView() {
-            const track = document.getElementById('slider-track');
-            if(track) track.style.transform = `translateX(-${window.currentSlide * 100}%)`;
-            
-            const dots = document.querySelectorAll('.slider-dot');
-            dots.forEach((dot, index) => {
-                dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 ${index === window.currentSlide ? 'active' : 'bg-gray-300'}`;
-            });
-        }
-
-        let touchStartX = 0;
-        let touchEndX = 0;
-        const sliderViewport = document.getElementById('slider-viewport');
-        if(sliderViewport) {
-            sliderViewport.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, {passive: true});
-            sliderViewport.addEventListener('touchend', e => { 
-                touchEndX = e.changedTouches[0].screenX; 
-                if(touchEndX < touchStartX - 30) window.moveSlider(-1); 
-                if(touchEndX > touchStartX + 30) window.moveSlider(1);  
-            }, {passive: true});
-        }
-    </script>
-    
-    <button id="install-app-btn" class="hidden fixed bottom-24 right-4 z-[90] bg-[#0d3b2a] text-[#f2b921] font-black py-3 px-5 rounded-2xl shadow-2xl border border-[#f2b921]/30 flex items-center gap-3 transition-transform transform hover:scale-105">
-        <i class="fa-solid fa-download text-xl animate-bounce"></i>
-        <span>تثبيت التطبيق</span>
-    </button>
-
     <script src="js/config.js"></script>
     <script src="js/app.js"></script>
     <script src="js/admin.js"></script>
-
-    <script>
-      let deferredPrompt;
-      const installBtn = document.getElementById('install-app-btn');
-
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js')
-            .then(reg => console.log('Sman Hhya App Registered! ✅'))
-            .catch(err => console.log('PWA Error:', err));
-        });
-      }
-
-      window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); 
-        deferredPrompt = e; 
-        if(installBtn) installBtn.classList.remove('hidden'); 
-      });
-
-      if(installBtn) {
-        installBtn.addEventListener('click', async () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt(); 
-            const { outcome } = await deferredPrompt.userChoice;
-            deferredPrompt = null; 
-            installBtn.classList.add('hidden'); 
-          }
-        });
-      }
-
-      window.addEventListener('appinstalled', () => {
-        if(installBtn) installBtn.classList.add('hidden');
-        deferredPrompt = null;
-      });
-    </script>
-
 </body>
 </html>
