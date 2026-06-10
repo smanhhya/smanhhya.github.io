@@ -439,7 +439,7 @@ function listenToDatabase() {
         } 
     });
 
-    // 🌟 تحديث الدفعات وإجبار العميل على اختيار دفعة مفتوحة فقط 🌟
+    // 🌟 التعديل الذكي الثالث: تخزين الدفعات كاملة بالكميات 🌟
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
@@ -458,7 +458,7 @@ function listenToDatabase() {
                         openBatchesCount++;
                     }
                 });
-
+                
                 // اختيار أول دفعة أوتوماتيك لو العميل لسة مختارش
                 if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
                     batchSelect.value = currentVal;
@@ -469,11 +469,11 @@ function listenToDatabase() {
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
                 else batchContainer.style.display = 'none';
                 
+                // تحديث العرض عشان لو الدفعة نقصت قدام الزبون لايف
                 if(isStoreDataLoaded) { renderProducts(); updateUI(); }
             }
         }
     });
-
 }
 
 // --- نظام الكوبونات والخصم ---
@@ -603,7 +603,6 @@ window.getCardActionHTML = function(id) {
     }
     return `<div onclick="addToCart('${id}')" class="w-full bg-brand-navy text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer shadow-sm hover:opacity-90"><i class="fa-solid fa-plus"></i> إضافة</div>`;
 }
-
 
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
@@ -851,7 +850,6 @@ window.finalCheckoutStep = async function() {
     let addressText = customerAddress ? `🏠 العنوان: ${customerAddress}` : "";
     let tickTickItemsStr = ""; for (let id in cart) { if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`; }
     
-    // 🔥 هنا تم إصلاح كلمة Let لتصبح let (بالسمول) 🔥
     let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; 
     
     let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
@@ -892,7 +890,6 @@ window.finalCheckoutStep = async function() {
                 }
                 promises.push(db.collection("inventory").doc("batches").update(batchUpdates));
             }
-
 
             if(promoUpdated) { promises.push(db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true })); }
             
