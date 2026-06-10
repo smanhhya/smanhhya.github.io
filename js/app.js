@@ -1,4 +1,4 @@
-ت// js/app.js
+// js/app.js
 // المتغيرات الأساسية (cart, productsInfo, globalSettings...) بيتم قراءتها تلقائياً من ملف config.js
 
 // --- دوال الحفظ والتحميل ---
