@@ -10,7 +10,8 @@ window.updateNextBatch = function(id, delta) {
     if (window.nextBatchCart[id] <= 0) delete window.nextBatchCart[id];
     
     if(delta > 0 && window.nextBatchCart[id] === 1) {
-        showAlert("حجز للدفعة القادمة ⏳", "تم إضافة هذا المنتج كملاحظة في طلبك ليتم تجهيزه لك في الدفعة القادمة، ولن يتم حسابه في فاتورة اليوم."
+        showAlert("حجز للدفعة القادمة ⏳", "تم إضافة هذا المنتج كملاحظة في طلبك ليتم تجهيزه لك في الدفعة القادمة، ولن يتم حسابه في فاتورة اليوم.");
+    }
     renderProducts(); updateUI();
 };
 
