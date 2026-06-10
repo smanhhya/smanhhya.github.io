@@ -3,6 +3,18 @@
 
 // --- إضافة متغير الدفعات العالمي ---
 let globalBatches = {};
+window.nextBatchCart = {}; // سلة خاصة بمنتجات الدفعة الجاية
+window.updateNextBatch = function(id, delta) {
+    if (!window.nextBatchCart[id]) window.nextBatchCart[id] = 0;
+    window.nextBatchCart[id] += delta;
+    if (window.nextBatchCart[id] <= 0) delete window.nextBatchCart[id];
+    
+    if(delta > 0 && window.nextBatchCart[id] === 1) {
+        showAlert("حجز للدفعة القادمة ⏳", "تم إضافة هذا المنتج كملاحظة في طلبك ليتم تجهيزه لك في الدفعة القادمة، ولن يتم حسابه في فاتورة اليوم.");
+    }
+    renderProducts(); updateUI();
+};
+
 
 // --- دوال الحفظ والتحميل ---
 function saveCart() { try { localStorage.setItem('sman_cart', JSON.stringify(cart)); } catch(e) {} }
@@ -560,9 +572,21 @@ window.getCardActionHTML = function(id) {
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
+    // لو خلصان، نظهر زرار الدفعة الجاية
     if (available === 0 && inCart === 0) {
-        return `<div onclick="openVipPreOrder('${id}')" class="w-full bg-brand-yellow text-brand-navy font-black py-2 rounded-xl text-[10px] flex justify-center items-center gap-1 cursor-pointer shadow-sm"><i class="fa-solid fa-crown"></i> حجز VIP</div>`;
+        const nextCartQty = window.nextBatchCart[id] || 0;
+        if (nextCartQty > 0) {
+            return `
+            <div class="flex items-center justify-between bg-orange-50 border border-orange-300 rounded-xl p-1 h-[36px]">
+                <div onclick="updateNextBatch('${id}', 1)" class="w-8 h-full bg-white text-orange-600 rounded-lg shadow-sm font-black text-lg flex items-center justify-center cursor-pointer select-none">+</div>
+                <span class="font-black text-orange-700 text-xs min-w-[20px] text-center">⏳ ${nextCartQty}</span>
+                <div onclick="updateNextBatch('${id}', -1)" class="w-8 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none">-</div>
+            </div>`;
+        }
+        return `<div onclick="updateNextBatch('${id}', 1)" class="w-full bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-[11px] flex justify-center items-center gap-1 cursor-pointer border border-orange-200 hover:bg-orange-100 transition-colors"><i class="fa-regular fa-clock"></i> للدفعة الجاية</div>`;
     }
+    
+    // لو متاح
     if (inCart > 0) {
         return `
             <div class="flex items-center justify-between bg-brand-light border border-brand-navy/10 rounded-xl p-1 h-[36px]">
@@ -573,6 +597,7 @@ window.getCardActionHTML = function(id) {
     }
     return `<div onclick="addToCart('${id}')" class="w-full bg-brand-navy text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer shadow-sm hover:opacity-90"><i class="fa-solid fa-plus"></i> إضافة</div>`;
 }
+
 
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
@@ -635,6 +660,18 @@ window.updateUI = function() {
                     </div>
                 </div>`;
         }
+    }
+    // عرض منتجات الدفعة القادمة في السلة
+    let nextBatchHtml = '';
+    for (let id in window.nextBatchCart) {
+        const item = productsInfo[id];
+        if(item) {
+            nextBatchHtml += `<div class="flex justify-between items-center text-[11px] font-bold text-orange-700 bg-orange-50 p-2 rounded-lg border border-orange-200 mb-1 shadow-sm"><span>⏳ ${item.name}</span><div class="flex items-center gap-2 bg-white rounded border border-orange-200 px-1"><span class="cursor-pointer text-orange-600 px-1" onclick="updateNextBatch('${id}', 1)">+</span><span>${window.nextBatchCart[id]}</span><span class="cursor-pointer text-red-500 px-1" onclick="updateNextBatch('${id}', -1)">-</span></div></div>`;
+        }
+    }
+    if(nextBatchHtml && cartItemsContainer) {
+        cartItemsContainer.innerHTML += `<div class="mt-4"><h5 class="text-xs font-black text-brand-navy mb-2 border-b border-gray-200 pb-1"><i class="fa-solid fa-clock-rotate-left text-brand-yellow"></i> مطلوب للدفعة القادمة:</h5>${nextBatchHtml}</div>`;
+        totalItems += 1; // عشان زرار السلة السفلي يفضل ظاهر لو السلة الأساسية فاضية
     }
 
     const bottomBar = document.getElementById('bottom-cart-bar');
@@ -799,9 +836,22 @@ window.finalCheckoutStep = async function() {
     if (globalSettings.rewardActive && !appliedPromo) { if (globalSettings.rewardMaxGenerations >= 0) { canGenerateReward = true; } }
     if (canGenerateReward) { const prefix = globalSettings.autoPromoPrefix || 'VIP-'; newPromoCode = prefix + Math.floor(1000 + Math.random() * 9000); earnedLoyalty = true; const maxDisc = globalSettings.rewardMaxDiscount || 0; const newPromoObj = { code: newPromoCode, type: globalSettings.rewardType, discount: globalSettings.rewardValue, isAuto: true, usesLeft: 1, customerPhone: customerPhone, minOrder: 0, maxDiscount: maxDisc, expiryDate: '' }; if(!globalSettings.promoCodes) globalSettings.promoCodes = []; globalSettings.promoCodes.push(newPromoObj); if (globalSettings.rewardMaxGenerations > 0) { globalSettings.rewardMaxGenerations -= 1; } promoUpdated = true; }
 
+    // تجهيز ملاحظات الدفعة القادمة
+    let nextBatchNotes = "";
+    for (let id in window.nextBatchCart) { if(productsInfo[id]) nextBatchNotes += `▪ ${productsInfo[id].name} (الكمية: ${window.nextBatchCart[id]})\n`; }
+    let finalAdminNote = "";
+    if (nextBatchNotes) finalAdminNote = `⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`;
+
     let addressText = customerAddress ? `🏠 العنوان: ${customerAddress}` : "";
     let tickTickItemsStr = ""; for (let id in cart) { if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`; }
-    let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
+    
+    // 🔥 هنا تم إصلاح كلمة Let لتصبح let (بالسمول) 🔥
+    let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; 
+    
+    let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
+    if (nextBatchNotes) notesText += `\n\n${finalAdminNote}`;
+    if (nextBatchNotes) message += `\n\n${finalAdminNote}`; 
+
     let batchTickTickLine = batchName ? `\n\n📌 **حجز تبع: ${batchName}**\n` : '';
     let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
@@ -816,7 +866,7 @@ window.finalCheckoutStep = async function() {
             const orderData = { 
                 customerName, customerPhone, customerAddress: customerAddress||"غير محدد", zone: zoneName, items: [], subtotal: subTotal, discount: discountAmount, deliveryFee: finalDelivery, total: finalTotal, status: "new", 
                 usedPromo: appliedPromo ? appliedPromo.code : null, generatedPromo: newPromoCode || null, batch: globalSettings.batchHashtag || "", orderDate: orderDate, orderTime: orderTime, isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                batchId: batchId, batchName: batchName 
+                batchId: batchId, batchName: batchName, adminNote: finalAdminNote 
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
@@ -848,7 +898,7 @@ window.finalCheckoutStep = async function() {
     } catch(e) { console.log("Sync Error", e); }
 
 
-    cart = {}; saveCart(); appliedPromo = null; if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
+    cart = {}; window.nextBatchCart = {}; saveCart(); appliedPromo = null; if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
     document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
 
     if (earnedLoyalty) {
