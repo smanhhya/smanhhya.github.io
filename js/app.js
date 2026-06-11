@@ -366,7 +366,7 @@ window.setupEventListeners = function() {
     }
 }
 
-// --- تهيئة Firebase ---
+// --- تهيئة Firebase مع تفعيل الكاش المحلي لإنقاذ الموقع ---
 function initFirebase() {
     const firebaseConfig = { 
         apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
@@ -379,9 +379,30 @@ function initFirebase() {
     try { 
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         db = firebase.firestore(); 
+        
+        // 🌟 التعديل السحري: تفعيل الذاكرة المخبأة (عشان لو السيرفر قفل، المنيو يظهر من الموبايل) 🌟
+        db.enablePersistence({synchronizeTabs: true}).catch(function(err) {
+            console.log("Cache persistence error: ", err);
+        });
+
         hasCloud = true; listenToDatabase(); 
+        
+        // 🌟 تايمر الإنقاذ: لو فايربيس ماردش خلال 2.5 ثانية، افتح المنيو فوراً بالبيانات الأساسية 🌟
+        setTimeout(() => {
+            if (!isStoreDataLoaded) {
+                isStoreDataLoaded = true;
+                Object.keys(productsInfo).forEach(id => { 
+                    if(globalStock[id] === undefined) globalStock[id] = 0; 
+                    if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice; 
+                });
+                renderProducts(); applySettingsToUI(); updateUI();
+                console.log("تم تشغيل وضع الإنقاذ (Offline Mode)");
+            }
+        }, 2500);
+
     } catch (e) { console.log("Firebase Error", e); }
 }
+
 
 function listenToDatabase() {
     if(!db) return;
