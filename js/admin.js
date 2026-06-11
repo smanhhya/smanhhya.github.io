@@ -1,6 +1,4 @@
-// js/admin.js
-
-Function debounce(func, delay) {
+function debounce(func, delay) {
     let timeout;
     return function(...args) {
         clearTimeout(timeout);
@@ -69,7 +67,7 @@ window.adminLogout = () => {
 
 
 let currentAdminTab = 'stats'; let ordersList = []; let orderFilter = 'all'; window.dispatchOrdersList = [];
-window.tempDrivers = []; 
+window.tempDrivers = []; // مصفوفة المناديب
 
 window.switchAdminTab = (tab) => {
     currentAdminTab = tab;
@@ -743,6 +741,7 @@ window.addOrderNote = async (id) => {
     const order = ordersList.find(o => o.id === id);
     if(!order) return;
     
+    // بيعرض الملاحظة القديمة لو موجودة عشان تقدر تعدلها
     const currentNote = order.adminNote || "";
     const note = prompt("اكتب ملاحظتك للمندوب (أو اتركها فارغة لحذف الملاحظة):", currentNote);
     
@@ -753,7 +752,7 @@ window.addOrderNote = async (id) => {
         
         try {
             await db.collection("orders").doc(id).update({ adminNote: note.trim() });
-            loadOrders(); 
+            loadOrders(); // بيعمل ريفريش سريع للأوردرات عشان يظهر الملاحظة
         } catch (e) {
             console.error(e);
             btn.innerHTML = origHtml;
@@ -778,6 +777,7 @@ async function loadOrders() {
 
 window.filterOrders = (f) => { orderFilter=f; renderOrdersList(); };
 
+// الدالة المسئولة عن تغيير حالة الأوردر (متضاف فيها كود خصم الإلغاء)
 window.updateOrderStatus = async (id, s, amount = 0) => { 
     if (s === 'canceled') {
         if (!confirm("تأكيد: هل تريد إلغاء الأوردر؟ (سيتم خصم قيمته تلقائياً من إحصائيات المبيعات)")) return;
@@ -791,12 +791,15 @@ window.updateOrderStatus = async (id, s, amount = 0) => {
         
         try {
             await db.collection("orders").doc(id).update({status:s}); 
+            
+            // لو الأوردر اتلغى، نطرح الفلوس من الإحصائيات الرئيسية
             if (s === 'canceled' && amount > 0) {
                 await db.collection("inventory").doc("stats").update({ 
                     sales: firebase.firestore.FieldValue.increment(-amount),
                     orders: firebase.firestore.FieldValue.increment(-1)
                 });
             }
+            
             loadOrders();
         } catch (e) {
             console.error(e);
@@ -938,6 +941,7 @@ window.sendDispatchToDriver = () => {
         let address = (order.customerAddress && order.customerAddress !== 'غير محدد') ? order.customerAddress : '';
         let msg = template.replace(/{اسم_العميل}/g, order.customerName).replace(/{رقم_العميل}/g, order.customerPhone).replace(/{المنطقة}/g, order.zone).replace(/{العنوان}/g, address).replace(/{تفاصيل_الطلبات}/g, itemsText).replace(/{إجمالي_الطلب}/g, order.subtotal).replace(/{التوصيل}/g, order.deliveryFee).replace(/{الإجمالي_النهائي}/g, order.total);
         
+        // لو في ملاحظة للأوردر ده، ضيفها في آخر الرسالة
         if (order.adminNote) {
             msg += `\n📝 *ملاحظة للمندوب:* ${order.adminNote}`;
         }
@@ -992,7 +996,7 @@ window.generateBulkWhatsAppLinks = () => {
     showAlert("تم التجهيز بنجاح 🎉", `تم إنشاء أكواد لـ ${numbers.length} عميل. \n\n⚠️ مهم جداً: انزل تحت في لوحة التحكم ودوس "حفظ جميع التعديلات" عشان الأكواد تتفعل في السيستم وتقدر تبعت الرسايل.`);
 };
 
-// --- الدالة الذهبية لحفظ البيانات (تم تعطيل مسح بيانات الـ CRM المستقل) ---
+// --- الدالة الذهبية لحفظ البيانات (آمنة تماماً) ---
 window.saveAdminData = async () => {
     syncAdminProductsFromDOM(); 
     
@@ -1016,6 +1020,7 @@ window.saveAdminData = async () => {
         { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية' }
     ];
 
+    // فلترة الأكواد وحفظها بدون فقدان (مع إجبار تحويلها لأرقام لمنع التعليق)
     const finalPromoCodes = tempPromoCodes.filter(p => p.code && p.code.trim() !== '').map(p => ({
         ...p,
         discount: parseFloat(p.discount) || 0,
@@ -1081,13 +1086,12 @@ window.saveAdminData = async () => {
 
     if(hasCloud && db) {
         try {
-            // -- هنا الهندسة الذكية: استخدمنا { merge: true } عشان لو فيه دفعات أو حقول إنت عاملها في الـ CRM متتمسحش أبداً --
             await Promise.all([ 
-                db.collection("inventory").doc("settings").set(newSettings, { merge: true }), 
-                db.collection("inventory").doc("stock").set(globalStock, { merge: true }), 
-                db.collection("inventory").doc("prices").set(globalPrices, { merge: true }), 
-                db.collection("inventory").doc("old_prices").set(globalOldPrices, { merge: true }), 
-                db.collection("inventory").doc("discounts_status").set(globalDiscounts, { merge: true }) 
+                db.collection("inventory").doc("settings").set(newSettings), 
+                db.collection("inventory").doc("stock").set(globalStock), 
+                db.collection("inventory").doc("prices").set(globalPrices), 
+                db.collection("inventory").doc("old_prices").set(globalOldPrices), 
+                db.collection("inventory").doc("discounts_status").set(globalDiscounts) 
             ]);
             if(btn) btn.innerHTML = originalHtml; 
             closeAdminDashboard(); 
@@ -1095,7 +1099,7 @@ window.saveAdminData = async () => {
             if(iconCont) iconCont.className = "w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl"; 
             const icon = document.getElementById('alert-icon');
             if(icon) icon.className = "fa-solid fa-check"; 
-            showAlert("تم بنجاح", "تم حفظ جميع التعديلات بنجاح وبدون مسح لبيانات الـ CRM.");
+            showAlert("تم بنجاح", "تم حفظ جميع التعديلات بنجاح.");
         } catch(e) { 
             if(btn) btn.innerHTML = originalHtml; 
             showAlert("خطأ", "حدث خطأ أثناء الحفظ. تحقق من اتصالك بالإنترنت."); 
