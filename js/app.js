@@ -866,37 +866,37 @@ window.finalCheckoutStep = async function() {
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
-            let promises = [];
-            promises.push(db.collection("orders").add(orderData));
-            promises.push(db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true }));
+            // 1. تسجيل الأوردر
+            await db.collection("orders").add(orderData);
             
+            // 2. تحديث الإحصائيات
+            await db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+            
+            // 3. تحديث ملف العميل
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
-            promises.push(db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true }));
+            await db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true });
             
+            // 4. الخصم من الدفعة بأمر صارم
             if(batchId) {
-                const batchRef = db.collection("inventory").doc("batches");
-                const docSnap = await batchRef.get();
-                if(docSnap.exists) {
-                    let batchesData = docSnap.data();
-                    if(batchesData[batchId]) {
-                        if(!batchesData[batchId].booked) batchesData[batchId].booked = {};
-                        for (let id in cart) { 
-                            let prevBooked = parseInt(batchesData[batchId].booked[id]) || 0;
-                            let newQty = parseInt(cart[id].quantity) || 0;
-                            batchesData[batchId].booked[id] = prevBooked + newQty; 
-                        }
-                        promises.push(batchRef.set(batchesData));
-                    }
+                let bookedUpdates = {};
+                for (let id in cart) { 
+                    bookedUpdates[id] = firebase.firestore.FieldValue.increment(cart[id].quantity); 
                 }
+                await db.collection("inventory").doc("batches").set({ [batchId]: { booked: bookedUpdates } }, { merge: true });
             }
 
-            if(promoUpdated) { promises.push(db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true })); }
+            // 5. تحديث الكوبونات
+            if(promoUpdated) { 
+                await db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true }); 
+            }
             
+            // 6. الخصم من المخزن العام
             let stockUpdates = {}; 
-            for (let id in cart) { stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); }
-            promises.push(db.collection('inventory').doc('stock').set(stockUpdates, { merge: true }));
-            
-            await Promise.all(promises);
+            for (let id in cart) { 
+                stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); 
+            }
+            await db.collection('inventory').doc('stock').set(stockUpdates, { merge: true });
+
         }
     } catch(e) { console.log("Sync Error", e); }
 
