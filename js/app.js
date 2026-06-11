@@ -1040,3 +1040,36 @@ window.hideCustomerWelcome = function() {
     const msgEl = document.getElementById('smart-welcome-msg');
     if(msgEl) msgEl.classList.add('hidden');
 };
+
+// === 🕵️‍♂️ الفخ السري للدخول للوحة الإدارة ===
+let secretClickCount = 0;
+let secretClickTimer;
+
+function checkSecretAdminAccess() {
+    secretClickCount++;
+    if (secretClickCount === 1) {
+        // معاك ثانية ونص بس عشان تكمل الـ 3 ضغطات
+        secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 1500);
+    }
+    if (secretClickCount === 3) {
+        clearTimeout(secretClickTimer);
+        secretClickCount = 0;
+        // التوجيه فوراً لصفحة الأدمن
+        window.location.href = "admn.html"; 
+    }
+}
+
+// ربط الضغطة السرية باسم المتجر اللي فوق (الهيدر)
+document.addEventListener('DOMContentLoaded', () => {
+    // هنستنى ثانية عشان نتأكد إن كل حاجة حملت
+    setTimeout(() => {
+        const storeNameElement = document.getElementById('header-store-name');
+        if(storeNameElement) {
+            storeNameElement.onclick = checkSecretAdminAccess;
+            // عشان الماوس يتغير ويبقى كأنه زرار
+            storeNameElement.style.cursor = "pointer"; 
+            // عشان نمنع تظليل النص وإنت بتضغط بسرعة
+            storeNameElement.style.userSelect = "none"; 
+        }
+    }, 1000);
+});
