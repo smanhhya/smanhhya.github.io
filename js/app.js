@@ -34,6 +34,7 @@ function getAvailableStock(id) {
     
     if (batchId && globalBatches[batchId]) {
         const batch = globalBatches[batchId];
+        // هيقرأ من الـ CRM الأساسي لو الدفعة ملهاش رقم محدد
         const bStock = (batch.stock && batch.stock[id] !== undefined) ? parseInt(batch.stock[id]) : (globalStock[id] || 0);
         const bBooked = (batch.booked && batch.booked[id]) ? parseInt(batch.booked[id]) : 0;
         const remainingInBatch = Math.max(0, bStock - bBooked);
@@ -872,7 +873,6 @@ window.finalCheckoutStep = async function() {
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
             promises.push(db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true }));
             
-            // 🌟 الخصم المضمون 100% من الدفعة والمخزن الأساسي 🌟
             if(batchId) {
                 const batchRef = db.collection("inventory").doc("batches");
                 const docSnap = await batchRef.get();
@@ -885,14 +885,13 @@ window.finalCheckoutStep = async function() {
                             let newQty = parseInt(cart[id].quantity) || 0;
                             batchesData[batchId].booked[id] = prevBooked + newQty; 
                         }
-                        promises.push(batchRef.set(batchesData, { merge: true }));
+                        promises.push(batchRef.set(batchesData));
                     }
                 }
             }
 
             if(promoUpdated) { promises.push(db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true })); }
             
-            // تحديث المخزن الأساسي
             let stockUpdates = {}; 
             for (let id in cart) { stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); }
             promises.push(db.collection('inventory').doc('stock').set(stockUpdates, { merge: true }));
