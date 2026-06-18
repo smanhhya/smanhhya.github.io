@@ -363,7 +363,7 @@
                 }
             </style>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8 relative group" id="main-slider-container">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6 relative group" id="main-slider-container">
                 <div class="overflow-hidden relative touch-pan-y" id="slider-viewport">
                     <div class="slider-wrapper items-center" id="slider-track">
                         <div class="w-full shrink-0 aspect-[3/4] sm:aspect-[4/3] bg-gray-50 flex flex-col items-center justify-center text-brand-cyan/50">
@@ -387,13 +387,25 @@
                 </div>
             </div>
 
+            <div id="batch-selection-container" class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 mb-8 relative z-20">
+                <label for="user-batch-select" class="block text-brand-navy font-black text-sm mb-3 text-center">
+                    <i class="fa-regular fa-calendar-check text-brand-cyanDark ml-1"></i> اختر ميعاد استلامك للطلب:
+                </label>
+                <div class="relative">
+                    <select id="user-batch-select" onchange="updateUI(); renderProducts();" class="w-full bg-gray-50 border-2 border-gray-200 text-brand-navy text-sm md:text-base rounded-xl focus:border-brand-navy outline-none block p-3 font-bold appearance-none cursor-pointer text-center transition-all shadow-sm">
+                        <option value="">-- جاري تحميل المواعيد --</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-brand-navy">
+                        <i class="fa-solid fa-chevron-down text-lg"></i>
+                    </div>
+                </div>
+            </div>
             <h2 class="text-xl font-black text-brand-navy mb-4 border-r-4 border-brand-cyanDark pr-3" id="lbl-menu-title">قائمة الأطباق</h2>
             <div class="flex flex-col gap-4 mb-10" id="products-container"><div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري تحميل المنيو...</p></div></div>
 
             <h2 class="text-xl font-black text-brand-navy mb-4 mt-8 border-r-4 border-brand-yellow pr-3" id="lbl-extras-title">منتجات أخرى</h2>
             <div class="flex flex-col gap-4" id="extras-container"></div>
-        </div>
-    </section>
+
 
     <footer class="bg-brand-navy text-gray-400 py-8 border-t border-[#143024] mt-10">
         <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
