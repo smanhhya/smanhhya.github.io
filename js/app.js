@@ -589,17 +589,13 @@ window.getCardActionHTML = function(id) {
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
+    // التعديل هنا: لغينا الحجز المستقبلي وحطينا رسالة واضحة للعميل
     if (available === 0 && inCart === 0) {
-        const nextCartQty = window.nextBatchCart[id] || 0;
-        if (nextCartQty > 0) {
-            return `
-            <div class="flex items-center justify-between bg-orange-50 border border-orange-300 rounded-xl p-1 h-[36px]">
-                <div onclick="updateNextBatch('${id}', 1)" class="w-8 h-full bg-white text-orange-600 rounded-lg shadow-sm font-black text-lg flex items-center justify-center cursor-pointer select-none">+</div>
-                <span class="font-black text-orange-700 text-xs min-w-[20px] text-center">⏳ ${nextCartQty}</span>
-                <div onclick="updateNextBatch('${id}', -1)" class="w-8 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none">-</div>
-            </div>`;
-        }
-        return `<div onclick="updateNextBatch('${id}', 1)" class="w-full bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-[11px] flex justify-center items-center gap-1 cursor-pointer border border-orange-200 hover:bg-orange-100 transition-colors"><i class="fa-regular fa-clock"></i> للدفعة الجاية</div>`;
+        return `
+        <div class="w-full bg-gray-50 flex flex-col justify-center items-center py-1 rounded-xl border border-gray-200 cursor-not-allowed opacity-80">
+            <span class="text-[10px] font-black text-gray-500">نفذت من هذه الدفعة</span>
+            <span class="text-[9px] font-bold text-brand-cyanDark">اختر دفعة أخرى من الأعلى</span>
+        </div>`;
     }
     
     if (inCart > 0) {
