@@ -584,17 +584,34 @@ window.renderProducts = function() {
 };
 
 // --- منطق السلة والكميات ---
+// دالة جديدة عشان ترفع الشاشة لفوق وتنور مربع الدفعات للعميل
+window.scrollToBatch = function() {
+    const batchBox = document.getElementById('batch-selection-container');
+    if(batchBox) {
+        // الشاشة تطلع لفوق ببطء
+        batchBox.scrollIntoView({behavior: 'smooth', block: 'center'});
+        
+        // تأثير نبض/نور حوالين المربع عشان يلفت نظر العميل
+        batchBox.classList.add('ring-4', 'ring-brand-gold', 'scale-105', 'transition-all', 'duration-300');
+        setTimeout(() => {
+            batchBox.classList.remove('ring-4', 'ring-brand-gold', 'scale-105');
+        }, 1500);
+    }
+};
+
 window.getCardActionHTML = function(id) {
     if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-xs text-center">مغلق</div>`;
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
-    // التعديل هنا: لغينا الحجز المستقبلي وحطينا رسالة واضحة للعميل
+    // 👇 التعديل السحري للعميل البسيط
     if (available === 0 && inCart === 0) {
         return `
-        <div class="w-full bg-gray-50 flex flex-col justify-center items-center py-1 rounded-xl border border-gray-200 cursor-not-allowed opacity-80">
-            <span class="text-[10px] font-black text-gray-500">نفذت من هذه الدفعة</span>
-            <span class="text-[9px] font-bold text-brand-cyanDark">اختر دفعة أخرى من الأعلى</span>
+        <div onclick="scrollToBatch()" class="w-full bg-red-50 flex flex-col justify-center items-center py-1.5 rounded-xl border-2 border-red-200 cursor-pointer hover:bg-red-100 transition-colors shadow-sm group">
+            <span class="text-[12px] font-black text-red-600 mb-1"><i class="fa-solid fa-circle-xmark"></i> خلصت في الدفعة دي</span>
+            <span class="text-[10px] font-bold text-gray-700 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                دوس واختار ميعاد تاني <i class="fa-solid fa-arrow-up text-red-500 animate-bounce"></i>
+            </span>
         </div>`;
     }
     
@@ -608,6 +625,7 @@ window.getCardActionHTML = function(id) {
     }
     return `<div onclick="addToCart('${id}')" class="w-full bg-brand-navy text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer shadow-sm hover:opacity-90"><i class="fa-solid fa-plus"></i> إضافة</div>`;
 }
+
 
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
