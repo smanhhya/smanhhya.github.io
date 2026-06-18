@@ -1,7 +1,21 @@
 // js/app.js
-// المتغيرات الأساسية (cart, productsInfo, globalSettings...) بيتم قراءتها تلقائياً من ملف config.js
-
+// --- المتغيرات الأساسية ---
+let cart = {};
+let globalSettings = {};
+let productsInfo = {};
+let globalStock = {};
+let globalPrices = {};
+let globalOldPrices = {};
+let globalDiscounts = {};
+let globalDeliveryZones = [];
 let globalBatches = {};
+let dailyStats = {};
+let appliedPromo = null;
+let hasCloud = false;
+let isStoreDataLoaded = false;
+let db = null;
+
+// --- نظام الدفعات القادمة ---
 window.nextBatchCart = {}; 
 window.updateNextBatch = function(id, delta) {
     if (!window.nextBatchCart[id]) window.nextBatchCart[id] = 0;
@@ -34,7 +48,6 @@ function getAvailableStock(id) {
     
     if (batchId && globalBatches[batchId]) {
         const batch = globalBatches[batchId];
-        // هيقرأ من الـ CRM الأساسي لو الدفعة ملهاش رقم محدد
         const bStock = (batch.stock && batch.stock[id] !== undefined) ? parseInt(batch.stock[id]) : (globalStock[id] || 0);
         const bBooked = (batch.booked && batch.booked[id]) ? parseInt(batch.booked[id]) : 0;
         const remainingInBatch = Math.max(0, bStock - bBooked);
@@ -84,6 +97,7 @@ function applyUITexts() {
     }
 }
 
+// --- مشغل الصور والسلايدر ---
 window.openImageModal = function(imgSrc) {
     if(!imgSrc || imgSrc.trim() === '') return;
     let modal = document.getElementById('image-viewer-modal');
@@ -137,9 +151,7 @@ function closeImageViewer() {
         setTimeout(() => modal.classList.add('hidden'), 300);
     }
 }
-
 window.addEventListener('popstate', function(event) { closeImageViewer(); });
-
 
 window.currentSlide = 0;
 window.sliderImages = [];
@@ -305,13 +317,13 @@ function renderDeliveryZones() {
     const currentVal = select.value; 
     select.innerHTML = '<option value="" disabled selected>اختر منطقتك لحساب الشحن...</option>';
     
-    globalDeliveryZones.forEach(zone => {
+    (globalDeliveryZones || []).forEach(zone => {
         const option = document.createElement('option'); 
-        option.value = zone.id;
+        option.value = zone.id || zone.name;
         option.textContent = zone.price === 0 ? `${zone.name} (يحدد لاحقاً)` : `${zone.name} (${zone.price} جنيه)`; 
         select.appendChild(option);
     });
-    if (currentVal && globalDeliveryZones.find(z => z.id === currentVal)) select.value = currentVal;
+    if (currentVal && globalDeliveryZones.find(z => (z.id === currentVal || z.name === currentVal))) select.value = currentVal;
 }
 
 document.addEventListener('DOMContentLoaded', () => { 
@@ -366,7 +378,7 @@ window.setupEventListeners = function() {
     }
 }
 
-// --- تهيئة Firebase مع تفعيل الكاش المحلي لإنقاذ الموقع ---
+// --- ربط فايربيس للقراءة وكتابة الطلبات فقط ---
 function initFirebase() {
     const firebaseConfig = { 
         apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
@@ -380,14 +392,12 @@ function initFirebase() {
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         db = firebase.firestore(); 
         
-        // 🌟 التعديل السحري: تفعيل الذاكرة المخبأة (عشان لو السيرفر قفل، المنيو يظهر من الموبايل) 🌟
         db.enablePersistence({synchronizeTabs: true}).catch(function(err) {
             console.log("Cache persistence error: ", err);
         });
 
         hasCloud = true; listenToDatabase(); 
         
-        // 🌟 تايمر الإنقاذ: لو فايربيس ماردش خلال 2.5 ثانية، افتح المنيو فوراً بالبيانات الأساسية 🌟
         setTimeout(() => {
             if (!isStoreDataLoaded) {
                 isStoreDataLoaded = true;
@@ -402,7 +412,6 @@ function initFirebase() {
 
     } catch (e) { console.log("Firebase Error", e); }
 }
-
 
 function listenToDatabase() {
     if(!db) return;
@@ -448,8 +457,6 @@ function listenToDatabase() {
     db.collection('inventory').doc('stats').onSnapshot(doc => { 
         if(doc.exists) { 
             dailyStats = doc.data(); 
-            if(document.getElementById('stat-sales')) document.getElementById('stat-sales').innerText = dailyStats.sales || 0; 
-            if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = dailyStats.orders || 0; 
         } 
     });
 
@@ -487,7 +494,7 @@ function listenToDatabase() {
     });
 }
 
-// --- نظام الكوبونات والخصم ---
+// --- نظام الكوبونات ---
 window.applyPromoCode = function() {
     const input = document.getElementById('promo-code-input').value.trim().toUpperCase(); 
     const msg = document.getElementById('promo-message'); 
@@ -510,7 +517,7 @@ window.applyPromoCode = function() {
     updateUI();
 };
 
-// --- محرك عرض المنتجات ---
+// --- رسم المنتجات ---
 window.renderProducts = function() {
     if(!isStoreDataLoaded) return; 
     const container = document.getElementById('products-container'); 
@@ -583,7 +590,7 @@ window.renderProducts = function() {
     if(mainProductsCount === 0) container.innerHTML = `<div class="text-center py-10 text-gray-400 font-bold">${globalSettings.uiTexts?.emptyMenuMsg || "لا توجد منتجات حالياً"}</div>`;
 };
 
-// --- منطق السلة والكميات ---
+// --- السلة والتنقل ---
 window.getCardActionHTML = function(id) {
     if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-xs text-center">مغلق</div>`;
     const inCart = cart[id]?.quantity || 0; 
@@ -732,15 +739,17 @@ window.updateUI = function() {
 
     const totalAfterPromo = subTotalPrice - discountAmount; 
     const deliverySelect = document.getElementById('delivery-zone'); 
-    const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect?.value); 
-    const deliveryFee = selectedZone ? selectedZone.price : 0; 
+    
+    // البحث بالـ id أو الاسم عشان لو المنطقة متسجلة بالاسم بس
+    const selectedZone = globalDeliveryZones.find(z => (z.id === deliverySelect?.value || z.name === deliverySelect?.value)); 
+    const deliveryFee = selectedZone ? parseInt(selectedZone.price) || 0 : 0; 
     const finalDelivery = freeDelivery ? 0 : deliveryFee; const finalTotal = totalAfterPromo + finalDelivery;
 
     if(document.getElementById('cart-subtotal')) document.getElementById('cart-subtotal').innerText = subTotalPrice;
     if(document.getElementById('cart-step1-total')) document.getElementById('cart-step1-total').innerText = totalAfterPromo;
     if(document.getElementById('cart-delivery-fee')) { 
         if (freeDelivery) document.getElementById('cart-delivery-fee').innerHTML = `<span class="text-green-600 font-black">مجاني 🎉</span>`; 
-        else document.getElementById('cart-delivery-fee').innerText = (selectedZone && selectedZone.price === 0) ? "يحدد لاحقاً" : `${finalDelivery} ج.م`; 
+        else document.getElementById('cart-delivery-fee').innerText = (selectedZone && parseInt(selectedZone.price) === 0) ? "يحدد لاحقاً" : `${finalDelivery} ج.م`; 
     }
     if(document.getElementById('cart-total')) document.getElementById('cart-total').innerText = Math.round(finalTotal);
 
@@ -790,6 +799,7 @@ window.showAlert = function(t, m) {
 };
 window.closeAlert = function() { document.getElementById('alert-modal').classList.add('opacity-0'); setTimeout(() => { document.getElementById('alert-modal').classList.add('hidden'); }, 300); };
 
+// --- معالجة الطلب والإرسال لفايربيس ---
 window.initiateCheckout = function() {
     if (globalSettings.crossSellActive && globalSettings.crossSellProductId && productsInfo[globalSettings.crossSellProductId] && !cart[globalSettings.crossSellProductId] && getAvailableStock(globalSettings.crossSellProductId) > 0) {
         const item = productsInfo[globalSettings.crossSellProductId]; document.getElementById('cross-sell-title').innerText = globalSettings.crossSellTitle || `جرب ${item.name}؟`; document.getElementById('cross-sell-desc').innerText = globalSettings.crossSellDesc || 'مغذي جداً للأطفال وطعمه حكاية!'; document.getElementById('cross-sell-price').innerText = globalPrices[globalSettings.crossSellProductId] || item.basePrice; document.getElementById('cross-sell-img').src = (item.images && item.images.length>0) ? item.images[0] : '';
@@ -803,10 +813,18 @@ window.declineCrossSell = function() { const m = document.getElementById('cross-
 window.finalCheckoutStep = async function() {
     const checkoutBtn = document.getElementById('checkout-btn'); const originalBtnHtml = checkoutBtn.innerHTML; checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; checkoutBtn.disabled = true;
 
-    const deliverySelect = document.getElementById('delivery-zone'); const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value); const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; const deliveryFee = selectedZone ? selectedZone.price : 0;
-    const batchSelect = document.getElementById('user-batch-select'); const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
+    const deliverySelect = document.getElementById('delivery-zone'); 
+    const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value || z.name === deliverySelect.value); 
+    const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; 
+    const deliveryFee = selectedZone ? parseInt(selectedZone.price) || 0 : 0;
     
-    let customerName = document.getElementById('customer-name').value.trim(); let customerPhone = document.getElementById('customer-phone').value.trim(); let customerAddress = document.getElementById('customer-address').value.trim();
+    const batchSelect = document.getElementById('user-batch-select'); 
+    const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; 
+    const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
+    
+    let customerName = document.getElementById('customer-name').value.trim(); 
+    let customerPhone = document.getElementById('customer-phone').value.trim(); 
+    let customerAddress = document.getElementById('customer-address').value.trim();
 
     if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
     if (appliedPromo && appliedPromo.customerPhone) { let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); let userPhone = customerPhone.replace(/\D/g, '').slice(-10); if (phoneToMatch !== userPhone && phoneToMatch !== '') { showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; } }
@@ -831,17 +849,29 @@ window.finalCheckoutStep = async function() {
         } 
     }
 
-    const orderDate = new Date().toLocaleDateString('ar-EG'); const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const orderDate = new Date().toLocaleDateString('en-US'); 
     let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = ["#طلب_مباشر"];
     if (globalSettings.batchHashtag) { let cleanHashtag = globalSettings.batchHashtag.trim(); if (!cleanHashtag.startsWith('#')) cleanHashtag = '#' + cleanHashtag; smartTagsArray.push(cleanHashtag.replace(/\s+/g, '_')); }
     
-    let customerDetailsStr = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}🕒 الوقت: ${orderDate} - ${orderTime}`;
-    let itemsStr = ""; for (let id in cart) { if(!productsInfo[id]) continue; const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; let shortName = item.name.replace('طبق ', '').split(' (')[0]; itemsSummaryArray.push(`${item.quantity} ${shortName}`); let tagName = "#" + shortName.replace(/ /g, '_'); if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; }
+    let customerDetailsStr = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}`;
+    let itemsStr = ""; 
+    for (let id in cart) { 
+        if(!productsInfo[id]) continue; 
+        const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; 
+        let shortName = item.name.replace('طبق ', '').split(' (')[0]; 
+        itemsSummaryArray.push(`${item.quantity} ${shortName}`); 
+        let tagName = "#" + shortName.replace(/ /g, '_'); 
+        if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); 
+        itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; 
+    }
 
     let discountAmount = 0; let discountTextTemplate = "";
     if (appliedPromo) { if(appliedPromo.type === 'free_delivery') { discountTextTemplate = `🎁 ${appliedPromo.code}: توصيل مجاني\n`; } else { discountAmount = appliedPromo.type === 'percent' ? (subTotal * (appliedPromo.discount / 100)) : appliedPromo.discount; if (appliedPromo.type === 'percent' && appliedPromo.maxDiscount > 0) { discountAmount = Math.min(discountAmount, appliedPromo.maxDiscount); } discountAmount = Math.round(Math.min(discountAmount, subTotal)); discountTextTemplate = `🎁 كود (${appliedPromo.code}): -${discountAmount} ج\n`; } }
 
-    const totalAfterPromo = subTotal - discountAmount; let freeDelivery = (globalSettings.freeDeliveryActive && totalAfterPromo >= (globalSettings.freeDeliveryThreshold||0)) || (appliedPromo && appliedPromo.type === 'free_delivery'); const finalDelivery = freeDelivery ? 0 : deliveryFee; const finalTotal = totalAfterPromo + finalDelivery;
+    const totalAfterPromo = subTotal - discountAmount; 
+    let freeDelivery = (globalSettings.freeDeliveryActive && totalAfterPromo >= (globalSettings.freeDeliveryThreshold||0)) || (appliedPromo && appliedPromo.type === 'free_delivery'); 
+    const finalDelivery = freeDelivery ? 0 : deliveryFee; 
+    const finalTotal = totalAfterPromo + finalDelivery;
     let deliveryText = freeDelivery ? "مجاني 🎉" : ((deliveryFee === 0 && zoneName === 'مكان آخر') ? "يحدد لاحقاً" : `${deliveryFee} ج.م`);
 
     let template = globalSettings.whatsappTemplate || "السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)";
@@ -870,9 +900,9 @@ window.finalCheckoutStep = async function() {
     if (nextBatchNotes) message += `\n\n${finalAdminNote}`; 
 
     let batchTickTickLine = batchName ? `\n\n📌 **حجز تبع: ${batchName}**\n` : '';
-    let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
+    let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
-    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', notesText).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
+    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', notesText).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
 
     try {
         if(typeof WEB3FORMS_ACCESS_KEY !== 'undefined') {
@@ -882,7 +912,7 @@ window.finalCheckoutStep = async function() {
         if (hasCloud && db) {
             const orderData = { 
                 customerName, customerPhone, customerAddress: customerAddress||"غير محدد", zone: zoneName, items: [], subtotal: subTotal, discount: discountAmount, deliveryFee: finalDelivery, total: finalTotal, status: "new", 
-                usedPromo: appliedPromo ? appliedPromo.code : null, generatedPromo: newPromoCode || null, batch: globalSettings.batchHashtag || "", orderDate: orderDate, orderTime: orderTime, isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                usedPromo: appliedPromo ? appliedPromo.code : null, generatedPromo: newPromoCode || null, batch: globalSettings.batchHashtag || "", orderDate: orderDate, isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                 batchId: batchId, batchName: batchName, adminNote: finalAdminNote 
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
@@ -890,7 +920,7 @@ window.finalCheckoutStep = async function() {
             // 1. تسجيل الأوردر
             await db.collection("orders").add(orderData);
             
-            // 2. تحديث الإحصائيات
+            // 2. تحديث الإحصائيات (الإجمالي الكلي)
             await db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true });
             
             // 3. تحديث ملف العميل
@@ -906,7 +936,7 @@ window.finalCheckoutStep = async function() {
                 await db.collection("inventory").doc("batches").set({ [batchId]: { booked: bookedUpdates } }, { merge: true });
             }
 
-            // 5. تحديث الكوبونات
+            // 5. تحديث الكوبونات في السيتنجس
             if(promoUpdated) { 
                 await db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true }); 
             }
@@ -917,7 +947,6 @@ window.finalCheckoutStep = async function() {
                 stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); 
             }
             await db.collection('inventory').doc('stock').set(stockUpdates, { merge: true });
-
         }
     } catch(e) { console.log("Sync Error", e); }
 
@@ -953,6 +982,7 @@ window.finalCheckoutStep = async function() {
     }
 };
 
+// --- الذكاء التسويقي والـ UX ---
 const invalidNameKeywords = ["جوز", "سمان", "طبق", "سوبر", "جامبو", "بيض", "دبح", "تنضيف", "كتاكيت", "سبشيال"];
 
 function isNameValid(name) {
@@ -1041,34 +1071,28 @@ window.hideCustomerWelcome = function() {
     if(msgEl) msgEl.classList.add('hidden');
 };
 
-// === 🕵️‍♂️ الفخ السري للدخول للوحة الإدارة ===
+// === 🕵️‍♂️ الفخ السري للدخول للوحة الإدارة (CRM) ===
 let secretClickCount = 0;
 let secretClickTimer;
 
 function checkSecretAdminAccess() {
     secretClickCount++;
     if (secretClickCount === 1) {
-        // معاك ثانية ونص بس عشان تكمل الـ 3 ضغطات
         secretClickTimer = setTimeout(() => { secretClickCount = 0; }, 1500);
     }
     if (secretClickCount === 3) {
         clearTimeout(secretClickTimer);
         secretClickCount = 0;
-        // التوجيه فوراً لصفحة الأدمن
-        window.location.href = "admn.html"; 
+        window.location.href = "admn.html"; // ده اللينك اللي المفروض عليه الـ CRM
     }
 }
 
-// ربط الضغطة السرية باسم المتجر اللي فوق (الهيدر)
 document.addEventListener('DOMContentLoaded', () => {
-    // هنستنى ثانية عشان نتأكد إن كل حاجة حملت
     setTimeout(() => {
         const storeNameElement = document.getElementById('header-store-name');
         if(storeNameElement) {
             storeNameElement.onclick = checkSecretAdminAccess;
-            // عشان الماوس يتغير ويبقى كأنه زرار
             storeNameElement.style.cursor = "pointer"; 
-            // عشان نمنع تظليل النص وإنت بتضغط بسرعة
             storeNameElement.style.userSelect = "none"; 
         }
     }, 1000);
