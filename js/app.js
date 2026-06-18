@@ -797,12 +797,26 @@ window.acceptCrossSell = function() { addToCart(globalSettings.crossSellProductI
 window.declineCrossSell = function() { const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
 
 window.finalCheckoutStep = async function() {
-    const checkoutBtn = document.getElementById('checkout-btn'); const originalBtnHtml = checkoutBtn.innerHTML; checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; checkoutBtn.disabled = true;
+    const checkoutBtn = document.getElementById('checkout-btn'); 
+    const originalBtnHtml = checkoutBtn.innerHTML; 
+    checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; 
+    checkoutBtn.disabled = true;
 
-    const deliverySelect = document.getElementById('delivery-zone'); const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value); const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; const deliveryFee = selectedZone ? selectedZone.price : 0;
-    const batchSelect = document.getElementById('user-batch-select'); const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
+    const deliverySelect = document.getElementById('delivery-zone'); 
+    const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value || z.name === deliverySelect.value); 
+    const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; 
+    const deliveryFee = selectedZone ? parseInt(selectedZone.price) || 0 : 0;
     
-    let customerName = document.getElementById('customer-name').value.trim(); let customerPhone = document.getElementById('customer-phone').value.trim(); let customerAddress = document.getElementById('customer-address').value.trim();
+    const batchSelect = document.getElementById('user-batch-select'); 
+    const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; 
+    const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
+    
+    let customerName = document.getElementById('customer-name').value.trim(); 
+    let customerPhone = document.getElementById('customer-phone').value.trim(); 
+    let customerAddress = document.getElementById('customer-address').value.trim();
+    
+    // 👇 التعديل هنا: سحب الملاحظة اللي العميل بيكتبها
+    let customerNotesInput = document.getElementById('customer-notes') ? document.getElementById('customer-notes').value.trim() : '';
 
     if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
     if (appliedPromo && appliedPromo.customerPhone) { let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); let userPhone = customerPhone.replace(/\D/g, '').slice(-10); if (phoneToMatch !== userPhone && phoneToMatch !== '') { showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; } }
@@ -827,12 +841,22 @@ window.finalCheckoutStep = async function() {
         } 
     }
 
-    const orderDate = new Date().toLocaleDateString('ar-EG'); const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const orderDate = new Date().toLocaleDateString('ar-EG'); 
+    const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = ["#طلب_مباشر"];
     if (globalSettings.batchHashtag) { let cleanHashtag = globalSettings.batchHashtag.trim(); if (!cleanHashtag.startsWith('#')) cleanHashtag = '#' + cleanHashtag; smartTagsArray.push(cleanHashtag.replace(/\s+/g, '_')); }
     
     let customerDetailsStr = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}🕒 الوقت: ${orderDate} - ${orderTime}`;
-    let itemsStr = ""; for (let id in cart) { if(!productsInfo[id]) continue; const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; let shortName = item.name.replace('طبق ', '').split(' (')[0]; itemsSummaryArray.push(`${item.quantity} ${shortName}`); let tagName = "#" + shortName.replace(/ /g, '_'); if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; }
+    let itemsStr = ""; 
+    for (let id in cart) { 
+        if(!productsInfo[id]) continue; 
+        const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; 
+        let shortName = item.name.replace('طبق ', '').split(' (')[0]; 
+        itemsSummaryArray.push(`${item.quantity} ${shortName}`); 
+        let tagName = "#" + shortName.replace(/ /g, '_'); 
+        if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); 
+        itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; 
+    }
 
     let discountAmount = 0; let discountTextTemplate = "";
     if (appliedPromo) { if(appliedPromo.type === 'free_delivery') { discountTextTemplate = `🎁 ${appliedPromo.code}: توصيل مجاني\n`; } else { discountAmount = appliedPromo.type === 'percent' ? (subTotal * (appliedPromo.discount / 100)) : appliedPromo.discount; if (appliedPromo.type === 'percent' && appliedPromo.maxDiscount > 0) { discountAmount = Math.min(discountAmount, appliedPromo.maxDiscount); } discountAmount = Math.round(Math.min(discountAmount, subTotal)); discountTextTemplate = `🎁 كود (${appliedPromo.code}): -${discountAmount} ج\n`; } }
@@ -853,22 +877,28 @@ window.finalCheckoutStep = async function() {
 
     let nextBatchNotes = "";
     for (let id in window.nextBatchCart) { if(productsInfo[id]) nextBatchNotes += `▪ ${productsInfo[id].name} (الكمية: ${window.nextBatchCart[id]})\n`; }
-    let finalAdminNote = "";
-    if (nextBatchNotes) finalAdminNote = `⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`;
+    
+    // 👇 التعديل هنا: تجهيز الملاحظات ودمجها مع بعض
+    let adminAndCustomerNotes = earnedLoyalty ? `🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
+    if (nextBatchNotes) {
+        adminAndCustomerNotes += `\n⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`;
+        message += `\n\n⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`; 
+    }
+    
+    if (customerNotesInput) {
+        adminAndCustomerNotes += `\n\n📌 **ملاحظة من العميل:** ${customerNotesInput}`;
+        message += `\n\n📌 *ملاحظة من العميل:* ${customerNotesInput}`; // رسالة الواتساب
+    }
 
     let addressText = customerAddress ? `🏠 العنوان: ${customerAddress}` : "";
     let tickTickItemsStr = ""; for (let id in cart) { if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`; }
     
     let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; 
     
-    let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
-    if (nextBatchNotes) notesText += `\n\n${finalAdminNote}`;
-    if (nextBatchNotes) message += `\n\n${finalAdminNote}`; 
-
     let batchTickTickLine = batchName ? `\n\n📌 **حجز تبع: ${batchName}**\n` : '';
     let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
-    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', notesText).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
+    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', adminAndCustomerNotes).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
 
     try {
         if(typeof WEB3FORMS_ACCESS_KEY !== 'undefined') {
@@ -879,21 +909,18 @@ window.finalCheckoutStep = async function() {
             const orderData = { 
                 customerName, customerPhone, customerAddress: customerAddress||"غير محدد", zone: zoneName, items: [], subtotal: subTotal, discount: discountAmount, deliveryFee: finalDelivery, total: finalTotal, status: "new", 
                 usedPromo: appliedPromo ? appliedPromo.code : null, generatedPromo: newPromoCode || null, batch: globalSettings.batchHashtag || "", orderDate: orderDate, orderTime: orderTime, isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                batchId: batchId, batchName: batchName, adminNote: finalAdminNote 
+                batchId: batchId, batchName: batchName, 
+                adminNote: adminAndCustomerNotes // 👇 حفظ الملاحظة هنا في الـ CRM
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
-            // 1. تسجيل الأوردر
             await db.collection("orders").add(orderData);
             
-            // 2. تحديث الإحصائيات
             await db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true });
             
-            // 3. تحديث ملف العميل
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
             await db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true });
             
-            // 4. الخصم من الدفعة بأمر صارم
             if(batchId) {
                 let bookedUpdates = {};
                 for (let id in cart) { 
@@ -902,12 +929,10 @@ window.finalCheckoutStep = async function() {
                 await db.collection("inventory").doc("batches").set({ [batchId]: { booked: bookedUpdates } }, { merge: true });
             }
 
-            // 5. تحديث الكوبونات
             if(promoUpdated) { 
                 await db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true }); 
             }
             
-            // 6. الخصم من المخزن العام
             let stockUpdates = {}; 
             for (let id in cart) { 
                 stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); 
@@ -917,8 +942,15 @@ window.finalCheckoutStep = async function() {
         }
     } catch(e) { console.log("Sync Error", e); }
 
-    cart = {}; window.nextBatchCart = {}; saveCart(); appliedPromo = null; if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
-    document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
+    cart = {}; window.nextBatchCart = {}; saveCart(); appliedPromo = null; 
+    if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; 
+    if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
+    document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; 
+    
+    // تصفير خانة الملاحظات بعد الإرسال
+    if(document.getElementById('customer-notes')) document.getElementById('customer-notes').value = ""; 
+    
+    updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
 
     if (earnedLoyalty) {
         const rewardDesc = globalSettings.rewardType === 'free_delivery' ? 'توصيل مجاني' : globalSettings.rewardType === 'percent' ? `خصم ${globalSettings.rewardValue}%` : `خصم ${globalSettings.rewardValue} ج.م`;
