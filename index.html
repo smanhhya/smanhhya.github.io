@@ -267,38 +267,53 @@
             </div>
         </div>
 
-        <div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
-            <div class="flex-1 overflow-y-auto p-4 cart-scroll bg-gray-50 space-y-4">
+<div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
+    <div class="flex-1 overflow-y-auto p-4 cart-scroll bg-gray-50 space-y-4">
 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-regular fa-address-card text-brand-cyanDark ml-2"></i>بيانات المستلم</h3>
-                    <div id="unified-cust-fields" class="space-y-4">
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
-                            <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">الاسم الكريم <span class="text-red-500">*</span></label>
-                            <input type="text" id="customer-name" placeholder="محمد أحمد..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                        </div>
-                    </div>
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-regular fa-address-card text-brand-cyanDark ml-2"></i>بيانات المستلم</h3>
+            <div id="unified-cust-fields" class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
+                    <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
                 </div>
-
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>عنوان التوصيل</h3>
-                    <div class="space-y-4">
-                        <div class="relative">
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">منطقة التوصيل <span class="text-red-500">*</span></label>
-                            <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
-                            <div class="pointer-events-none absolute inset-y-0 left-4 top-6 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-sm"></i></div>
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">العنوان بالتفصيل (اختياري)</label>
-                            <input type="text" id="customer-address" placeholder="اسم الشارع، رقم العمارة، الدور..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                        </div>
-                    </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">الاسم الكريم <span class="text-red-500">*</span></label>
+                    <input type="text" id="customer-name" placeholder="محمد أحمد..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
                 </div>
             </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>عنوان التوصيل</h3>
+            <div class="space-y-4">
+                <div class="relative">
+                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">منطقة التوصيل <span class="text-red-500">*</span></label>
+                    <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
+                    <div class="pointer-events-none absolute inset-y-0 left-4 top-6 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-sm"></i></div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">العنوان بالتفصيل (اختياري)</label>
+                    <input type="text" id="customer-address" placeholder="اسم الشارع، رقم العمارة، الدور..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-comment-dots text-brand-yellow ml-2"></i>ملاحظات للطلب (اختياري)</h3>
+            <div>
+                <textarea id="customer-notes" rows="2" placeholder="أي تفاصيل تحب تضيفها (مثل: رن عليا قبل ما توصل، أو مواعيد استلام معينة)..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm resize-none"></textarea>
+            </div>
+        </div>
+
+    </div>
+    
+    ```
+
+كده إنت حافظت على "نسق" التصميم (Consistency). الكروت كلها واخدة نفس البوردر، نفس الـ Padding، ونفس الظل الخفيف (Shadow)، ومفيش حاجة لازقة في التانية.
+
+جربها وشوف شكلها في السلة، المفروض تطلع معاك فخمة ومترتبة جداً!
+
 
             <div class="p-5 border-t border-gray-200 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.03)] rounded-t-3xl">
                 <div class="bg-brand-light/50 rounded-2xl p-4 mb-4 border border-brand-cyan/30">
