@@ -16,22 +16,47 @@
 
     <style>
         :root {
-            --brand-navy: #1b4332;
-            --brand-cyanDark: #b91c1c;
-            --brand-yellow: #f59e0b;
+            /* الألوان الملكية الجديدة (فخامة وبساطة) */
+            --brand-navy: #064e3b;      /* أخضر زمردي غامق جداً */
+            --brand-gold: #d97706;      /* ذهبي هادي وراقي */
+            --brand-cream: #fcfbf9;     /* أوف وايت كريمي مريح للعين */
+            --brand-surface: #ffffff;   /* أبيض نقي للكروت */
         }
         
-        /* تأثير النبض للزراير */
-        @keyframes pulse-btn {
-            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-        }
-        .pulse-animation {
-            animation: pulse-btn 2s infinite;
+        body {
+            background-color: var(--brand-cream);
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* شريط الأخبار المتحرك (تم تعديل الاتجاه للعربي) */
+        /* تأثير الزجاج الفخم للهيدر والشريط السفلي */
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+        }
+
+        /* ظلال ناعمة جداً عائمة (Minimalist Shadows) */
+        .premium-shadow {
+            box-shadow: 0 10px 40px -10px rgba(6, 78, 59, 0.08);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .premium-shadow:hover {
+            box-shadow: 0 20px 40px -10px rgba(6, 78, 59, 0.15);
+            transform: translateY(-4px);
+        }
+
+        /* تأثير النبض للزراير (باللون الذهبي) */
+        @keyframes pulse-gold {
+            0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(217, 119, 6, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
+        }
+        .pulse-premium {
+            animation: pulse-gold 2.5s infinite;
+        }
+
+        /* شريط الأخبار المتحرك */
         .marquee-container {
             overflow: hidden;
             white-space: nowrap;
@@ -52,7 +77,7 @@
             transition: transform 0.3s ease-in-out;
         }
         .slider-dot.active {
-            background-color: var(--brand-cyanDark);
+            background-color: var(--brand-gold);
             width: 1.5rem;
         }
 
@@ -62,7 +87,13 @@
         .step-completed .step-icon { background-color: #10b981; color: white; border-color: #10b981; }
         .step-line { flex: 1; height: 2px; background-color: #e5e7eb; margin: 0 10px; }
         .step-line.active { background-color: #10b981; }
+
+        /* إخفاء شريط التمرير لجمالية أفضل */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: rgba(6, 78, 59, 0.2); border-radius: 10px; }
     </style>
+
     
     <script>
         const savedNavy = localStorage.getItem('theme_navy');
