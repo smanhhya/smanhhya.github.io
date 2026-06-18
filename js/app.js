@@ -584,18 +584,19 @@ window.renderProducts = function() {
 };
 
 // --- منطق السلة والكميات ---
-// دالة جديدة عشان ترفع الشاشة لفوق وتنور مربع الدفعات للعميل
 window.scrollToBatch = function() {
     const batchBox = document.getElementById('batch-selection-container');
     if(batchBox) {
         // الشاشة تطلع لفوق ببطء
         batchBox.scrollIntoView({behavior: 'smooth', block: 'center'});
         
-        // تأثير نبض/نور حوالين المربع عشان يلفت نظر العميل
-        batchBox.classList.add('ring-4', 'ring-brand-gold', 'scale-105', 'transition-all', 'duration-300');
+        // تأثير نبض/نور باللون الأحمر عشان يشتغل عندك 100%
+        batchBox.classList.add('ring-4', 'ring-red-500', 'scale-105', 'transition-all', 'duration-300');
         setTimeout(() => {
-            batchBox.classList.remove('ring-4', 'ring-brand-gold', 'scale-105');
+            batchBox.classList.remove('ring-4', 'ring-red-500', 'scale-105');
         }, 1500);
+    } else {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 };
 
@@ -604,13 +605,13 @@ window.getCardActionHTML = function(id) {
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
-    // 👇 التعديل السحري للعميل البسيط
+    // 👇 زرار العميل البسيط (مظبوط عشان ميبوظش مساحة الكارت)
     if (available === 0 && inCart === 0) {
         return `
-        <div onclick="scrollToBatch()" class="w-full bg-red-50 flex flex-col justify-center items-center py-1.5 rounded-xl border-2 border-red-200 cursor-pointer hover:bg-red-100 transition-colors shadow-sm group">
-            <span class="text-[12px] font-black text-red-600 mb-1"><i class="fa-solid fa-circle-xmark"></i> خلصت في الدفعة دي</span>
-            <span class="text-[10px] font-bold text-gray-700 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full shadow-sm">
-                دوس واختار ميعاد تاني <i class="fa-solid fa-arrow-up text-red-500 animate-bounce"></i>
+        <div onclick="scrollToBatch()" class="w-full bg-red-50 flex flex-col justify-center items-center py-1 rounded-xl border border-red-300 cursor-pointer hover:bg-red-100 transition-colors shadow-sm">
+            <span class="text-[11px] font-black text-red-600 mb-0.5">نفذت (خلصت)</span>
+            <span class="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 animate-pulse">
+                غير الميعاد <i class="fa-solid fa-arrow-up"></i>
             </span>
         </div>`;
     }
