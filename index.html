@@ -400,10 +400,16 @@
             <div><p class="font-black text-white" id="footer-store-name">سمان ههيا</p><p class="text-xs mt-1">جميع الحقوق محفوظة &copy; 2024</p></div>
             <div class="text-sm flex gap-4 items-center">
                 <a href="tel:01208027294" id="footer-phone-link" class="hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-yellow"></i> <span id="footer-phone">01208027294</span></a>
-                <button type="button" onclick="openAdminLogin()" class="text-gray-500 hover:text-white transition-colors" title="إدارة الموقع"><i class="fa-solid fa-lock"></i></button>
+                
+                <!-- 👇 ده زرار القفل بعد ما اتخفى تماماً (الفخ السري) 👇 -->
+                <button type="button" onclick="openAdminLogin()" class="opacity-0 cursor-default w-8 h-8 flex items-center justify-center">
+                    <i class="fa-solid fa-lock"></i>
+                </button>
+                
             </div>
         </div>
     </footer>
+
 
     <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box"><div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-brand-yellow text-brand-navy font-black text-xs px-4 py-1 rounded-full shadow-md border-2 border-white">اقتراح لحضرتك 💡</div><div class="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-brand-cyan/30 mt-4"><img id="cross-sell-img" src="" class="w-full h-full object-cover"></div><h3 class="text-xl font-black text-brand-navy mb-1" id="cross-sell-title">جربت بيض السمان؟</h3><p class="text-gray-500 text-sm font-bold mb-4" id="cross-sell-desc">مغذي جداً للأطفال وطعمه حكاية!</p><div class="font-black text-brand-cyanDark text-xl mb-5"><span id="cross-sell-price"></span> ج.م</div><div class="flex flex-col gap-2"><button onclick="acceptCrossSell()" class="bg-brand-cyanDark hover:opacity-90 text-white font-black py-3 px-6 rounded-xl w-full transition-opacity flex justify-center items-center gap-2 shadow-md"><i class="fa-solid fa-plus"></i> ضيفه للسلة وكمل الأوردر</button><button onclick="declineCrossSell()" class="text-gray-400 hover:text-gray-600 font-bold py-2 text-sm transition-colors underline">لا شكراً، كمل الأوردر بتاعي</button></div></div></div>
     <div id="alert-modal" class="fixed inset-0 bg-brand-navy/80 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="alert-box"><div class="w-16 h-16 bg-brand-light text-brand-cyanDark rounded-full flex items-center justify-center mx-auto mb-4 text-3xl" id="alert-icon-container"><i class="fa-solid fa-bell" id="alert-icon"></i></div><h3 class="text-xl font-black text-brand-navy mb-2" id="alert-title">تنبيه</h3><div class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</div><button onclick="closeAlert()" class="bg-brand-navy hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl w-full transition-opacity">حسناً</button></div></div>
