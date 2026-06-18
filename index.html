@@ -124,41 +124,50 @@
 </head>
 <body class="text-gray-800 antialiased selection:bg-brand-navy selection:text-white bg-gray-50">
 
-    <nav class="bg-brand-navy shadow-md sticky top-0 z-30 border-b border-[#143024]">
+    <!-- نافبار زجاجي فاخر (Glassmorphism) -->
+    <nav class="glass-effect sticky top-0 z-50 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-center h-14 items-center">
-                <a href="#" class="flex items-center gap-2">
-                    <i class="fa-solid fa-kiwi-bird text-white text-xl"></i>
-                    <span class="font-black text-xl text-white" id="nav-store-name">سمان <span class="text-brand-yellow">ههيا</span></span>
+            <div class="flex justify-center h-16 items-center">
+                <a href="#" class="flex items-center gap-2 transform hover:scale-105 transition-transform">
+                    <i class="fa-solid fa-kiwi-bird text-brand-navy text-2xl"></i>
+                    <span class="font-black text-2xl text-brand-navy tracking-tight" id="nav-store-name">سمان <span class="text-brand-gold">ههيا</span></span>
                 </a>
             </div>
         </div>
     </nav>
 
-    <div id="top-banner" class="bg-[#fef3c7] text-[#92400e] py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-[#fde68a] hidden">
+    <!-- شريط الأخبار المتحرك -->
+    <div id="top-banner" class="bg-brand-gold/10 text-brand-gold py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-brand-gold/20 hidden">
         <div class="marquee-container w-full max-w-7xl mx-auto">
             <div class="marquee-content" id="top-banner-text">
             </div>
         </div>
     </div>
 
-    <header class="bg-brand-navy text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
-        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-3">
-            <h1 class="text-4xl md:text-5xl font-black mb-1" id="header-store-name">سمان ههيا</h1>
-            <p class="text-brand-yellow font-bold text-sm md:text-base bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-inner">
+    <!-- هيدر سينمائي بمساحات تنفس عالية -->
+    <header class="relative pt-20 pb-28 text-center overflow-hidden">
+        <!-- تأثير إضاءة ناعم في الخلفية -->
+        <div class="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-3xl opacity-20 pointer-events-none" style="background: radial-gradient(circle, var(--brand-gold) 0%, transparent 70%);"></div>
+        
+        <div class="max-w-4xl mx-auto px-4 flex flex-col items-center justify-center gap-4 relative z-10">
+            <p class="text-brand-gold font-black text-xs md:text-sm uppercase tracking-widest bg-brand-gold/10 px-5 py-2 rounded-full border border-brand-gold/20">
                 <i class="fa-solid fa-leaf mr-1"></i> صحي وطازة
             </p>
-            <p class="text-white/80 font-semibold text-xs md:text-sm max-w-xl mx-auto mt-2" id="header-store-desc">
+            
+            <h1 class="text-5xl md:text-6xl font-black text-brand-navy mb-2 tracking-tight" id="header-store-name">سمان ههيا</h1>
+            
+            <p class="text-gray-500 font-bold text-sm md:text-lg max-w-xl mx-auto leading-relaxed" id="header-store-desc">
                 جاري التحميل...
             </p>
         </div>
         
-        <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-full flex justify-center z-20">
-            <a href="#products" class="bg-white text-brand-navy px-10 py-3 rounded-2xl font-black shadow-[0_10px_25px_rgba(0,0,0,0.15)] text-lg flex items-center gap-2 hover:bg-gray-50 transition-all transform hover:-translate-y-1 border border-gray-100 pulse-animation">
+        <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 w-full flex justify-center z-20">
+            <a href="#products" class="bg-brand-gold text-white px-10 py-4 rounded-[2rem] font-black text-lg flex items-center gap-3 premium-shadow pulse-premium hover:bg-[#b46305] transition-colors">
                 اطلب دلوقتي <i class="fa-solid fa-arrow-down text-sm"></i>
             </a>
         </div>
     </header>
+
 
     <section class="max-w-3xl mx-auto px-4 mt-14 mb-8">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
