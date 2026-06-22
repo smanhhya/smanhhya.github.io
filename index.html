@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>سمان ههيا | صحي وطازة</title>
     <link rel="manifest" href="./manifest.json">
 
@@ -22,46 +21,45 @@
             --brand-yellow: #f59e0b;
         }
         
+        /* إخفاء شريط التمرير لشكل تطبيقات الموبايل */
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        .cart-scroll { overflow-y: auto; overscroll-behavior-y: contain; }
+
+        /* التأثير الزجاجي الحديث 2026 */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.4);
+        }
+        .glass-nav {
+            background: rgba(27, 67, 50, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+
         /* تأثير النبض للزراير */
         @keyframes pulse-btn {
-            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+            70% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
             100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
         }
-        .pulse-animation {
-            animation: pulse-btn 2s infinite;
-        }
+        .pulse-animation { animation: pulse-btn 2.5s infinite; }
 
-        /* شريط الأخبار المتحرك (تم تعديل الاتجاه للعربي) */
-        .marquee-container {
-            overflow: hidden;
-            white-space: nowrap;
-            position: relative;
-        }
-        .marquee-content {
-            display: inline-block;
-            animation: marquee 25s linear infinite;
-        }
-        @keyframes marquee {
-            0% { transform: translateX(-100vw); }
-            100% { transform: translateX(100%); }
-        }
+        /* شريط الأخبار المتحرك */
+        .marquee-container { overflow: hidden; white-space: nowrap; position: relative; }
+        .marquee-content { display: inline-block; animation: marquee 25s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(-100vw); } 100% { transform: translateX(100%); } }
 
-        /* ستايل السلايدر */
-        .slider-wrapper {
-            display: flex;
-            transition: transform 0.3s ease-in-out;
-        }
-        .slider-dot.active {
-            background-color: var(--brand-cyanDark);
-            width: 1.5rem;
-        }
+        /* ستايل السلايدر الانسيابي */
+        .slider-wrapper { display: flex; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
+        .slider-dot.active { background-color: var(--brand-cyanDark); width: 1.5rem; }
 
-        /* شريط خطوات الدفع */
-        .step-active .step-icon { background-color: var(--brand-navy); color: white; border-color: var(--brand-navy); }
+        /* شريط خطوات الدفع المعدل بلمسة عصرية */
+        .step-active .step-icon { background-color: var(--brand-navy); color: white; border-color: var(--brand-navy); box-shadow: 0 4px 10px rgba(27,67,50,0.3); }
         .step-active .step-text { color: var(--brand-navy); font-weight: 900; }
         .step-completed .step-icon { background-color: #10b981; color: white; border-color: #10b981; }
-        .step-line { flex: 1; height: 2px; background-color: #e5e7eb; margin: 0 10px; }
+        .step-line { flex: 1; height: 3px; background-color: #f1f5f9; margin: 0 15px; border-radius: 5px; }
         .step-line.active { background-color: #10b981; }
     </style>
     
@@ -79,243 +77,237 @@
                 extend: {
                     fontFamily: { cairo: ['Cairo', 'sans-serif'] },
                     colors: {
-                        brand: { 
-                            navy: 'var(--brand-navy)', 
-                            cyanDark: 'var(--brand-cyanDark)', 
-                            yellow: 'var(--brand-yellow)', 
-                            cyan: '#86efac', 
-                            light: '#f0fdf4' 
-                        }
+                        brand: { navy: 'var(--brand-navy)', cyanDark: 'var(--brand-cyanDark)', yellow: 'var(--brand-yellow)', cyan: '#86efac', light: '#f0fdf4' }
                     }
                 }
             }
         }
     </script>
 </head>
-<body class="text-gray-800 antialiased selection:bg-brand-navy selection:text-white bg-gray-50">
+<body class="text-gray-800 antialiased selection:bg-brand-navy selection:text-white bg-[#f8fafc] pb-28">
 
-    <nav class="bg-brand-navy shadow-md sticky top-0 z-30 border-b border-[#143024]">
+    <!-- شريط التنقل الزجاجي -->
+    <nav class="glass-nav shadow-sm sticky top-0 z-30 border-b border-white/10 transition-all">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-center h-14 items-center">
-                <a href="#" class="flex items-center gap-2">
-                    <i class="fa-solid fa-kiwi-bird text-white text-xl"></i>
-                    <span class="font-black text-xl text-white" id="nav-store-name">سمان <span class="text-brand-yellow">ههيا</span></span>
+            <div class="flex justify-center h-16 items-center">
+                <a href="#" class="flex items-center gap-2 transform transition active:scale-95 hover:scale-105">
+                    <div class="bg-white/10 p-2.5 rounded-xl">
+                        <i class="fa-solid fa-kiwi-bird text-brand-yellow text-xl"></i>
+                    </div>
+                    <span class="font-black text-2xl text-white tracking-tight" id="nav-store-name">سمان <span class="text-brand-yellow">ههيا</span></span>
                 </a>
             </div>
         </div>
     </nav>
 
-    <div id="top-banner" class="bg-[#fef3c7] text-[#92400e] py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-[#fde68a] hidden">
+    <div id="top-banner" class="bg-gradient-to-r from-brand-yellow to-yellow-500 text-[#92400e] py-2.5 font-black text-sm z-40 relative shadow-sm hidden">
         <div class="marquee-container w-full max-w-7xl mx-auto">
-            <div class="marquee-content" id="top-banner-text">
-            </div>
+            <div class="marquee-content" id="top-banner-text"></div>
         </div>
     </div>
 
-    <header class="bg-brand-navy text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
-        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-3">
-            <h1 class="text-4xl md:text-5xl font-black mb-1" id="header-store-name">سمان ههيا</h1>
-            <p class="text-brand-yellow font-bold text-sm md:text-base bg-black/20 px-4 py-1 rounded-full border border-white/10 shadow-inner">
-                <i class="fa-solid fa-leaf mr-1"></i> صحي وطازة
+    <!-- الهيدر الجذاب -->
+    <header class="bg-brand-navy text-white pt-10 pb-24 relative text-center shadow-lg overflow-hidden pattern-bg">
+        <div class="absolute inset-0 bg-gradient-to-b from-black/10 to-transparent"></div>
+        <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-4 relative z-10">
+            <h1 class="text-5xl md:text-6xl font-black mb-1 drop-shadow-md" id="header-store-name">سمان ههيا</h1>
+            <p class="text-brand-yellow font-black text-sm md:text-base bg-white/10 px-6 py-2 rounded-full border border-white/20 backdrop-blur-sm shadow-inner flex items-center gap-2">
+                <i class="fa-solid fa-leaf"></i> صحي وطازة 100%
             </p>
-            <p class="text-white/80 font-semibold text-xs md:text-sm max-w-xl mx-auto mt-2" id="header-store-desc">
+            <p class="text-white/90 font-bold text-sm md:text-base max-w-xl mx-auto mt-2 leading-relaxed" id="header-store-desc">
                 جاري التحميل...
             </p>
         </div>
         
-        <div class="absolute -bottom-6 left-1/2 transform -translate-x-1/2 w-full flex justify-center z-20">
-            <a href="#products" class="bg-white text-brand-navy px-10 py-3 rounded-2xl font-black shadow-[0_10px_25px_rgba(0,0,0,0.15)] text-lg flex items-center gap-2 hover:bg-gray-50 transition-all transform hover:-translate-y-1 border border-gray-100 pulse-animation">
-                اطلب دلوقتي <i class="fa-solid fa-arrow-down text-sm"></i>
+        <div class="absolute -bottom-7 left-1/2 transform -translate-x-1/2 w-full flex justify-center z-20">
+            <a href="#products" class="bg-white text-brand-navy px-12 py-4 rounded-full font-black shadow-[0_15px_30px_rgba(0,0,0,0.2)] text-lg flex items-center gap-3 hover:bg-gray-50 transition-all transform hover:-translate-y-1 active:scale-95 border border-brand-yellow/30 pulse-animation">
+                اطلب دلوقتي <i class="fa-solid fa-arrow-down bg-brand-light p-1.5 rounded-full text-brand-navy"></i>
             </a>
         </div>
     </header>
 
-    <section class="max-w-3xl mx-auto px-4 mt-14 mb-8">
+    <!-- مميزات المتجر بألوان وتفاعل حديث -->
+    <section class="max-w-3xl mx-auto px-4 mt-16 mb-8">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             
-            <div class="group bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_-5px_rgba(27,67,50,0.12)] relative overflow-hidden z-10">
-                <div class="absolute inset-0 bg-gradient-to-b from-brand-light/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                
-                <div class="w-14 h-14 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center mb-3 border border-gray-100 group-hover:bg-white group-hover:border-brand-cyan/50 transition-all duration-300 shadow-sm group-hover:shadow-md transform group-hover:rotate-3">
-                    <i id="badge-1-icon" class="fa-regular fa-circle-check text-brand-navy text-2xl transition-transform duration-300 group-hover:scale-110"></i>
+            <div class="bg-white rounded-3xl p-5 text-center border border-gray-100 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-md group">
+                <div class="w-14 h-14 mx-auto bg-green-50 text-green-600 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                    <i id="badge-1-icon" class="fa-regular fa-circle-check text-2xl"></i>
                 </div>
-                
-                <h3 id="badge-1-title" class="font-black text-brand-navy text-[13px] mb-1 group-hover:text-brand-cyanDark transition-colors min-h-[20px]"></h3>
-                <p id="badge-1-desc" class="text-[10px] text-gray-500 font-bold min-h-[15px]"></p>
+                <h3 id="badge-1-title" class="font-black text-brand-navy text-[13px] mb-1"></h3>
+                <p id="badge-1-desc" class="text-[10px] text-gray-500 font-bold"></p>
             </div>
 
-            <div class="group bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_-5px_rgba(27,67,50,0.12)] relative overflow-hidden z-10">
-                <div class="absolute inset-0 bg-gradient-to-b from-brand-light/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                
-                <div class="w-14 h-14 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center mb-3 border border-gray-100 group-hover:bg-white group-hover:border-brand-cyan/50 transition-all duration-300 shadow-sm group-hover:shadow-md transform group-hover:-rotate-3">
-                    <i id="badge-2-icon" class="fa-regular fa-star text-brand-navy text-2xl transition-transform duration-300 group-hover:scale-110"></i>
+            <div class="bg-white rounded-3xl p-5 text-center border border-gray-100 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-md group">
+                <div class="w-14 h-14 mx-auto bg-yellow-50 text-yellow-600 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                    <i id="badge-2-icon" class="fa-regular fa-star text-2xl"></i>
                 </div>
-                
-                <h3 id="badge-2-title" class="font-black text-brand-navy text-[13px] mb-1 group-hover:text-brand-cyanDark transition-colors min-h-[20px]"></h3>
-                <p id="badge-2-desc" class="text-[10px] text-gray-500 font-bold min-h-[15px]"></p>
+                <h3 id="badge-2-title" class="font-black text-brand-navy text-[13px] mb-1"></h3>
+                <p id="badge-2-desc" class="text-[10px] text-gray-500 font-bold"></p>
             </div>
 
-            <div class="group bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_-5px_rgba(27,67,50,0.12)] relative overflow-hidden z-10">
-                <div class="absolute inset-0 bg-gradient-to-b from-brand-light/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                
-                <div class="w-14 h-14 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center mb-3 border border-gray-100 group-hover:bg-white group-hover:border-brand-cyan/50 transition-all duration-300 shadow-sm group-hover:shadow-md transform group-hover:rotate-3">
-                    <i id="badge-3-icon" class="fa-regular fa-clock text-brand-navy text-2xl transition-transform duration-300 group-hover:scale-110"></i>
+            <div class="bg-white rounded-3xl p-5 text-center border border-gray-100 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-md group">
+                <div class="w-14 h-14 mx-auto bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+                    <i id="badge-3-icon" class="fa-regular fa-clock text-2xl"></i>
                 </div>
-                
-                <h3 id="badge-3-title" class="font-black text-brand-navy text-[13px] mb-1 group-hover:text-brand-cyanDark transition-colors min-h-[20px]"></h3>
-                <p id="badge-3-desc" class="text-[10px] text-gray-500 font-bold min-h-[15px]"></p>
+                <h3 id="badge-3-title" class="font-black text-brand-navy text-[13px] mb-1"></h3>
+                <p id="badge-3-desc" class="text-[10px] text-gray-500 font-bold"></p>
             </div>
 
-            <div class="group bg-white rounded-3xl p-4 text-center border border-gray-100 shadow-[0_4px_15px_-3px_rgba(0,0,0,0.03)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_-5px_rgba(27,67,50,0.12)] relative overflow-hidden z-10">
-                <div class="absolute inset-0 bg-gradient-to-b from-brand-light/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
-                
-                <div class="w-14 h-14 mx-auto bg-gray-50 rounded-2xl flex items-center justify-center mb-3 border border-gray-100 group-hover:bg-white group-hover:border-brand-cyan/50 transition-all duration-300 shadow-sm group-hover:shadow-md transform group-hover:-rotate-3">
-                    <i id="badge-4-icon" class="fa-solid fa-shield-halved text-brand-navy text-2xl transition-transform duration-300 group-hover:scale-110"></i>
+            <div class="bg-white rounded-3xl p-5 text-center border border-gray-100 shadow-sm transition-all duration-300 hover:-translate-y-2 hover:shadow-md group">
+                <div class="w-14 h-14 mx-auto bg-red-50 text-red-600 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                    <i id="badge-4-icon" class="fa-solid fa-shield-halved text-2xl"></i>
                 </div>
-                
-                <h3 id="badge-4-title" class="font-black text-brand-navy text-[13px] mb-1 group-hover:text-brand-cyanDark transition-colors min-h-[20px]"></h3>
-                <p id="badge-4-desc" class="text-[10px] text-gray-500 font-bold min-h-[15px]"></p>
+                <h3 id="badge-4-title" class="font-black text-brand-navy text-[13px] mb-1"></h3>
+                <p id="badge-4-desc" class="text-[10px] text-gray-500 font-bold"></p>
             </div>
 
         </div>
     </section>
 
-    <div id="bottom-cart-bar" class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-10px_20px_rgba(0,0,0,0.08)] p-4 flex justify-between items-center z-40 transform translate-y-full transition-transform duration-300">
+    <!-- 🌟 شريط السلة العائم والزجاجي (2026) 🌟 -->
+    <div id="bottom-cart-bar" class="fixed bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-[400px] glass-panel shadow-[0_15px_40px_rgba(0,0,0,0.15)] rounded-2xl p-4 flex justify-between items-center z-40 transform translate-y-[150%] transition-transform duration-500 ease-out">
         <div class="flex flex-col">
-            <span class="text-xs text-gray-500 font-bold" id="lbl-cart-total">الإجمالي (بدون التوصيل)</span>
-            <div class="font-black text-brand-cyanDark text-2xl"><span id="bottom-cart-total">0</span> <span class="text-sm">ج.م</span></div>
+            <span class="text-[11px] text-gray-500 font-black uppercase tracking-wider" id="lbl-cart-total">الإجمالي (بدون التوصيل)</span>
+            <div class="font-black text-brand-cyanDark text-2xl"><span id="bottom-cart-total">0</span> <span class="text-sm text-gray-400">ج.م</span></div>
         </div>
-        <button id="main-cart-btn" onclick="toggleCart()" class="bg-brand-navy text-white px-6 py-3 rounded-xl font-black flex items-center gap-3 shadow-lg hover:opacity-90 transition-opacity pulse-animation">
+        <button id="main-cart-btn" onclick="toggleCart()" class="bg-brand-navy text-white px-7 py-3.5 rounded-xl font-black flex items-center gap-3 shadow-[0_8px_20px_rgba(27,67,50,0.3)] hover:shadow-xl active:scale-95 transition-all pulse-animation">
             <div class="relative">
                 <i class="fa-solid fa-basket-shopping text-xl text-brand-yellow"></i>
-                <span class="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-full text-xs shadow-sm" id="bottom-cart-count">0</span>
+                <span class="absolute -top-3 -right-3 bg-brand-cyanDark text-white w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-bold shadow-sm border-2 border-brand-navy" id="bottom-cart-count">0</span>
             </div>
             <span id="lbl-view-cart">عرض السلة</span>
         </button>
     </div>
 
-    <div id="cart-overlay" class="fixed inset-0 bg-brand-navy/60 z-50 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm" onclick="toggleCart()"></div>
-    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-full sm:w-[450px] bg-gray-50 shadow-2xl z-50 transform translate-x-full transition-transform duration-300 flex flex-col">
+    <!-- غطاء الخلفية للسلة -->
+    <div id="cart-overlay" class="fixed inset-0 bg-brand-navy/70 z-50 hidden opacity-0 transition-opacity duration-400 backdrop-blur-sm" onclick="toggleCart()"></div>
+    
+    <!-- سلة المشتريات (تصميم ناعم جداً) -->
+    <div id="cart-sidebar" class="fixed top-0 right-0 h-full w-[90%] sm:w-[450px] bg-[#f8fafc] shadow-2xl z-50 transform translate-x-full transition-transform duration-400 ease-out flex flex-col sm:rounded-l-[2rem] border-l border-white/20">
         
-        <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-white shadow-sm z-10">
-            <div class="flex items-center gap-2">
-                <button id="btn-back-step" onclick="backToCart()" class="hidden text-gray-500 hover:text-brand-navy ml-2 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center bg-white/95 backdrop-blur-md shadow-sm z-10 sm:rounded-tl-[2rem]">
+            <div class="flex items-center gap-3">
+                <button id="btn-back-step" onclick="backToCart()" class="hidden text-gray-500 hover:text-brand-navy bg-gray-50 border border-gray-200 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90">
                     <i class="fa-solid fa-arrow-right"></i>
                 </button>
                 <h2 class="text-xl font-black text-brand-navy flex items-center gap-2">
-                    <i class="fa-solid fa-basket-shopping text-brand-yellow"></i> <span id="lbl-checkout-title">سلة المشتريات</span>
+                    <div class="bg-brand-light p-2 rounded-lg text-brand-cyanDark"><i class="fa-solid fa-basket-shopping"></i></div>
+                    <span id="lbl-checkout-title">سلة المشتريات</span>
                 </h2>
             </div>
-            <button onclick="toggleCart()" class="text-gray-400 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+            <button onclick="toggleCart()" class="text-gray-400 hover:text-red-500 bg-gray-50 border border-gray-200 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90">
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
 
-        <div class="bg-white py-3 px-6 border-b border-gray-100 flex items-center justify-center">
-            <div class="flex items-center text-center step-active" id="step-1-indicator">
-                <div class="w-6 h-6 rounded-full border-2 border-brand-navy bg-brand-navy text-white flex items-center justify-center text-[10px] font-black step-icon z-10">1</div>
-                <div class="text-[10px] mt-1 hidden sm:block font-black step-text absolute mt-8">مراجعة الطلب</div>
+        <div class="bg-white py-4 px-8 border-b border-gray-100 flex items-center justify-center shadow-sm">
+            <div class="flex items-center text-center step-active transition-all" id="step-1-indicator">
+                <div class="w-8 h-8 rounded-full border-2 border-brand-navy bg-brand-navy text-white flex items-center justify-center text-[12px] font-black step-icon z-10">1</div>
+                <div class="text-[10px] mt-2 hidden sm:block font-black step-text absolute mt-10">مراجعة الطلب</div>
             </div>
-            <div class="step-line" id="step-line-1"></div>
-            <div class="flex items-center text-center opacity-50" id="step-2-indicator">
-                <div class="w-6 h-6 rounded-full border-2 border-gray-300 bg-white text-gray-400 flex items-center justify-center text-[10px] font-black step-icon z-10">2</div>
-                <div class="text-[10px] mt-1 hidden sm:block font-bold step-text absolute mt-8 text-gray-400">بيانات التوصيل</div>
-            </div>
-        </div>
-
-        <div id="free-delivery-tracker" class="bg-white px-4 py-3 border-b border-gray-100 hidden">
-            <div class="flex justify-between text-[11px] font-bold mb-1" id="free-delivery-text">
-                <span class="text-gray-600">باقي <span id="fd-remaining" class="text-brand-cyanDark">0</span> ج وتاخد توصيل مجاني!</span>
-                <i class="fa-solid fa-gift text-brand-yellow"></i>
-            </div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div id="fd-progress" class="bg-gradient-to-l from-brand-cyan to-brand-cyanDark h-2.5 rounded-full progress-bar-animated" style="width: 0%"></div>
+            <div class="step-line transition-colors" id="step-line-1"></div>
+            <div class="flex items-center text-center opacity-50 transition-all" id="step-2-indicator">
+                <div class="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-400 flex items-center justify-center text-[12px] font-black step-icon z-10">2</div>
+                <div class="text-[10px] mt-2 hidden sm:block font-bold step-text absolute mt-10 text-gray-400">بيانات التوصيل</div>
             </div>
         </div>
 
-        <div id="min-order-warning" class="bg-red-50 px-4 py-2 border-b border-red-100 text-red-600 text-xs font-bold text-center hidden">
-            الحد الأدنى للطلب هو <span id="min-order-value">0</span> ج.م (بدون التوصيل)
+        <div id="free-delivery-tracker" class="bg-white px-5 py-4 border-b border-gray-100 hidden">
+            <div class="flex justify-between text-[11px] font-bold mb-2" id="free-delivery-text">
+                <span class="text-gray-600">باقي <span id="fd-remaining" class="text-brand-cyanDark text-sm">0</span> ج وتاخد توصيل مجاني!</span>
+                <i class="fa-solid fa-gift text-[#10b981] text-lg"></i>
+            </div>
+            <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                <div id="fd-progress" class="bg-gradient-to-l from-[#34d399] to-[#059669] h-full rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+            </div>
         </div>
 
+        <div id="min-order-warning" class="bg-red-50 px-4 py-3 border-b border-red-100 text-red-600 text-xs font-bold text-center hidden">
+            الحد الأدنى للطلب هو <span id="min-order-value" class="font-black">0</span> ج.م (بدون التوصيل)
+        </div>
+
+        <!-- الخطوة 1 -->
         <div id="checkout-step-1" class="flex-1 flex flex-col overflow-hidden">
-            <div id="cart-items" class="flex-1 overflow-y-auto p-4 space-y-3 cart-scroll bg-gray-50"></div>
+            <div id="cart-items" class="flex-1 overflow-y-auto p-5 space-y-4 cart-scroll bg-[#f8fafc]"></div>
 
-            <div class="p-5 border-t border-gray-200 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.03)] rounded-t-3xl">
-                <div class="mb-4 text-center">
-                    <button type="button" onclick="document.getElementById('promo-input-container').classList.toggle('hidden'); this.classList.add('hidden')" class="text-xs font-bold text-brand-navy bg-brand-light/50 px-4 py-2 rounded-full border border-brand-cyan/30 inline-flex items-center gap-2 hover:bg-brand-light transition-colors shadow-sm">
-                        <i class="fa-solid fa-tag text-brand-cyanDark"></i> عندك كود خصم؟
+            <div class="p-6 border-t border-gray-100 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.04)] sm:rounded-bl-[2rem]">
+                <div class="mb-5 text-center">
+                    <button type="button" onclick="document.getElementById('promo-input-container').classList.toggle('hidden'); this.classList.add('hidden')" class="text-xs font-bold text-brand-navy bg-brand-light/50 px-5 py-2.5 rounded-full border border-brand-cyan/40 inline-flex items-center gap-2 hover:bg-[#dcfce7] transition-all active:scale-95 shadow-sm">
+                        <i class="fa-solid fa-tag text-[#10b981]"></i> عندك كود خصم؟
                     </button>
                 </div>
 
-                <div id="promo-input-container" class="mb-5 hidden">
+                <div id="promo-input-container" class="mb-5 hidden bg-gray-50 p-3 rounded-2xl border border-gray-100">
                     <div class="flex gap-2">
-                        <input type="text" id="promo-code-input" placeholder="اكتب الكود هنا" class="flex-1 border border-gray-200 rounded-xl p-3 focus:border-brand-navy outline-none font-black text-brand-navy text-sm uppercase text-center bg-gray-50 focus:bg-white transition-all shadow-inner" dir="ltr">
-                        <button type="button" onclick="applyPromoCode()" class="bg-brand-navy text-white px-5 rounded-xl font-bold text-sm hover:opacity-90 transition-opacity shadow-sm" id="lbl-promo-btn">تفعيل</button>
+                        <input type="text" id="promo-code-input" placeholder="اكتب الكود هنا" class="flex-1 border border-gray-200 rounded-xl p-3 focus:border-brand-navy outline-none font-black text-brand-navy text-sm uppercase text-center bg-white transition-all shadow-sm" dir="ltr">
+                        <button type="button" onclick="applyPromoCode()" class="bg-brand-navy text-white px-6 rounded-xl font-bold text-sm hover:opacity-90 active:scale-95 transition-all shadow-sm" id="lbl-promo-btn">تفعيل</button>
                     </div>
-                    <p id="promo-message" class="text-[10px] font-bold mt-2 hidden"></p>
+                    <p id="promo-message" class="text-[10px] font-bold mt-2 hidden text-center"></p>
                 </div>
 
-                <div class="bg-gray-50 rounded-2xl p-4 mb-4 border border-gray-200 shadow-inner">
-                    <div class="flex justify-between text-gray-500 text-xs font-bold mb-2"><span id="lbl-subtotal">قيمة الطلبات:</span><span><span id="cart-subtotal">0</span> ج.م</span></div>
-                    <div id="promo-discount-row" class="flex justify-between text-brand-cyanDark text-xs font-black mb-2 hidden bg-red-50 p-1.5 rounded"><span id="lbl-discount">الخصم (<span id="promo-label"></span>):</span><span>- <span id="cart-discount">0</span> ج.م</span></div>
-                    <div class="flex justify-between items-center border-t border-gray-200 pt-3 mt-1"><span class="font-black text-brand-navy text-sm">الإجمالي المبدئي:</span><span class="font-black text-xl text-brand-navy"><span id="cart-step1-total">0</span> <span class="text-xs text-gray-500">ج.م</span></span></div>
+                <div class="bg-[#f8fafc] rounded-2xl p-5 mb-5 border border-gray-100">
+                    <div class="flex justify-between text-gray-500 text-xs font-bold mb-3"><span id="lbl-subtotal">قيمة الطلبات:</span><span class="text-gray-800"><span id="cart-subtotal">0</span> ج.م</span></div>
+                    <div id="promo-discount-row" class="flex justify-between text-[#059669] text-xs font-black mb-3 hidden bg-[#dcfce7] p-2 rounded-lg border border-[#bbf7d0]"><span id="lbl-discount">الخصم (<span id="promo-label"></span>):</span><span>- <span id="cart-discount">0</span> ج.م</span></div>
+                    <div class="flex justify-between items-center border-t border-gray-200 pt-3 mt-1"><span class="font-black text-brand-navy text-sm">الإجمالي المبدئي:</span><span class="font-black text-2xl text-brand-navy"><span id="cart-step1-total">0</span> <span class="text-xs text-gray-500">ج.م</span></span></div>
                 </div>
 
-                <button type="button" onclick="goToCheckoutStep2()" id="btn-proceed-checkout" class="w-full font-black py-4 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 bg-brand-navy text-white" disabled>
-                    متابعة للدفع <i class="fa-solid fa-arrow-left text-lg"></i>
+                <button type="button" onclick="goToCheckoutStep2()" id="btn-proceed-checkout" class="w-full font-black py-4 px-4 rounded-2xl transition-all flex justify-center items-center gap-2 shadow-[0_8px_20px_rgba(27,67,50,0.2)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-brand-navy text-white border-2 border-brand-navy" disabled>
+                    متابعة للدفع <i class="fa-solid fa-arrow-left text-brand-yellow text-lg"></i>
                 </button>
                 <p id="checkout-hint" class="text-center text-[10px] text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> الحد الأدنى للطلب لم يكتمل</p>
             </div>
         </div>
 
-<div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
-    <div class="flex-1 overflow-y-auto p-4 cart-scroll bg-gray-50 space-y-4">
+        <!-- الخطوة 2 (الفورم) بتصميم مريح جداً -->
+        <div id="checkout-step-2" class="flex-1 flex flex-col overflow-hidden hidden">
+            <div class="flex-1 overflow-y-auto p-5 cart-scroll bg-[#f8fafc] space-y-5">
 
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-regular fa-address-card text-brand-cyanDark ml-2"></i>بيانات المستلم</h3>
-            <div id="unified-cust-fields" class="space-y-4">
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
-                    <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-50 pb-3 flex items-center gap-2"><i class="fa-regular fa-address-card text-brand-cyanDark"></i> بيانات المستلم</h3>
+                    <div id="unified-cust-fields" class="space-y-4">
+                        <div>
+                            <label class="block text-[11px] font-black text-gray-500 mb-2 ml-1">رقم الموبايل (واتساب) <span class="text-red-500">*</span></label>
+                            <input type="tel" id="customer-phone" placeholder="01X XXXX XXXX" class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-black text-brand-navy bg-gray-50 focus:bg-white transition-all text-left tracking-widest shadow-sm" dir="ltr">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black text-gray-500 mb-2 ml-1">الاسم الكريم <span class="text-red-500">*</span></label>
+                            <input type="text" id="customer-name" placeholder="محمد أحمد..." class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">الاسم الكريم <span class="text-red-500">*</span></label>
-                    <input type="text" id="customer-name" placeholder="محمد أحمد..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-50 pb-3 flex items-center gap-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark"></i> عنوان التوصيل</h3>
+                    <div class="space-y-4">
+                        <div class="relative">
+                            <label class="block text-[11px] font-black text-gray-500 mb-2 ml-1">منطقة التوصيل <span class="text-red-500">*</span></label>
+                            <select id="delivery-zone" onchange="updateUI()" class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
+                            <div class="pointer-events-none absolute inset-y-0 left-5 top-8 flex items-center text-brand-cyanDark"><i class="fa-solid fa-chevron-down text-sm"></i></div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-black text-gray-500 mb-2 ml-1">العنوان بالتفصيل (اختياري)</label>
+                            <input type="text" id="customer-address" placeholder="اسم الشارع، رقم العمارة، الدور..." class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
+                        </div>
+                    </div>
                 </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-50 pb-3 flex items-center gap-2"><i class="fa-solid fa-comment-dots text-brand-yellow"></i> ملاحظات للطلب (اختياري)</h3>
+                    <div>
+                        <textarea id="customer-notes" rows="2" placeholder="أي تفاصيل تحب تضيفها (مثل: رن عليا قبل ما توصل)..." class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm resize-none"></textarea>
+                    </div>
+                </div>
+
             </div>
-        </div>
-
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-map-location-dot text-brand-cyanDark ml-2"></i>عنوان التوصيل</h3>
-            <div class="space-y-4">
-                <div class="relative">
-                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">منطقة التوصيل <span class="text-red-500">*</span></label>
-                    <select id="delivery-zone" onchange="updateUI()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-gray-700 bg-gray-50 focus:bg-white transition-all appearance-none shadow-sm"></select>
-                    <div class="pointer-events-none absolute inset-y-0 left-4 top-6 flex items-center text-gray-400"><i class="fa-solid fa-chevron-down text-sm"></i></div>
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-gray-500 mb-1 ml-1">العنوان بالتفصيل (اختياري)</label>
-                    <input type="text" id="customer-address" placeholder="اسم الشارع، رقم العمارة، الدور..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm">
-                </div>
-            </div>
-        </div>
-
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
-            <h3 class="font-black text-brand-navy text-sm mb-4 border-b border-gray-100 pb-2"><i class="fa-solid fa-comment-dots text-brand-yellow ml-2"></i>ملاحظات للطلب (اختياري)</h3>
-            <div>
-                <textarea id="customer-notes" rows="2" placeholder="أي تفاصيل تحب تضيفها (مثل: رن عليا قبل ما توصل، أو مواعيد استلام معينة)..." class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm resize-none"></textarea>
-            </div>
-        </div>
-
-    </div>
-    
-            <div class="p-5 border-t border-gray-200 bg-white shadow-[0_-5px_15px_rgba(0,0,0,0.03)] rounded-t-3xl">
-                <div class="bg-brand-light/50 rounded-2xl p-4 mb-4 border border-brand-cyan/30">
+            
+            <div class="p-6 border-t border-gray-100 bg-white shadow-[0_-10px_30px_rgba(0,0,0,0.04)] sm:rounded-bl-[2rem]">
+                <div class="bg-brand-light/50 rounded-2xl p-4 mb-5 border border-brand-cyan/30">
                     <div class="flex justify-between text-gray-600 text-xs font-bold mb-2"><span id="lbl-delivery-summary">مصاريف التوصيل:</span><span id="cart-delivery-fee" class="text-xs font-black">0 ج.م</span></div>
-                    <div class="flex justify-between items-center pt-3 mt-1 border-t border-brand-cyan/30"><span class="font-black text-brand-navy text-sm" id="lbl-final-total">الإجمالي النهائي:</span><span class="font-black text-2xl text-brand-navy"><span id="cart-total">0</span> <span class="text-xs text-gray-500">ج.م</span></span></div>
+                    <div class="flex justify-between items-center pt-3 mt-1 border-t border-brand-cyan/20"><span class="font-black text-brand-navy text-sm" id="lbl-final-total">الإجمالي النهائي:</span><span class="font-black text-2xl text-brand-navy"><span id="cart-total">0</span> <span class="text-xs text-gray-500">ج.م</span></span></div>
                 </div>
                 
-                <button type="button" onclick="initiateCheckout()" id="checkout-btn" class="w-full font-black py-4 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transform hover:-translate-y-0.5 bg-green-500 text-white" disabled>
+                <button type="button" onclick="initiateCheckout()" id="checkout-btn" class="w-full font-black py-4 px-4 rounded-2xl transition-all flex justify-center items-center gap-2 shadow-[0_8px_20px_rgba(37,211,102,0.3)] hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed bg-[#25D366] text-white" disabled>
                     <i class="fa-brands fa-whatsapp text-2xl" id="btn-icon"></i> <span id="btn-text">تأكيد وإرسال الطلب</span>
                 </button>
                 <p id="checkout-hint-step2" class="text-center text-[10px] text-red-500 mt-3 font-bold hidden"><i class="fa-solid fa-circle-info"></i> يرجى إكمال الخانات المطلوبة (*)</p>
@@ -323,100 +315,89 @@
         </div>
     </div>
 
-    <div id="live-notification" class="fixed bottom-24 left-4 bg-white/90 backdrop-blur-sm border-l-4 border-green-500 shadow-lg rounded-lg p-3 z-40 transform translate-y-20 opacity-0 transition-all duration-500 flex items-center gap-3 w-72 pointer-events-none">
-        <div class="bg-green-100 text-green-600 rounded-full w-8 h-8 flex justify-center items-center shrink-0">
+    <!-- الإشعار الحي الزجاجي -->
+    <div id="live-notification" class="fixed bottom-28 left-4 md:bottom-24 glass-panel border border-brand-cyan/20 shadow-xl rounded-2xl p-3 z-40 transform translate-y-20 opacity-0 transition-all duration-500 flex items-center gap-3 w-72 pointer-events-none">
+        <div class="bg-brand-light text-brand-cyanDark rounded-xl w-10 h-10 flex justify-center items-center shrink-0 shadow-sm border border-brand-cyan/10">
             <i class="fa-solid fa-bag-shopping text-sm"></i>
         </div>
         <div>
-            <p class="text-xs font-bold text-gray-700" id="live-noti-text">شخص ما اشترى للتو</p>
-            <p class="text-[9px] text-gray-400 mt-0.5" id="live-noti-time">منذ دقيقة</p>
+            <p class="text-[11px] font-black text-brand-navy" id="live-noti-text">شخص ما اشترى للتو</p>
+            <p class="text-[9px] text-gray-400 mt-0.5 font-bold" id="live-noti-time">منذ دقيقة</p>
         </div>
     </div>
 
-    <section id="products" class="py-6 scroll-mt-20">
+    <section id="products" class="py-6 scroll-mt-24">
         <div class="max-w-3xl mx-auto px-4 sm:px-6 relative" id="store-wrapper">
             
-            <div id="store-closed-msg" class="store-closed-message hidden rounded-2xl">
+            <div id="store-closed-msg" class="store-closed-message hidden rounded-[2rem]">
                 <div>المتجر مغلق حالياً، نعود قريباً!</div>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-brand-navy mb-8" id="batch-selection-container" style="display: none;">
-                <div class="flex items-center gap-2 mb-2">
-                    <i class="fa-solid fa-calendar-check text-brand-yellow text-xl"></i>
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-brand-cyan/30 mb-8" id="batch-selection-container" style="display: none;">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="bg-brand-light p-2.5 rounded-xl text-brand-cyanDark"><i class="fa-solid fa-calendar-check text-lg"></i></div>
                     <h3 class="font-black text-brand-navy text-base">اختر ميعاد استلامك (حجز مسبق)</h3>
                 </div>
-                <p class="text-xs text-gray-500 mb-3 font-bold">المنتجات يتم تجهيزها طازجة حسب الحجز، برجاء اختيار الدفعة المتاحة لترى الكميات المتوفرة:</p>
+                <p class="text-[11px] text-gray-500 mb-4 font-bold leading-relaxed">المنتجات يتم تجهيزها طازجة حسب الحجز، برجاء اختيار الدفعة المتاحة لترى الكميات المتوفرة:</p>
                 <div class="relative">
-                    <select id="user-batch-select" onchange="renderProducts()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-brand-light transition-all appearance-none shadow-sm"></select>
-                    <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-brand-navy"><i class="fa-solid fa-chevron-down text-sm"></i></div>
+                    <select id="user-batch-select" onchange="renderProducts()" class="w-full border border-gray-200 rounded-2xl p-4 text-sm focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/10 outline-none font-black text-brand-navy bg-gray-50 transition-all appearance-none shadow-sm"></select>
+                    <div class="pointer-events-none absolute inset-y-0 left-5 flex items-center text-brand-cyanDark"><i class="fa-solid fa-chevron-down text-sm"></i></div>
                 </div>
             </div>
 
-            <style>
-                #slider-track > img, 
-                #slider-track > div {
-                    width: 100% !important;
-                    height: auto !important;
-                    max-height: 85vh;
-                    object-fit: contain;
-                    background-color: #f9fafb;
-                }
-            </style>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8 relative group" id="main-slider-container">
+            <!-- سلايدر زجاجي بلمسة احترافية -->
+            <div class="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-10 relative group" id="main-slider-container">
                 <div class="overflow-hidden relative touch-pan-y" id="slider-viewport">
                     <div class="slider-wrapper items-center" id="slider-track">
-                        <div class="w-full shrink-0 aspect-[3/4] sm:aspect-[4/3] bg-gray-50 flex flex-col items-center justify-center text-brand-cyan/50">
+                        <div class="w-full shrink-0 aspect-[4/3] bg-gray-50 flex flex-col items-center justify-center text-gray-300">
                             <i class="fa-regular fa-image text-5xl mb-2"></i>
-                            <span class="text-xs font-bold text-gray-400 mt-2">جاري تحميل الكتالوج...</span>
+                            <span class="text-xs font-bold mt-2">جاري تحميل الكتالوج...</span>
                         </div>
                     </div>
                 </div>
                 
-                <button class="absolute top-1/2 -translate-y-1/2 right-3 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-colors z-10" onclick="moveSlider(-1)">
+                <button class="absolute top-1/2 -translate-y-1/2 right-4 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-all hover:scale-110 active:scale-90 z-10" onclick="moveSlider(-1)">
                     <i class="fa-solid fa-chevron-right"></i>
                 </button>
-                <button class="absolute top-1/2 -translate-y-1/2 left-3 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-colors z-10" onclick="moveSlider(1)">
+                <button class="absolute top-1/2 -translate-y-1/2 left-4 w-10 h-10 bg-white/90 backdrop-blur text-brand-navy rounded-full shadow-md flex justify-center items-center hover:bg-brand-navy hover:text-white transition-all hover:scale-110 active:scale-90 z-10" onclick="moveSlider(1)">
                     <i class="fa-solid fa-chevron-left"></i>
                 </button>
                 
-                <div class="absolute bottom-14 left-1/2 -translate-x-1/2 flex gap-2 z-10" id="slider-dots"></div>
+                <div class="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 bg-black/20 backdrop-blur-md px-3 py-2 rounded-full" id="slider-dots"></div>
                 
-                <div class="p-3 bg-brand-light/80 backdrop-blur-sm border-t border-brand-cyan/20 text-center relative z-20">
-                    <p class="text-brand-navy font-bold text-sm"><i class="fa-solid fa-images text-brand-cyanDark ml-1"></i> <span id="lbl-size-guide">اسحب لمشاهدة الكتالوج ودليل الأحجام</span></p>
+                <div class="p-4 bg-brand-light/90 backdrop-blur-md border-t border-brand-cyan/20 text-center relative z-20">
+                    <p class="text-brand-navy font-bold text-[13px]"><i class="fa-solid fa-images text-brand-cyanDark ml-1"></i> <span id="lbl-size-guide">اسحب لمشاهدة الكتالوج ودليل الأحجام</span></p>
                 </div>
             </div>
 
-            <h2 class="text-xl font-black text-brand-navy mb-4 border-r-4 border-brand-cyanDark pr-3" id="lbl-menu-title">قائمة الأطباق</h2>
-            <div class="flex flex-col gap-4 mb-10" id="products-container"><div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري تحميل المنيو...</p></div></div>
+            <h2 class="text-xl font-black text-brand-navy mb-5 border-r-4 border-brand-cyanDark pr-3 rounded-r-sm" id="lbl-menu-title">قائمة الأطباق</h2>
+            <div class="flex flex-col gap-4 mb-12" id="products-container"><div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري تحميل المنيو...</p></div></div>
 
-            <h2 class="text-xl font-black text-brand-navy mb-4 mt-8 border-r-4 border-brand-yellow pr-3" id="lbl-extras-title">منتجات أخرى</h2>
+            <h2 class="text-xl font-black text-brand-navy mb-5 mt-10 border-r-4 border-brand-yellow pr-3 rounded-r-sm" id="lbl-extras-title">منتجات أخرى</h2>
             <div class="flex flex-col gap-4" id="extras-container"></div>
         </div>
     </section>
 
-    <footer class="bg-brand-navy text-gray-400 py-8 border-t border-[#143024] mt-10">
-        <div class="max-w-7xl mx-auto px-4 flex justify-between items-center">
-            <div><p class="font-black text-white" id="footer-store-name">سمان ههيا</p><p class="text-xs mt-1">جميع الحقوق محفوظة &copy; 2024</p></div>
+    <!-- فوتر حديث 2026 -->
+    <footer class="bg-brand-navy text-gray-400 py-10 border-t border-[#143024] mt-12 relative overflow-hidden">
+        <div class="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0IiBoZWlnaHQ9IjQiPgo8cmVjdCB3aWR0aD0iNCIgaGVpZ2h0PSI0IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20"></div>
+        <div class="max-w-7xl mx-auto px-5 flex justify-between items-center relative z-10">
+            <div><p class="font-black text-white text-lg" id="footer-store-name">سمان ههيا</p><p class="text-[11px] mt-1">جميع الحقوق محفوظة &copy; 2026</p></div>
             <div class="text-sm flex gap-4 items-center">
-                <a href="tel:01208027294" id="footer-phone-link" class="hover:text-white transition-colors"><i class="fa-solid fa-phone text-brand-yellow"></i> <span id="footer-phone">01208027294</span></a>
-                
-                <!-- 👇 ده زرار القفل بعد ما اتخفى تماماً (الفخ السري) 👇 -->
-                <button type="button" onclick="openAdminLogin()" class="opacity-0 cursor-default w-8 h-8 flex items-center justify-center">
-                    <i class="fa-solid fa-lock"></i>
-                </button>
-                
+                <a href="tel:01208027294" id="footer-phone-link" class="bg-white/10 p-3.5 rounded-2xl hover:bg-white/20 transition-all hover:scale-105 active:scale-95 text-brand-yellow shadow-sm border border-white/10"><i class="fa-solid fa-phone"></i> <span id="footer-phone" class="font-black text-white mr-1 text-sm">01208027294</span></a>
+                <button type="button" onclick="openAdminLogin()" class="opacity-0 cursor-default w-8 h-8 flex items-center justify-center"><i class="fa-solid fa-lock"></i></button>
             </div>
         </div>
     </footer>
 
-
-    <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box"><div class="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-brand-yellow text-brand-navy font-black text-xs px-4 py-1 rounded-full shadow-md border-2 border-white">اقتراح لحضرتك 💡</div><div class="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-brand-cyan/30 mt-4"><img id="cross-sell-img" src="" class="w-full h-full object-cover"></div><h3 class="text-xl font-black text-brand-navy mb-1" id="cross-sell-title">جربت بيض السمان؟</h3><p class="text-gray-500 text-sm font-bold mb-4" id="cross-sell-desc">مغذي جداً للأطفال وطعمه حكاية!</p><div class="font-black text-brand-cyanDark text-xl mb-5"><span id="cross-sell-price"></span> ج.م</div><div class="flex flex-col gap-2"><button onclick="acceptCrossSell()" class="bg-brand-cyanDark hover:opacity-90 text-white font-black py-3 px-6 rounded-xl w-full transition-opacity flex justify-center items-center gap-2 shadow-md"><i class="fa-solid fa-plus"></i> ضيفه للسلة وكمل الأوردر</button><button onclick="declineCrossSell()" class="text-gray-400 hover:text-gray-600 font-bold py-2 text-sm transition-colors underline">لا شكراً، كمل الأوردر بتاعي</button></div></div></div>
-    <div id="alert-modal" class="fixed inset-0 bg-brand-navy/80 z-[60] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="alert-box"><div class="w-16 h-16 bg-brand-light text-brand-cyanDark rounded-full flex items-center justify-center mx-auto mb-4 text-3xl" id="alert-icon-container"><i class="fa-solid fa-bell" id="alert-icon"></i></div><h3 class="text-xl font-black text-brand-navy mb-2" id="alert-title">تنبيه</h3><div class="text-gray-600 mb-6 font-semibold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</div><button onclick="closeAlert()" class="bg-brand-navy hover:opacity-90 text-white font-bold py-3 px-6 rounded-xl w-full transition-opacity">حسناً</button></div></div>
+    <!-- الموديلز (Modals) بحواف ناعمة جداً -->
+    <div id="cross-sell-modal" class="fixed inset-0 bg-brand-navy/80 z-[55] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-md p-4"><div class="bg-white rounded-[2rem] p-7 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="cross-sell-box"><div class="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-brand-yellow to-yellow-500 text-brand-navy font-black text-[11px] px-6 py-2 rounded-full shadow-lg">اقتراح لحضرتك 💡</div><div class="w-28 h-28 mx-auto mb-5 rounded-2xl overflow-hidden border-4 border-brand-light mt-4 shadow-sm"><img id="cross-sell-img" src="" class="w-full h-full object-cover"></div><h3 class="text-xl font-black text-brand-navy mb-2" id="cross-sell-title">جربت بيض السمان؟</h3><p class="text-gray-500 text-sm font-bold mb-5" id="cross-sell-desc">مغذي جداً للأطفال وطعمه حكاية!</p><div class="font-black text-brand-cyanDark text-3xl mb-6"><span id="cross-sell-price"></span> <span class="text-sm">ج.م</span></div><div class="flex flex-col gap-3"><button onclick="acceptCrossSell()" class="bg-brand-navy hover:scale-[1.02] active:scale-95 text-white font-black py-4 px-6 rounded-2xl w-full transition-all flex justify-center items-center gap-2 shadow-[0_8px_20px_rgba(27,67,50,0.3)]"><i class="fa-solid fa-plus text-brand-yellow"></i> ضيفه للسلة وكمل الأوردر</button><button onclick="declineCrossSell()" class="text-gray-400 hover:text-gray-600 font-bold py-2 text-xs transition-colors underline">لا شكراً، كمل الأوردر بتاعي</button></div></div></div>
     
-    <div id="admin-login-modal" class="fixed inset-0 bg-brand-navy/90 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm"><div class="bg-white rounded-2xl p-6 w-11/12 max-w-sm shadow-2xl"><div class="flex justify-between items-center mb-6"><h3 class="text-xl font-black text-brand-navy flex items-center gap-2"><i class="fa-solid fa-lock text-brand-yellow"></i> الإدارة الشاملة</h3><button onclick="closeAdminLogin()" class="text-gray-400 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full"><i class="fa-solid fa-xmark"></i></button></div><input type="email" id="admin-email-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-3 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="البريد الإلكتروني للإدارة" dir="ltr"><input type="password" id="admin-password-input" class="w-full border-2 border-gray-200 rounded-xl p-3 mb-4 text-left focus:border-brand-cyan outline-none font-bold text-brand-navy" placeholder="كلمة المرور" dir="ltr"><button onclick="verifyAdminPin()" class="w-full bg-brand-navy text-white font-bold py-4 rounded-xl transition-colors">دخول</button></div></div>
+    <div id="alert-modal" class="fixed inset-0 bg-brand-navy/80 z-[70] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-md p-4"><div class="bg-white rounded-[2rem] p-7 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300" id="alert-box"><div class="w-20 h-20 bg-brand-light text-brand-cyanDark rounded-3xl flex items-center justify-center mx-auto mb-5 text-4xl shadow-sm" id="alert-icon-container"><i class="fa-solid fa-bell" id="alert-icon"></i></div><h3 class="text-2xl font-black text-brand-navy mb-3" id="alert-title">تنبيه</h3><div class="text-gray-600 mb-8 font-bold text-sm leading-relaxed whitespace-pre-wrap" id="alert-message">الرسالة</div><button onclick="closeAlert()" class="bg-brand-navy text-white font-black py-4 px-6 rounded-2xl w-full transition-all hover:scale-[1.02] active:scale-95 shadow-lg">حسناً</button></div></div>
     
-    <div id="admin-dashboard-modal" class="fixed inset-0 bg-gray-50 z-[80] hidden opacity-0 transition-opacity duration-300 flex flex-col"><div class="bg-white border-b border-gray-200 p-4 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><h2 class="text-lg font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2></div><button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button></div><div class="bg-white p-3 flex justify-between items-center border-b border-gray-200 shadow-sm z-10"><span class="font-black text-brand-navy text-sm"><i class="fa-solid fa-door-open text-brand-cyanDark ml-1"></i> استقبال الطلبات:</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="admin-store-open" class="sr-only peer"><div class="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div><span class="mr-3 text-sm font-black text-gray-500 w-12" id="store-open-label">مغلق</span></label></div><div class="bg-white border-b border-gray-200 px-4 pt-3 pb-2 flex gap-1 overflow-x-auto cart-scroll" id="admin-tabs-container"><button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors bg-brand-cyanDark text-white whitespace-nowrap"><i class="fa-solid fa-chart-pie"></i> إحصائيات</button><button onclick="switchAdminTab('store')" id="admin-tab-store" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-store"></i> المتجر</button><button onclick="switchAdminTab('gallery')" id="admin-tab-gallery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-images"></i> الكتالوج</button><button onclick="switchAdminTab('products')" id="admin-tab-products" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-box-open"></i> المنتجات</button><button onclick="switchAdminTab('orders')" id="admin-tab-orders" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap relative"><i class="fa-solid fa-clipboard-list"></i> الطلبات</button><button onclick="switchAdminTab('dispatch')" id="admin-tab-dispatch" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-truck-fast"></i> التوزيع</button><button onclick="switchAdminTab('delivery')" id="admin-tab-delivery" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-motorcycle"></i> التوصيل</button><button onclick="switchAdminTab('marketing')" id="admin-tab-marketing" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> التسويق</button><button onclick="switchAdminTab('advanced')" id="admin-tab-advanced" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-gear"></i> متقدم</button><button onclick="switchAdminTab('texts')" id="admin-tab-texts" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-language"></i> القاموس</button><button onclick="switchAdminTab('theme')" id="admin-tab-theme" class="px-4 py-2 rounded-lg font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-palette"></i> المظهر</button></div><div class="p-4 flex-1 overflow-y-auto cart-scroll"><div class="max-w-2xl mx-auto"><div id="admin-panel-stats" class="space-y-4"></div><div id="admin-panel-store" class="hidden space-y-4"></div><div id="admin-panel-gallery" class="hidden space-y-4"></div><div id="admin-panel-products" class="hidden space-y-4"></div><div id="admin-panel-orders" class="hidden space-y-4"></div><div id="admin-panel-dispatch" class="hidden space-y-4"></div><div id="admin-panel-delivery" class="hidden space-y-4"></div><div id="admin-panel-marketing" class="hidden space-y-4"></div><div id="admin-panel-advanced" class="hidden space-y-4"></div><div id="admin-panel-texts" class="hidden space-y-4"></div><div id="admin-panel-theme" class="hidden space-y-4"></div><button onclick="saveAdminData()" class="w-full mt-6 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-xl shadow-lg flex justify-center items-center gap-2 transition-all transform hover:-translate-y-1 sticky bottom-4 z-50 border-2 border-white"><i class="fa-solid fa-floppy-disk text-xl"></i> حفظ جميع التعديلات</button></div></div></div>
+    <div id="admin-login-modal" class="fixed inset-0 bg-brand-navy/95 z-[80] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-md p-4"><div class="bg-white rounded-[2rem] p-7 w-full max-w-sm shadow-2xl"><div class="flex justify-between items-center mb-8"><h3 class="text-2xl font-black text-brand-navy flex items-center gap-2"><i class="fa-solid fa-lock text-brand-yellow"></i> الإدارة</h3><button onclick="closeAdminLogin()" class="text-gray-400 hover:text-red-500 bg-gray-50 border border-gray-100 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90"><i class="fa-solid fa-xmark text-lg"></i></button></div><input type="email" id="admin-email-input" class="w-full border border-gray-200 rounded-2xl p-4 mb-4 text-left focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm" placeholder="البريد الإلكتروني للإدارة" dir="ltr"><input type="password" id="admin-password-input" class="w-full border border-gray-200 rounded-2xl p-4 mb-6 text-left focus:border-brand-navy outline-none font-bold text-brand-navy bg-gray-50 focus:bg-white transition-all shadow-sm" placeholder="كلمة المرور" dir="ltr"><button onclick="verifyAdminPin()" class="w-full bg-brand-navy text-white font-black py-4 rounded-2xl transition-all hover:scale-[1.02] active:scale-95 shadow-lg">دخول</button></div></div>
+    
+    <div id="admin-dashboard-modal" class="fixed inset-0 bg-[#f8fafc] z-[90] hidden opacity-0 transition-opacity duration-300 flex flex-col"><div class="bg-white border-b border-gray-100 p-4 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><h2 class="text-xl font-black text-brand-navy"><i class="fa-solid fa-sliders text-brand-cyanDark"></i> لوحة التحكم</h2></div><button onclick="closeAdminDashboard()" class="text-gray-500 hover:text-red-500 bg-gray-50 border border-gray-200 w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90"><i class="fa-solid fa-xmark"></i></button></div><div class="bg-white p-4 flex justify-between items-center border-b border-gray-100 shadow-sm z-10"><span class="font-black text-brand-navy text-sm"><i class="fa-solid fa-door-open text-brand-cyanDark ml-1"></i> استقبال الطلبات:</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="admin-store-open" class="sr-only peer"><div class="w-14 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[3px] after:right-[3px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#10b981]"></div><span class="mr-3 text-sm font-black text-gray-500 w-12" id="store-open-label">مغلق</span></label></div><div class="bg-white border-b border-gray-100 px-4 pt-4 pb-3 flex gap-2 overflow-x-auto cart-scroll" id="admin-tabs-container"><button onclick="switchAdminTab('stats')" id="admin-tab-stats" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors bg-brand-cyanDark text-white whitespace-nowrap"><i class="fa-solid fa-chart-pie"></i> إحصائيات</button><button onclick="switchAdminTab('store')" id="admin-tab-store" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-store"></i> المتجر</button><button onclick="switchAdminTab('gallery')" id="admin-tab-gallery" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-images"></i> الكتالوج</button><button onclick="switchAdminTab('products')" id="admin-tab-products" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-box-open"></i> المنتجات</button><button onclick="switchAdminTab('orders')" id="admin-tab-orders" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap relative"><i class="fa-solid fa-clipboard-list"></i> الطلبات</button><button onclick="switchAdminTab('dispatch')" id="admin-tab-dispatch" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-truck-fast"></i> التوزيع</button><button onclick="switchAdminTab('delivery')" id="admin-tab-delivery" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-motorcycle"></i> التوصيل</button><button onclick="switchAdminTab('marketing')" id="admin-tab-marketing" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-bullhorn"></i> التسويق</button><button onclick="switchAdminTab('advanced')" id="admin-tab-advanced" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-gear"></i> متقدم</button><button onclick="switchAdminTab('texts')" id="admin-tab-texts" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-language"></i> القاموس</button><button onclick="switchAdminTab('theme')" id="admin-tab-theme" class="px-5 py-2.5 rounded-xl font-bold text-sm transition-colors text-gray-600 hover:bg-gray-100 whitespace-nowrap"><i class="fa-solid fa-palette"></i> المظهر</button></div><div class="p-5 flex-1 overflow-y-auto cart-scroll"><div class="max-w-2xl mx-auto"><div id="admin-panel-stats" class="space-y-4"></div><div id="admin-panel-store" class="hidden space-y-4"></div><div id="admin-panel-gallery" class="hidden space-y-4"></div><div id="admin-panel-products" class="hidden space-y-4"></div><div id="admin-panel-orders" class="hidden space-y-4"></div><div id="admin-panel-dispatch" class="hidden space-y-4"></div><div id="admin-panel-delivery" class="hidden space-y-4"></div><div id="admin-panel-marketing" class="hidden space-y-4"></div><div id="admin-panel-advanced" class="hidden space-y-4"></div><div id="admin-panel-texts" class="hidden space-y-4"></div><div id="admin-panel-theme" class="hidden space-y-4"></div><button onclick="saveAdminData()" class="w-full mt-8 bg-[#10b981] hover:bg-[#059669] text-white font-black py-4 rounded-[1.5rem] shadow-[0_10px_30px_rgba(16,185,129,0.3)] flex justify-center items-center gap-2 transition-all transform hover:-translate-y-1 active:scale-95 sticky bottom-5 z-50 border-2 border-white"><i class="fa-solid fa-floppy-disk text-xl"></i> حفظ جميع التعديلات</button></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
