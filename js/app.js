@@ -777,7 +777,8 @@ window.updateUI = function() {
         if (totalItems > 0 && deliverySelect && deliverySelect.value !== "" && meetsMinOrder) {
             if (nameVal && nameVal.length >= 3 && phoneVal && phoneVal.length >= 10) validForm = true;
         }
-        checkoutBtn.disabled = !validForm;
+        checkoutBtn.disabled = false;
+
         if(!validForm && totalItems > 0) checkoutHintStep2.classList.remove('hidden'); 
         else checkoutHintStep2.classList.add('hidden');
     }
@@ -837,8 +838,42 @@ window.finalCheckoutStep = async function() {
     // 👇 التعديل هنا: سحب الملاحظة اللي العميل بيكتبها
     let customerNotesInput = document.getElementById('customer-notes') ? document.getElementById('customer-notes').value.trim() : '';
 
-    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
-    if (appliedPromo && appliedPromo.customerPhone) { let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); let userPhone = customerPhone.replace(/\D/g, '').slice(-10); if (phoneToMatch !== userPhone && phoneToMatch !== '') { showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; } }
+    // 1. فحص صحة الاسم
+    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) {
+        showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز.");
+        checkoutBtn.innerHTML = originalBtnHtml;
+        checkoutBtn.disabled = false;
+        return;
+    }
+
+    // 2. فحص كود الخصم (إذا كان مخصصاً لرقم محدد)
+    if (appliedPromo && appliedPromo.customerPhone) {
+        let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10);
+        let userPhone = customerPhone.replace(/\D/g, '').slice(-10);
+        
+        if (phoneToMatch !== userPhone && phoneToMatch !== '') {
+            showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه.");
+            checkoutBtn.innerHTML = originalBtnHtml;
+            checkoutBtn.disabled = false;
+            return;
+        }
+    }
+
+    // 3. فحص طول رقم الموبايل (التعديل الجديد)
+    if (customerPhone.length < 10) { 
+        showAlert("تنبيه", "يرجى التأكد من كتابة رقم الموبايل بالكامل عشان نقدر نتواصل معاك."); 
+        checkoutBtn.innerHTML = originalBtnHtml; 
+        checkoutBtn.disabled = false; 
+        return; 
+    }
+
+    // 4. فحص اختيار منطقة التوصيل (التعديل الجديد)
+    if (!deliverySelect || deliverySelect.value === "") { 
+        showAlert("تنبيه", "نسيت تختار منطقة التوصيل! يرجى تحديدها لحساب الإجمالي."); 
+        checkoutBtn.innerHTML = originalBtnHtml; 
+        checkoutBtn.disabled = false; 
+        return; 
+    }
 
     for (let id in cart) { 
         if(!productsInfo[id]) continue; 
