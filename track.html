@@ -16,7 +16,9 @@
 
     <script>
         tailwind.config = {
-            theme: { extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } } }
+            theme: {
+                extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } }
+            }
         }
     </script>
     <style>
@@ -74,7 +76,12 @@
                 </button>
             </div>
 
-            <!-- صندوق اختيار الهدية (السحر الجديد) -->
+            <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 animate-slide">
+                <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left mr-1"></i> أرشيف السعادة:</h4>
+                <div id="history-list" class="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scroll"></div>
+            </div>
+
+            <!-- 🎁 صندوق الهدايا اللي كان ناقص 🎁 -->
             <div id="gift-selection-box" class="hidden bg-gradient-to-br from-yellow-400 to-amber-600 rounded-[2rem] p-6 text-white shadow-2xl animate-slide relative overflow-hidden border-2 border-yellow-300">
                 <div class="absolute inset-0 shimmer-bg opacity-40"></div>
                 <i class="fa-solid fa-gift absolute -left-4 -bottom-4 text-9xl opacity-20 animate-pulse"></i>
@@ -100,16 +107,25 @@
                 </div>
             </div>
 
-            <!-- كارت الولاء العادي -->
+            <!-- رسالة تم اختيار الهدية بنجاح -->
+            <div id="gift-success-msg" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center animate-slide">
+                <h4 class="font-black text-emerald-600 text-base mb-1">تم اختيار هديتك بنجاح! 🎁</h4>
+                <p class="text-xs font-bold text-emerald-500">تم إبلاغ المطبخ لتنفيذها مع الأوردر.</p>
+            </div>
+
+            <!-- 1. كارت الولاء المتقدم -->
             <div id="loyalty-card" class="bg-gradient-to-br from-orange-400 via-amber-500 to-red-500 rounded-[2rem] p-6 text-white shadow-xl animate-slide relative overflow-hidden border border-orange-300">
                 <div class="absolute inset-0 shimmer-bg opacity-40"></div>
                 <i class="fa-solid fa-gem absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
+                
                 <h3 class="font-black text-xl mb-1 relative z-10"><span id="greeting-time">أهلاً</span> يا <span id="res-name" class="text-yellow-200"></span>! ✨</h3>
                 <p id="loyalty-msg" class="text-xs font-bold opacity-90 relative z-10 mb-5"></p>
+                
                 <div class="relative z-10 bg-black/15 p-4 rounded-2xl backdrop-blur-sm border border-white/20 mb-4">
                     <div class="flex justify-between items-center relative">
                         <div class="absolute top-1/2 left-4 right-4 h-1 bg-white/20 -z-10 -translate-y-1/2 rounded-full"></div>
                         <div id="loyalty-line" class="absolute top-1/2 right-4 h-1 bg-white -z-10 -translate-y-1/2 rounded-full transition-all duration-1000 shadow-[0_0_10px_#fff]" style="width: 0%;"></div>
+                        
                         <div id="dot-1" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">1</div>
                         <div id="dot-2" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">2</div>
                         <div id="dot-3" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">3</div>
@@ -117,20 +133,13 @@
                         <div id="dot-5" class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black transition-all duration-500 milestone-inactive border-2 border-white"><i class="fa-solid fa-gift"></i></div>
                     </div>
                 </div>
+                
+                <a href="#" id="invite-friend-btn" target="_blank" class="relative z-10 w-full bg-white text-orange-600 hover:bg-orange-50 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-black shadow-lg transition-transform active:scale-95">
+                    <i class="fa-solid fa-share-nodes"></i> اعزم صاحبك وخد نقطتك الجاية!
+                </a>
             </div>
 
-            <!-- رسالة تم اختيار الهدية بنجاح -->
-            <div id="gift-success-msg" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center animate-slide">
-                <h4 class="font-black text-emerald-600 text-base mb-1">تم اختيار هديتك بنجاح! 🎁</h4>
-                <p class="text-xs font-bold text-emerald-500">تم إبلاغ المطبخ لتنفيذها مع الأوردر.</p>
-            </div>
-
-            <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 animate-slide">
-                <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left mr-1"></i> أرشيف السعادة:</h4>
-                <div id="history-list" class="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scroll"></div>
-            </div>
-
-            <!-- 2. كارت التنبيهات -->
+            <!-- 2. كارت التنبيهات (معالجة ذكية لحالات الأوردر) -->
             <div id="alert-banner" class="hidden rounded-[1.5rem] p-5 animate-slide shadow-sm border">
                 <div class="flex items-start gap-3">
                     <div id="alert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"></div>
@@ -169,12 +178,16 @@
                     </div>
                 </div>
 
+                <!-- كارت الطيار (المندوب) مع الوقت الذكي -->
                 <div id="driver-info" class="hidden mb-6 flex-col gap-3 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-[1.5rem] p-4 shadow-sm">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 bg-white rounded-full border-2 border-indigo-200 flex items-center justify-center text-indigo-500 text-xl shadow-sm relative">
                                 <i class="fa-solid fa-motorcycle"></i>
-                                <span class="absolute -bottom-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white"></span></span>
+                                <span class="absolute -bottom-1 -right-1 flex h-3 w-3">
+                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white"></span>
+                                </span>
                             </div>
                             <div>
                                 <p class="text-[10px] font-bold text-indigo-400 mb-0.5">الطيار في السكة ليك</p>
@@ -189,6 +202,7 @@
                     </div>
                 </div>
 
+                <!-- شريط التتبع (Timeline) -->
                 <div class="relative flex justify-between items-center mb-6 px-3" id="timeline-container">
                     <div class="absolute top-1/2 left-5 right-5 h-1.5 bg-slate-100 -z-10 rounded-full -translate-y-1/2 shadow-inner"></div>
                     <div id="progress-line" class="absolute top-1/2 right-5 h-1.5 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-1000 ease-out" style="width: 0%;"></div>
@@ -198,6 +212,7 @@
                     <div class="flex flex-col items-center gap-2 bg-white px-2"><div id="step-3-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-sm shadow-md transition-all duration-500"><i class="fa-solid fa-motorcycle"></i></div><span class="text-[10px] font-bold">توصيل</span></div>
                 </div>
 
+                <!-- نظام التقييم -->
                 <div id="feedback-section" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-5 text-center shadow-inner">
                     <h4 class="font-black text-slate-800 text-base mb-1">إيه رأيك في العظمة دي؟</h4>
                     <p class="text-xs text-slate-500 font-bold mb-4">تقييمك هو البنزين اللي بيمشينا لقدام.</p>
@@ -295,20 +310,25 @@
             let cName = (currentOrder.customerName||'').split(' ')[0];
             document.getElementById('greeting-time').innerText = (hr >= 5 && hr < 12) ? "صباح الفل" : ((hr >= 12 && hr < 18) ? "مساء الروقان" : "يا هلا");
             document.getElementById('res-name').innerText = cName;
-            document.getElementById('gift-res-name').innerText = cName;
+            
+            let giftNameEl = document.getElementById('gift-res-name');
+            if(giftNameEl) giftNameEl.innerText = cName;
+
             document.getElementById('res-total').innerText = currentOrder.total || 0;
 
-            // هندسة الولاء واختيار الهدية 🎁
+            // 🎁 هندسة الولاء واختيار الهدية المدمجة 🎁
             if (totalOrders > 0 && totalOrders % 5 === 0 && !currentOrder.loyaltyGift) {
-                // ده الأوردر الخامس والعميل لسه مختارش هديته!
                 document.getElementById('gift-selection-box').classList.remove('hidden');
                 document.getElementById('loyalty-card').classList.add('hidden');
+                document.getElementById('gift-success-msg').classList.add('hidden');
             } else {
-                // عرض كارت الولاء العادي
                 document.getElementById('gift-selection-box').classList.add('hidden');
                 document.getElementById('loyalty-card').classList.remove('hidden');
+                
                 if (currentOrder.loyaltyGift) {
                     document.getElementById('gift-success-msg').classList.remove('hidden');
+                } else {
+                    document.getElementById('gift-success-msg').classList.add('hidden');
                 }
                 
                 let points = totalOrders % 5; if(points === 0 && totalOrders > 0) points = 5; 
@@ -329,6 +349,9 @@
                 else lMsg.innerText = `ده طلبك رقم ${totalOrders}.. هانت فاضلك ${5 - points} وتاخد الهدية!`;
             }
 
+            let shareText = encodeURIComponent(`أنا جربت سمان ههيا وكان تحفة! 😋 ادخل اطلب من الموقع بتاعهم وشوف الدلع: https://smanhhya.github.io`);
+            document.getElementById('invite-friend-btn').href = `https://wa.me/?text=${shareText}`;
+
             let itemsHtml = currentOrder.items ? currentOrder.items.map(i => `<span class="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-black text-slate-700 shadow-sm">${i.quantity}x ${i.name}</span>`).join('') : '';
             document.getElementById('res-items').innerHTML = itemsHtml;
 
@@ -342,7 +365,6 @@
                 let docSnap = await db.collection('orders').doc(currentOrder.id).get();
                 let oldNotes = docSnap.data().adminNote || '';
                 
-                // هنكتبها بخط واضح جداً للإدارة عشان تتنفذ
                 let newNote = `[${dateStr}] 🎁 العميل اختار هدية: ${giftText}`;
                 let updatedAdminNote = oldNotes ? newNote + '\n---\n' + oldNotes : newNote;
 
@@ -351,7 +373,6 @@
                     adminNote: updatedAdminNote 
                 });
 
-                // إخفاء الصندوق والاحتفال
                 document.getElementById('gift-selection-box').classList.add('hidden');
                 document.getElementById('loyalty-card').classList.remove('hidden');
                 document.getElementById('gift-success-msg').classList.remove('hidden');
@@ -359,6 +380,16 @@
                 confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#f59e0b', '#dc2626', '#10b981'] });
                 
                 currentOrder.loyaltyGift = giftType;
+                
+                // تحديث واجهة كارت الولاء بعد ما أخد הهدية عشان العداد يبقى شكله صح
+                let points = 5; 
+                document.getElementById('loyalty-line').style.width = ((points - 1) / 4 * 100) + '%'; 
+                for(let i=1; i<=5; i++) {
+                    let dot = document.getElementById(`dot-${i}`);
+                    dot.classList.remove('milestone-inactive'); dot.classList.add('milestone-active');
+                    dot.classList.remove('animate-pulse');
+                }
+                document.getElementById('loyalty-msg').innerText = `عاش! ده طلبك رقم 5.. هديتك اتسجلت 🎁`;
                 
             } catch(e) {
                 console.error(e);
