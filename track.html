@@ -10,19 +10,14 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- مكتبة الاحتفالات (Confetti) 🎊 -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } },
-                    fontFamily: { cairo: ['Cairo', 'sans-serif'] }
-                }
+                extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } }
             }
         }
     </script>
@@ -30,83 +25,399 @@
         body { font-family: 'Cairo', sans-serif; background-color: #f0fdf4; background-image: radial-gradient(#dcfce7 1px, transparent 1px); background-size: 20px 20px; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide { animation: slideUp 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
-        
         @keyframes drive { 0% { right: -50px; transform: rotate(-5deg); } 50% { transform: rotate(5deg) translateY(-2px); } 100% { right: 100%; transform: rotate(-5deg); } }
         .animate-drive { animation: drive 2.5s ease-in-out infinite; }
-        
-        /* النبض للخطوة النشطة */
         @keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(22, 101, 52, 0); } 100% { box-shadow: 0 0 0 0 rgba(22, 101, 52, 0); } }
         .active-step-pulse { animation: pulse-ring 2s infinite; }
-
-        /* لمعان شريط الولاء */
         @keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
         .shimmer-bg { background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%); background-size: 200% 100%; animation: shimmer 2.5s infinite; }
-
         .star-rating i { cursor: pointer; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         .star-rating i:hover, .star-rating i.active { color: #f59e0b; transform: scale(1.3); text-shadow: 0 4px 10px rgba(245, 158, 11, 0.4); }
-        
         .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); }
     </style>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen pb-10">
 
     <header class="glass-card shadow-sm py-4 px-6 text-center sticky top-0 z-50">
-        <div class="w-14 h-14 bg-gradient-to-tr from-brand-primary to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-3xl shadow-lg shadow-emerald-500/30 transition-transform hover:scale-110 duration-300">
+        <div class="w-14 h-14 bg-gradient-to-tr from-brand-primary to-emerald-400 rounded-full flex items-center justify-center mx-auto mb-2 text-white text-3xl shadow-lg shadow-emerald-500/30">
             <i class="fa-solid fa-kiwi-bird"></i>
         </div>
         <h1 class="text-2xl font-black tracking-tight text-slate-800">سمان ههيا</h1>
-        <p class="text-[11px] text-brand-primary font-black uppercase tracking-widest bg-emerald-50 inline-block px-3 py-1 rounded-full mt-1 border border-emerald-100">بوابة تتبع الطلبات VIP</p>
     </header>
 
     <main class="flex-1 max-w-md w-full mx-auto p-5 flex flex-col mt-4">
         
         <!-- شاشة تسجيل الدخول -->
-        <div id="login-section" class="glass-card p-8 rounded-[2rem] shadow-2xl border border-white animate-slide relative overflow-hidden">
-            <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-100 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+        <div id="login-section" class="glass-card p-8 rounded-[2rem] shadow-2xl animate-slide relative overflow-hidden">
+            <h2 class="text-xl font-black text-center mb-2 text-slate-800">تتبع أوردرك 🛵</h2>
+            <p class="text-xs text-center text-slate-500 font-bold mb-8">اكتب الموبايل اللي طلبت بيه عشان نعيش معاك لحظة بلحظة.</p>
             
-            <h2 class="text-xl font-black text-center mb-2 relative z-10 text-slate-800">فين أوردري؟ 🛵</h2>
-            <p class="text-xs text-center text-slate-500 font-bold mb-8 relative z-10">اكتب رقم الموبايل اللي طلبت بيه عشان نعيش معاك لحظة بلحظة.</p>
-            
-            <div class="mb-5 relative z-10">
-                <input type="tel" id="customer-phone" placeholder="رقم الموبايل (مثال: 010...)" class="w-full border-2 border-slate-200 bg-slate-50/50 rounded-2xl p-4 text-center font-black outline-none focus:border-brand-primary focus:bg-white focus:shadow-lg focus:shadow-emerald-500/10 transition-all text-xl tracking-wider" dir="ltr">
+            <div class="mb-5">
+                <input type="tel" id="customer-phone" placeholder="010..." class="w-full border-2 border-slate-200 rounded-2xl p-4 text-center font-black outline-none focus:border-brand-primary transition-all text-xl" dir="ltr">
             </div>
             
-            <button onclick="trackOrder()" id="btn-track" class="relative z-10 w-full bg-gradient-to-r from-brand-primary to-emerald-600 hover:from-emerald-700 hover:to-brand-primary text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-brand-primary/30 active:scale-95 flex justify-center items-center gap-2 text-lg overflow-hidden group">
-                <div class="absolute inset-0 shimmer-bg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <i class="fa-solid fa-magnifying-glass"></i> تتبع الطلب
+            <button onclick="trackOrder()" id="btn-track" class="w-full bg-gradient-to-r from-brand-primary to-emerald-600 text-white font-black py-4 rounded-2xl shadow-xl active:scale-95 flex justify-center items-center gap-2 text-lg">
+                <i class="fa-solid fa-magnifying-glass"></i> ابحث عن طلبي
             </button>
-            <p id="error-msg" class="hidden text-red-500 text-xs font-bold text-center mt-4 bg-red-50 border border-red-100 p-3 rounded-xl relative z-10 animate-bounce"></p>
+            <p id="error-msg" class="hidden text-red-500 text-xs font-bold text-center mt-4 bg-red-50 border border-red-100 p-3 rounded-xl"></p>
         </div>
 
         <!-- شاشة النتيجة -->
         <div id="result-section" class="hidden space-y-6">
-            <button onclick="location.reload()" class="text-slate-400 hover:text-brand-primary text-sm font-bold flex items-center gap-2 bg-white px-5 py-2.5 rounded-full shadow-sm w-max transition-colors border border-slate-100">
-                <i class="fa-solid fa-arrow-right-long"></i> بحث برقم آخر
-            </button>
+            <div class="flex justify-between items-center">
+                <button onclick="location.reload()" class="text-slate-400 hover:text-brand-primary text-sm font-bold flex items-center gap-2 bg-white px-5 py-2.5 rounded-full border border-slate-100 shadow-sm">
+                    <i class="fa-solid fa-arrow-right-long"></i> خروج
+                </button>
+                <button onclick="toggleHistory()" class="text-indigo-500 hover:text-indigo-700 text-sm font-bold flex items-center gap-2 bg-indigo-50 px-5 py-2.5 rounded-full border border-indigo-100 shadow-sm">
+                    <i class="fa-solid fa-clock-rotate-left"></i> طلباتي السابقة
+                </button>
+            </div>
 
-            <!-- 1. كارت الولاء الفاخر -->
-            <div id="loyalty-card" class="bg-gradient-to-br from-amber-400 via-orange-400 to-red-500 rounded-[2rem] p-7 text-white shadow-2xl shadow-orange-500/20 animate-slide relative overflow-hidden group cursor-default border border-orange-300">
+            <!-- أرشيف الطلبات السابقة (مخفي افتراضياً) -->
+            <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 shadow-inner animate-slide">
+                <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left"></i> سجل طلباتك السابقة:</h4>
+                <div id="history-list" class="space-y-3 max-h-48 overflow-y-auto"></div>
+            </div>
+
+            <!-- كارت الولاء -->
+            <div id="loyalty-card" class="bg-gradient-to-br from-amber-400 to-red-500 rounded-[2rem] p-7 text-white shadow-xl animate-slide relative overflow-hidden">
                 <div class="absolute inset-0 shimmer-bg opacity-30"></div>
-                <i class="fa-solid fa-gift absolute -right-6 -bottom-6 text-9xl opacity-20 group-hover:scale-110 transition-transform duration-700"></i>
-                
-                <h3 class="font-black text-2xl mb-1 relative z-10 drop-shadow-md"><span id="greeting-time">أهلاً</span> يا <span id="res-name" class="text-yellow-200"></span>! ✨</h3>
-                <p id="loyalty-msg" class="text-sm font-bold opacity-90 relative z-10 mb-5 drop-shadow-sm"></p>
-                
-                <div class="relative z-10 mb-5 bg-black/10 p-3 rounded-2xl backdrop-blur-sm border border-white/20">
-                    <div class="flex justify-between text-[10px] font-black mb-2 px-1">
-                        <span>نقطة البداية</span>
-                        <span class="animate-pulse">الهدية 🎁</span>
+                <h3 class="font-black text-2xl mb-1 relative z-10"><span id="greeting-time">أهلاً</span> يا <span id="res-name" class="text-yellow-200"></span>! ✨</h3>
+                <p id="loyalty-msg" class="text-sm font-bold relative z-10 mb-5"></p>
+                <div class="relative z-10 bg-black/10 p-3 rounded-2xl">
+                    <div class="flex justify-between text-[10px] font-black mb-2"><span>البداية</span><span>طبق مجاني 🎁</span></div>
+                    <div class="w-full bg-black/20 rounded-full h-3"><div id="loyalty-progress" class="bg-white h-full rounded-full transition-all duration-1000" style="width: 0%"></div></div>
+                </div>
+            </div>
+
+            <!-- كارت التنبيهات (لم يتم الرد / تأجيل) -->
+            <div id="alert-banner" class="hidden bg-red-50 border-2 border-red-200 rounded-[1.5rem] p-5 animate-slide">
+                <h4 id="alert-title" class="font-black text-red-600 text-base mb-1"></h4>
+                <p id="alert-desc" class="text-xs font-bold text-red-500 mb-3"></p>
+                <a id="btn-alert-wa" href="#" target="_blank" class="w-full bg-red-500 text-white font-black py-2.5 rounded-xl flex justify-center items-center gap-2 text-sm shadow-md">
+                    <i class="fa-brands fa-whatsapp"></i> تواصل معنا لتأكيد الطلب
+                </a>
+            </div>
+
+            <!-- البيع الإضافي المباشر -->
+            <div id="upsell-banner" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 border-dashed rounded-[1.5rem] p-5 animate-slide flex justify-between items-center cursor-pointer hover:shadow-lg" onclick="handleUpsell()">
+                <div>
+                    <h4 class="font-black text-emerald-800 text-base"><i class="fa-solid fa-egg text-emerald-500"></i> إضافة بيض سمان؟</h4>
+                    <p id="upsell-desc" class="text-[11px] font-bold text-emerald-600 mt-1">اضغط للإضافة المباشرة للطلب (بـ 50ج)</p>
+                </div>
+                <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex justify-center items-center font-black shrink-0"><i class="fa-solid fa-plus"></i></div>
+            </div>
+
+            <!-- كارت التتبع الأساسي -->
+            <div class="glass-card rounded-[2rem] shadow-2xl border border-white p-7 animate-slide">
+                <div class="flex justify-between items-end mb-6 border-b border-slate-100 pb-5">
+                    <div>
+                        <p class="text-[11px] text-slate-400 font-bold mb-1">حالة طلبك</p>
+                        <h3 id="res-status-title" class="font-black text-brand-primary text-2xl"></h3>
                     </div>
-                    <div class="w-full bg-black/20 rounded-full h-3 overflow-hidden shadow-inner">
-                        <div id="loyalty-progress" class="bg-gradient-to-r from-yellow-200 to-white h-full rounded-full transition-all duration-1000 relative" style="width: 0%">
-                            <div class="absolute inset-0 shimmer-bg"></div>
-                        </div>
+                    <div class="text-center bg-slate-50 px-4 py-2 rounded-2xl border border-slate-200">
+                        <p class="text-[10px] text-slate-500 font-bold">الإجمالي</p>
+                        <p class="font-black text-2xl text-slate-800"><span id="res-total">0</span> <span class="text-sm text-slate-400">ج</span></p>
                     </div>
                 </div>
+
+                <!-- بيانات المندوب -->
+                <div id="driver-info" class="hidden mb-6 bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between">
+                    <div>
+                        <p class="text-[10px] font-bold text-indigo-400 mb-1">مندوب التوصيل</p>
+                        <h4 id="driver-name" class="font-black text-indigo-700 text-sm"></h4>
+                    </div>
+                    <a id="driver-call-btn" href="#" class="w-10 h-10 bg-indigo-500 text-white rounded-full flex justify-center items-center shadow-md"><i class="fa-solid fa-phone"></i></a>
+                </div>
+
+                <!-- شريط التتبع -->
+                <div class="relative flex justify-between items-center mb-8 px-3" id="timeline-container">
+                    <div class="absolute top-1/2 left-5 right-5 h-2 bg-slate-100 -z-10 rounded-full -translate-y-1/2"></div>
+                    <div id="progress-line" class="absolute top-1/2 right-5 h-2 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-1000" style="width: 0%;"></div>
+                    
+                    <div class="flex flex-col items-center gap-2 bg-white px-2"><div id="step-1-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-sm"><i class="fa-solid fa-clipboard-check"></i></div><span class="text-[10px] font-bold">مراجعة</span></div>
+                    <div class="flex flex-col items-center gap-2 bg-white px-2"><div id="step-2-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-sm"><i class="fa-solid fa-box-open"></i></div><span class="text-[10px] font-bold">تجهيز</span></div>
+                    <div class="flex flex-col items-center gap-2 bg-white px-2"><div id="step-3-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-sm"><i class="fa-solid fa-motorcycle"></i></div><span class="text-[10px] font-bold">توصيل</span></div>
+                </div>
+
+                <!-- نظام التقييم -->
+                <div id="feedback-section" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-6 text-center">
+                    <h4 class="font-black text-slate-800 text-base mb-2">إيه رأيك في الأوردر؟</h4>
+                    <div class="star-rating text-3xl text-slate-300 flex justify-center gap-3 flex-row-reverse" id="stars-container">
+                        <i class="fa-solid fa-star" onclick="rateOrder(5)"></i><i class="fa-solid fa-star" onclick="rateOrder(4)"></i><i class="fa-solid fa-star" onclick="rateOrder(3)"></i><i class="fa-solid fa-star" onclick="rateOrder(2)"></i><i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
+                    </div>
+                    <div id="complaint-box" class="hidden mt-4">
+                        <textarea id="complaint-text" rows="2" class="w-full rounded-xl border border-slate-200 p-3 text-sm outline-none focus:border-amber-400" placeholder="اكتب مشكلتك وهنكلمك نعوضك..."></textarea>
+                        <button onclick="submitComplaint()" class="mt-3 w-full bg-slate-800 text-white font-black py-2.5 rounded-xl shadow-md">إرسال للإدارة</button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                    <p class="text-[11px] text-slate-400 font-bold mb-3">محتويات الطلب:</p>
+                    <div id="res-items" class="flex flex-wrap gap-2"></div>
+                </div>
+
+                <div id="action-buttons" class="hidden grid-cols-2 gap-4 mt-6">
+                    <button onclick="cancelOrder()" class="col-span-2 bg-white border-2 border-red-100 text-red-500 hover:bg-red-50 font-black py-3 rounded-xl flex justify-center items-center gap-2 text-sm shadow-sm">
+                        <i class="fa-solid fa-xmark text-lg"></i> إلغاء الطلب
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // إعدادات فايربيس
+        const firebaseConfig = { 
+            apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", authDomain: "sman-ca8f8.firebaseapp.com", projectId: "sman-ca8f8", storageBucket: "sman-ca8f8.firebasestorage.app", messagingSenderId: "538778803310", appId: "1:538778803310:web:5eeff42bae534375a21a7f" 
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let currentOrder = null;
+        let pastOrders = [];
+        let storeWhatsapp = "201000000000"; // ⚠️ غيّر الرقم هنا ⚠️
+
+        function normalizePhone(phone) {
+            if (!phone) return '';
+            let normalized = phone.toString().replace(/[\u0660-\u0669\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x0660).replace(/\D/g, '');
+            if (normalized.length >= 10) {
+                if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
+                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
+                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
+            }
+            return normalized;
+        }
+
+        async function trackOrder() {
+            let phone = normalizePhone(document.getElementById('customer-phone').value);
+            let btn = document.getElementById('btn-track');
+            if (phone.length < 10) { document.getElementById('error-msg').innerText = "رقم موبايل غير صحيح"; document.getElementById('error-msg').classList.remove('hidden'); return; }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; btn.disabled = true;
+
+            try {
+                let snap = await db.collection('orders').where('customerPhone', '==', phone).get();
+                let orders = []; snap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
                 
-                <a href="#" id="invite-friend-btn" target="_blank" class="relative z-10 w-full bg-white text-orange-600 hover:bg-yellow-50 border-2 border-white rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-black transition-all shadow-lg hover:shadow-xl hover:-translate-y-1">
-                    <i class="fa-solid fa-share-nodes text-lg"></i> اعزم صاحبك وخد نقطتك الجاية!
-                </a>
+                pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+                let activeOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled');
+
+                if (activeOrders.length === 0) {
+                    document.getElementById('error-msg').innerText = "لا يوجد طلبات نشطة حالياً."; document.getElementById('error-msg').classList.remove('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ابحث عن طلبي'; btn.disabled = false; return;
+                }
+
+                activeOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                currentOrder = activeOrders[0];
+
+                let cSnap = await db.collection('customers').doc(phone.startsWith('0')?phone:'0'+phone).get();
+                let ordersCount = cSnap.exists ? (cSnap.data().ordersCount || 1) : 1;
+
+                displayResult(ordersCount);
+            } catch (error) { document.getElementById('error-msg').innerText = "خطأ في الاتصال بالشبكة."; document.getElementById('error-msg').classList.remove('hidden'); }
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> ابحث عن طلبي'; btn.disabled = false;
+        }
+
+        function displayResult(totalOrders) {
+            document.getElementById('login-section').classList.add('hidden');
+            document.getElementById('result-section').classList.remove('hidden');
+
+            let hr = new Date().getHours();
+            document.getElementById('greeting-time').innerText = (hr >= 5 && hr < 12) ? "صباح الفل" : ((hr >= 12 && hr < 18) ? "مساء الروقان" : "يا هلا");
+            document.getElementById('res-name').innerText = (currentOrder.customerName||'').split(' ')[0];
+            document.getElementById('res-total').innerText = currentOrder.total || 0;
+
+            let points = totalOrders % 5; if(points === 0 && totalOrders > 0) points = 5; 
+            setTimeout(() => { document.getElementById('loyalty-progress').style.width = ((points / 5) * 100) + '%'; }, 500);
+            
+            let lMsg = document.getElementById('loyalty-msg');
+            if (totalOrders === 1) lMsg.innerText = "أول مرة تطلب؟ نورتنا جداً!"; 
+            else if (points === 5) lMsg.innerText = `ده طلبك رقم ${totalOrders}.. ليك طبق هدية 🎁`; 
+            else lMsg.innerText = `ده طلبك رقم ${totalOrders}.. فاضلك ${5 - points} وتاخد الهدية!`;
+
+            let itemsHtml = currentOrder.items ? currentOrder.items.map(i => `<span class="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-black text-brand-primary shadow-sm">${i.quantity}x ${i.name}</span>`).join('') : '';
+            document.getElementById('res-items').innerHTML = itemsHtml;
+
+            updateTimeline();
+        }
+
+        function updateTimeline() {
+            let s = currentOrder.status;
+            let title = ""; let pWidth = "0%"; let activeSteps = 0;
+            
+            document.getElementById('alert-banner').classList.add('hidden');
+            document.getElementById('upsell-banner').classList.add('hidden');
+            document.getElementById('driver-info').classList.add('hidden');
+            document.getElementById('feedback-section').classList.add('hidden');
+            document.getElementById('action-buttons').classList.add('hidden');
+
+            if (s === 'new') {
+                title = "تم استلام الطلب 📝"; pWidth = "0%"; activeSteps = 1;
+                document.getElementById('action-buttons').classList.remove('hidden'); document.getElementById('action-buttons').classList.add('grid');
+                
+                // الإضافة المباشرة متاحة فقط لو الطلب جديد
+                document.getElementById('upsell-banner').classList.remove('hidden');
+                document.getElementById('upsell-desc').innerText = "سيتم تحديث الحساب وإضافة الطبق فوراً";
+            } 
+            else if (s === 'deferred') {
+                title = "تم تأجيل الطلب ⏳"; pWidth = "0%"; activeSteps = 1;
+                showAlert("طلبك متأجل", "تم تأجيل تجهيز الطلب بناءً على رغبتك.");
+            }
+            else if (s === 'no_answer') {
+                title = "حاولنا نكلمك 📴"; pWidth = "0%"; activeSteps = 1;
+                showAlert("الرقم غير متاح أو مفيش رد", "المندوب أو الإدارة حاولوا يكلموك. يرجى التواصل معنا لتأكيد خروج الأوردر.");
+            }
+            else if (s === 'processing') {
+                document.getElementById('upsell-banner').classList.remove('hidden');
+                document.getElementById('upsell-desc').innerText = "الطلب بيتجهز، اطلب الإضافة عبر الواتساب";
+
+                if (currentOrder.driverName) {
+                    title = "خرج مع المندوب 🛵"; pWidth = "100%"; activeSteps = 3;
+                    document.getElementById('upsell-banner').classList.add('hidden');
+                    
+                    // استخراج وعرض بيانات المندوب
+                    document.getElementById('driver-info').classList.remove('hidden');
+                    document.getElementById('driver-info').classList.add('flex');
+                    document.getElementById('driver-name').innerText = currentOrder.driverName;
+                    
+                    // محاولة استخراج رقم التليفون من اسم المندوب لو مسجل بين أقواس
+                    let driverPhoneMatch = currentOrder.driverName.match(/\b01[0125][0-9]{8}\b/);
+                    if(driverPhoneMatch) {
+                        document.getElementById('driver-call-btn').href = `tel:${driverPhoneMatch[0]}`;
+                    } else {
+                        document.getElementById('driver-call-btn').classList.add('hidden');
+                    }
+                } else {
+                    title = "جاري التجهيز بالمطبخ 🔪"; pWidth = "50%"; activeSteps = 2;
+                }
+            } 
+            else if (s === 'completed') {
+                title = "تم التوصيل ✅"; pWidth = "100%"; activeSteps = 3;
+                document.getElementById('feedback-section').classList.remove('hidden');
+                setTimeout(() => { confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#166534', '#f59e0b', '#10b981'] }); }, 800);
+            }
+
+            document.getElementById('res-status-title').innerText = title;
+            
+            setTimeout(() => {
+                document.getElementById('progress-line').style.width = pWidth;
+                for (let i = 1; i <= 3; i++) {
+                    let icon = document.getElementById(`step-${i}-icon`);
+                    if (i <= activeSteps) {
+                        icon.className = "w-10 h-10 rounded-full border-4 border-white shadow-lg flex items-center justify-center text-sm bg-brand-primary text-white transition-all duration-700 active-step-pulse";
+                    } else {
+                        icon.className = "w-10 h-10 rounded-full border-4 border-slate-100 shadow-sm flex items-center justify-center text-sm bg-slate-100 text-slate-300 transition-all duration-700";
+                    }
+                }
+            }, 100);
+        }
+
+        function showAlert(title, desc) {
+            let banner = document.getElementById('alert-banner');
+            banner.classList.remove('hidden');
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-desc').innerText = desc;
+            document.getElementById('btn-alert-wa').href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(`أهلاً، بخصوص أوردري باسم (${currentOrder.customerName})، حابب أكد التوصيل.`)}`;
+        }
+
+        // --- الأكشنز الذكية ---
+        async function handleUpsell() {
+            if (currentOrder.status === 'new') {
+                // إضافة مباشرة لقاعدة البيانات
+                if(!confirm("إضافة (طبق بيض سمان) بـ 50ج لقيمة الطلب الحالي؟")) return;
+                
+                let newItems = [...(currentOrder.items || [])];
+                let eggItem = newItems.find(i => i.name.includes("بيض"));
+                if(eggItem) eggItem.quantity += 1;
+                else newItems.push({ id: 'eggs', name: 'طبق بيض سمان', price: 50, quantity: 1 });
+
+                let newTotal = (Number(currentOrder.total) || 0) + 50;
+                let newSubtotal = (Number(currentOrder.subtotal) || 0) + 50;
+
+                try {
+                    await db.collection('orders').doc(currentOrder.id).update({ items: newItems, total: newTotal, subtotal: newSubtotal });
+                    alert("تم إضافة الطبق بنجاح وتحديث الحساب!");
+                    currentOrder.items = newItems; currentOrder.total = newTotal;
+                    displayResult(1); // Refresh UI
+                } catch(e) { alert("خطأ في التحديث"); }
+            } else {
+                // تحويل للواتساب لو الأوردر بدأ يتجهز
+                let msg = encodeURIComponent(`أهلاً بيك، أنا ${currentOrder.customerName}، حابب أضيف (طبق بيض سمان) للأوردر بتاعي لو لسه مخرجش!`);
+                window.open(`https://wa.me/${storeWhatsapp}?text=${msg}`, '_blank');
+            }
+        }
+
+        async function cancelOrder() {
+            if(!confirm("أكيد عايز تلغي؟ زعلتنا 💔!")) return;
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                await db.collection('orders').doc(currentOrder.id).update({ status: 'canceled', adminNote: `[${dateStr}] ❌ العميل ألغى الطلب بنفسه.` });
+                alert("تم الإلغاء، نتمنى نشوفك تاني."); location.reload();
+            } catch(e) { alert("حدث خطأ."); }
+        }
+
+        function toggleHistory() {
+            let section = document.getElementById('history-section');
+            if(section.classList.contains('hidden')) {
+                section.classList.remove('hidden');
+                let list = document.getElementById('history-list');
+                if(pastOrders.length === 0) { list.innerHTML = '<p class="text-xs text-slate-400">لا يوجد طلبات سابقة مكتملة.</p>'; return; }
+                
+                list.innerHTML = pastOrders.map(o => `
+                    <div class="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center">
+                        <div>
+                            <p class="text-[10px] text-slate-400 font-bold">${o.orderDate || 'تاريخ غير محدد'}</p>
+                            <p class="text-xs font-black text-slate-700">${o.items ? o.items.map(i=>i.name).join(' + ') : 'بدون تفاصيل'}</p>
+                        </div>
+                        <span class="text-brand-primary font-black text-sm">${o.total} ج</span>
+                    </div>
+                `).join('');
+            } else { section.classList.add('hidden'); }
+        }
+
+        // التقييم
+        let selectedStars = 0;
+        function rateOrder(stars) {
+            selectedStars = stars;
+            let starsElements = document.getElementById('stars-container').children;
+            for(let i=0; i<5; i++) {
+                if(i < stars) starsElements[4-i].classList.add('active'); 
+                else starsElements[4-i].classList.remove('active');
+            }
+            if(stars <= 3) { document.getElementById('complaint-box').classList.remove('hidden'); } 
+            else { 
+                document.getElementById('complaint-box').classList.add('hidden'); 
+                saveRatingToCRM(stars, "تقييم عالي - مبسوط");
+                alert("شكراً جداً على التقييم الحلو ده! ❤️");
+            }
+        }
+
+        async function submitComplaint() {
+            let text = document.getElementById('complaint-text').value.trim();
+            if(!text) return alert("معلش اكتبلنا إيه المشكلة بالظبط عشان نقدر نحلها.");
+            await saveRatingToCRM(selectedStars, `شكوى (${selectedStars} نجوم): ${text}`);
+            document.getElementById('feedback-section').innerHTML = '<div class="bg-red-50 p-4 rounded-xl border border-red-100"><h4 class="font-black text-red-600 text-sm mb-1">صوتك وصل للإدارة!</h4><p class="text-xs font-bold text-red-500">بنعتذرلك جداً وهنكلمك فوراً نعوضك.</p></div>';
+        }
+
+        async function saveRatingToCRM(stars, text) {
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                let docSnap = await db.collection('orders').doc(currentOrder.id).get();
+                let oldNotes = docSnap.data().adminNote || '';
+                let newNote = `[${dateStr}] ⭐️ تقييم: \n${text}`;
+                await db.collection('orders').doc(currentOrder.id).update({ rating: stars, adminNote: oldNotes ? oldNotes + '\n---\n' + newNote : newNote });
+            } catch(e) {}
+        }
+
+        window.onload = () => {
+            const params = new URLSearchParams(window.location.search);
+            const phoneParam = params.get('phone');
+            if(phoneParam) { document.getElementById('customer-phone').value = phoneParam; trackOrder(); }
+        };
+    </script>
+</body>
+</html>
             </div>
 
             <!-- 2. البيع الإضافي (Upselling) بشياكة -->
