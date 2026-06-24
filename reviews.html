@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>مراقب الجودة والآراء الحية | سمان ههيا</title>
+    <meta name="theme-color" content="#1e293b">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 1); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05); }
+        .custom-scroll::-webkit-scrollbar { width: 5px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+    </style>
+</head>
+<body class="text-slate-800 flex flex-col min-h-screen">
+
+    <!-- الهيدر الإداري -->
+    <header class="bg-slate-900 text-white shadow-lg py-5 px-6 text-center sticky top-0 z-50 border-b-4 border-amber-500">
+        <div class="flex justify-center items-center gap-3 mb-1">
+            <i class="fa-solid fa-satellite-dish text-2xl text-amber-400 animate-pulse"></i>
+            <h1 class="text-xl font-black tracking-tight">رادار الجودة والتقييمات</h1>
+        </div>
+        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">سمان ههيا - السجل الحي لآراء العملاء</p>
+    </header>
+
+    <main class="flex-1 max-w-5xl w-full mx-auto p-5 flex flex-col mt-2">
+
+        <!-- الإحصائيات السريعة -->
+        <div class="grid grid-cols-3 gap-3 mb-6" id="stats-container">
+            <div class="glass-card p-4 rounded-2xl text-center border border-slate-200">
+                <p class="text-[10px] font-bold text-slate-500 mb-1">متوسط التقييم العام</p>
+                <p class="text-2xl font-black text-amber-500" id="stat-avg">0.0 <i class="fa-solid fa-star text-sm"></i></p>
+            </div>
+            <div class="glass-card p-4 rounded-2xl text-center border border-emerald-100 bg-emerald-50/30">
+                <p class="text-[10px] font-bold text-emerald-600 mb-1">تقييمات ممتازة (4-5)</p>
+                <p class="text-2xl font-black text-emerald-600" id="stat-good">0</p>
+            </div>
+            <div class="glass-card p-4 rounded-2xl text-center border border-red-100 bg-red-50/30">
+                <p class="text-[10px] font-bold text-red-600 mb-1">شكاوى (1-3)</p>
+                <p class="text-2xl font-black text-red-600" id="stat-bad">0</p>
+            </div>
+        </div>
+        
+        <!-- صندوق البحث الفردي -->
+        <div class="glass-card p-4 rounded-2xl mb-6 flex flex-col md:flex-row gap-3 items-center bg-white shadow-sm border border-slate-200">
+            <div class="w-full relative">
+                <i class="fa-solid fa-search absolute right-4 top-3.5 text-slate-400 text-base"></i>
+                <input type="tel" id="search-phone" placeholder="استعلام برقم موبايل محدد..." class="w-full border border-slate-200 bg-slate-50 rounded-xl p-2.5 pr-10 text-sm font-black outline-none focus:border-brand-primary focus:bg-white transition-all" dir="ltr" onkeypress="if(event.key === 'Enter') searchCustomerReview()">
+            </div>
+            <button onclick="searchCustomerReview()" id="btn-search" class="w-full md:w-auto px-6 bg-slate-800 hover:bg-slate-900 text-white font-black py-2.5 rounded-xl transition-all shadow-md active:scale-95 flex justify-center items-center gap-2 shrink-0 text-sm">
+                استعلام
+            </button>
+            <button onclick="loadLiveFeed()" class="w-full md:w-auto px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-2.5 rounded-xl transition-all shadow-sm active:scale-95 flex justify-center items-center gap-2 shrink-0 text-sm border border-slate-200" title="تحديث السجل الحي">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+
+        <div id="loading-spinner" class="text-center py-12">
+            <i class="fa-solid fa-spinner fa-spin text-4xl text-brand-primary mb-3"></i>
+            <p class="text-sm font-bold text-slate-500">جاري سحب التقييمات من السيرفر...</p>
+        </div>
+
+        <div id="error-msg" class="hidden text-center py-8 bg-red-50 border border-red-200 rounded-2xl text-red-500 font-black text-sm mb-6"></div>
+
+        <!-- السجل الحي (Live Feed) -->
+        <div id="live-feed-container" class="hidden">
+            <h3 class="font-black text-slate-800 text-lg mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
+                <i class="fa-solid fa-tower-broadcast text-brand-primary"></i> أحدث التقييمات الواردة
+            </h3>
+            <div id="reviews-list" class="space-y-4"></div>
+        </div>
+
+    </main>
+
+    <script>
+        const firebaseConfig = { apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", authDomain: "sman-ca8f8.firebaseapp.com", projectId: "sman-ca8f8", storageBucket: "sman-ca8f8.firebasestorage.app", messagingSenderId: "538778803310", appId: "1:538778803310:web:5eeff42bae534375a21a7f" };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        function normalizePhone(phone) {
+            if (!phone) return '';
+            let normalized = phone.toString().replace(/[\u0660-\u0669\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x0660).replace(/\D/g, '');
+            if (normalized.length >= 10) {
+                if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
+                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
+                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
+            }
+            return normalized;
+        }
+
+        function generateStars(rating) {
+            if (!rating || rating === 0) return '<span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">بدون تقييم</span>';
+            let starsHtml = '<div class="text-amber-400 text-base flex flex-row-reverse gap-0.5 drop-shadow-sm">';
+            for(let i = 1; i <= 5; i++) {
+                if(i <= rating) starsHtml += '<i class="fa-solid fa-star"></i>';
+                else starsHtml += '<i class="fa-regular fa-star text-slate-200"></i>';
+            }
+            starsHtml += '</div>';
+            return starsHtml;
+        }
+
+        function extractReviewText(adminNote) {
+            if (!adminNote) return null;
+            let lines = adminNote.split('\n---\n');
+            let reviewLines = lines.filter(l => l.includes('⭐️ تقييم'));
+            if (reviewLines.length === 0) return null;
+            
+            let latestReview = reviewLines[reviewLines.length - 1];
+            let cleanText = latestReview.replace(/\[.*?\]\s*⭐️ تقييم( العميل للمنصة)?:/g, '').trim();
+            return cleanText || "اكتفى بالتقييم بالنجوم ولم يكتب تعليقاً.";
+        }
+
+        // ==========================================
+        // الدالة الأساسية: تحميل السجل الحي لكل التقييمات
+        // ==========================================
+        async function loadLiveFeed() {
+            let loader = document.getElementById('loading-spinner');
+            let feedContainer = document.getElementById('live-feed-container');
+            let reviewsList = document.getElementById('reviews-list');
+            let errBox = document.getElementById('error-msg');
+            
+            loader.classList.remove('hidden');
+            feedContainer.classList.add('hidden');
+            errBox.classList.add('hidden');
+            document.getElementById('search-phone').value = '';
+
+            try {
+                // سحب أحدث 150 أوردر عشان نفلتر منهم التقييمات
+                let snap = await db.collection('orders').orderBy('createdAt', 'desc').limit(150).get();
+                let allRatedOrders = [];
+                let totalStars = 0, goodCount = 0, badCount = 0;
+
+                snap.forEach(doc => {
+                    let d = doc.data();
+                    // لو الأوردر جواه تقييم أكبر من صفر
+                    if (d.rating && d.rating > 0) {
+                        allRatedOrders.push({id: doc.id, ...d});
+                        totalStars += d.rating;
+                        if(d.rating >= 4) goodCount++; else badCount++;
+                    }
+                });
+
+                // تحديث الإحصائيات
+                let avg = allRatedOrders.length > 0 ? (totalStars / allRatedOrders.length).toFixed(1) : "0.0";
+                document.getElementById('stat-avg').innerHTML = `${avg} <i class="fa-solid fa-star text-sm"></i>`;
+                document.getElementById('stat-good').innerText = goodCount;
+                document.getElementById('stat-bad').innerText = badCount;
+
+                if (allRatedOrders.length === 0) {
+                    reviewsList.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يتم العثور على تقييمات حديثة.</div>';
+                } else {
+                    reviewsList.innerHTML = allRatedOrders.map(o => createReviewCard(o)).join('');
+                }
+
+                loader.classList.add('hidden');
+                feedContainer.classList.remove('hidden');
+
+            } catch(e) {
+                loader.classList.add('hidden');
+                errBox.innerText = "حدث خطأ في تحميل السجل الحي. يرجى التأكد من الاتصال.";
+                errBox.classList.remove('hidden');
+            }
+        }
+
+        // ==========================================
+        // دالة استعلام محدد برقم التليفون
+        // ==========================================
+        async function searchCustomerReview() {
+            let phoneInput = document.getElementById('search-phone').value;
+            let phone = normalizePhone(phoneInput);
+            
+            let loader = document.getElementById('loading-spinner');
+            let feedContainer = document.getElementById('live-feed-container');
+            let reviewsList = document.getElementById('reviews-list');
+            let errBox = document.getElementById('error-msg');
+
+            if (phone.length < 10) {
+                errBox.innerText = "يرجى كتابة رقم موبايل صحيح!";
+                errBox.classList.remove('hidden'); return;
+            }
+
+            loader.classList.remove('hidden');
+            feedContainer.classList.add('hidden');
+            errBox.classList.add('hidden');
+
+            try {
+                let ordersSnap = await db.collection('orders').where('customerPhone', '==', phone).get();
+                let orders = [];
+                ordersSnap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
+                
+                if (orders.length === 0) {
+                    loader.classList.add('hidden');
+                    errBox.innerText = "هذا الرقم ليس له أي طلبات في النظام.";
+                    errBox.classList.remove('hidden'); return;
+                }
+
+                orders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                
+                // إخفاء الإحصائيات العامة لأننا بنعرض فردي
+                document.getElementById('stats-container').classList.add('hidden');
+
+                reviewsList.innerHTML = `
+                    <div class="bg-indigo-50 border border-indigo-100 rounded-xl p-3 mb-4 text-center">
+                        <p class="text-xs font-black text-indigo-800">نتيجة البحث الشامل للعميل: <span dir="ltr">${phone}</span></p>
+                    </div>
+                ` + orders.map(o => createReviewCard(o)).join('');
+
+                loader.classList.add('hidden');
+                feedContainer.classList.remove('hidden');
+
+            } catch(e) {
+                loader.classList.add('hidden');
+                errBox.innerText = "حدث خطأ أثناء جلب البيانات.";
+                errBox.classList.remove('hidden');
+            }
+        }
+
+        // ==========================================
+        // دالة إنشاء كارت التقييم الموحد
+        // ==========================================
+        function createReviewCard(o) {
+            let ratingStars = generateStars(o.rating);
+            let reviewText = extractReviewText(o.adminNote);
+            
+            let reviewBoxHtml = '';
+            if (o.rating && o.rating > 0) {
+                let reviewColor = o.rating >= 4 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-200 shadow-md shadow-red-500/10';
+                let textColor = o.rating >= 4 ? 'text-emerald-700' : 'text-red-700';
+                let iconFeedback = o.rating >= 4 ? '<i class="fa-regular fa-face-smile-beam text-emerald-500 text-xl"></i>' : '<i class="fa-solid fa-triangle-exclamation text-red-500 text-xl animate-pulse"></i>';
+                
+                reviewBoxHtml = `
+                <div class="mt-3 ${reviewColor} border rounded-xl p-4 relative overflow-hidden">
+                    ${o.rating <= 3 ? '<div class="absolute top-0 right-0 w-full h-1 bg-red-500"></div>' : ''}
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            ${iconFeedback}
+                            <span class="text-xs font-black text-slate-800">رأي العميل:</span>
+                        </div>
+                        ${ratingStars}
+                    </div>
+                    <p class="text-sm font-bold ${textColor} leading-relaxed bg-white/60 p-2.5 rounded-lg border border-white/50">${reviewText}</p>
+                </div>`;
+            }
+
+            let itemsStr = o.items ? o.items.map(i => `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-black inline-block m-0.5">${i.quantity}x ${i.name}</span>`).join('') : 'بدون تفاصيل';
+            let dateStr = o.orderDate || (o.createdAt ? new Date(o.createdAt.toMillis()).toLocaleDateString('ar-EG') : 'غير مسجل');
+            let dispZone = o.zone || 'منطقة غير محددة';
+            let dispAddress = o.customerAddress ? `- ${o.customerAddress}` : '';
+
+            return `
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition-shadow fade-in">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3 pb-3 border-b border-slate-50">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-slate-50 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 text-xl shrink-0">
+                            <i class="fa-solid fa-user-tag"></i>
+                        </div>
+                        <div>
+                            <h4 class="font-black text-slate-800 text-base mb-0.5">${o.customerName || 'عميل غير مسجل'}</h4>
+                            <div class="flex items-center gap-2">
+                                <a href="tel:${o.customerPhone}" class="text-[10px] font-bold text-slate-500 hover:text-blue-500 transition-colors" dir="ltr"><i class="fa-solid fa-phone mr-0.5"></i> ${o.customerPhone}</a>
+                                <span class="text-slate-300">|</span>
+                                <span class="text-[10px] font-bold text-indigo-500"><i class="fa-solid fa-location-dot"></i> ${dispZone} ${dispAddress}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-left bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 min-w-[100px]">
+                        <p class="text-[9px] text-slate-400 font-bold mb-0.5"><i class="fa-regular fa-calendar"></i> ${dateStr}</p>
+                        <p class="font-black text-brand-primary text-sm">${o.total} <span class="text-[10px]">ج.م</span></p>
+                    </div>
+                </div>
+                
+                <div class="mb-1">
+                    <p class="text-[10px] text-slate-400 font-bold mb-1">الطلبات:</p>
+                    ${itemsStr}
+                </div>
+                
+                ${reviewBoxHtml}
+            </div>`;
+        }
+
+        // تشغيل التحميل التلقائي عند فتح الصفحة
+        window.onload = () => {
+            loadLiveFeed();
+        };
+    </script>
+</body>
+</html>
