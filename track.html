@@ -49,7 +49,6 @@
         
         <div id="login-section" class="glass-card p-8 rounded-[2rem] animate-slide relative overflow-hidden mt-10">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-100 rounded-full blur-3xl opacity-60"></div>
-            
             <h2 class="text-2xl font-black text-center mb-2 text-slate-800 relative z-10">فين أوردري؟ 🛵</h2>
             <p class="text-xs text-center text-slate-500 font-bold mb-8 relative z-10">اكتب رقم الموبايل اللي طلبت بيه عشان تتابع الأوردر لحظة بلحظة.</p>
             
@@ -75,23 +74,42 @@
                 </button>
             </div>
 
-            <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 animate-slide">
-                <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left mr-1"></i> أرشيف السعادة:</h4>
-                <div id="history-list" class="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scroll"></div>
+            <!-- صندوق اختيار الهدية (السحر الجديد) -->
+            <div id="gift-selection-box" class="hidden bg-gradient-to-br from-yellow-400 to-amber-600 rounded-[2rem] p-6 text-white shadow-2xl animate-slide relative overflow-hidden border-2 border-yellow-300">
+                <div class="absolute inset-0 shimmer-bg opacity-40"></div>
+                <i class="fa-solid fa-gift absolute -left-4 -bottom-4 text-9xl opacity-20 animate-pulse"></i>
+                
+                <h3 class="font-black text-2xl mb-2 relative z-10 text-center drop-shadow-md">مبروك يا <span id="gift-res-name" class="text-white"></span>! 🎉</h3>
+                <p class="text-sm font-bold opacity-95 relative z-10 mb-5 text-center bg-black/20 p-2 rounded-xl">إنت وصلت للأوردر الخامس.. اختار هديتك للأوردر ده حالاً:</p>
+                
+                <div class="space-y-3 relative z-10">
+                    <button onclick="claimGift('eggs', 'طبق بيض سمان')" class="w-full bg-white hover:bg-yellow-50 text-amber-600 font-black py-3.5 rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-3 px-4">
+                        <span class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-egg"></i></span>
+                        <div class="text-right flex-1"><p class="text-base leading-none mb-1">طبق بيض سمان مجاني</p><p class="text-[10px] text-amber-500 font-bold">هينضفلك للأوردر مجاناً</p></div>
+                    </button>
+                    
+                    <button onclick="claimGift('delivery', 'شحن مجاني')" class="w-full bg-white hover:bg-yellow-50 text-amber-600 font-black py-3.5 rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-3 px-4">
+                        <span class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-truck-fast"></i></span>
+                        <div class="text-right flex-1"><p class="text-base leading-none mb-1">توصيل مجاني</p><p class="text-[10px] text-amber-500 font-bold">هنوصلك الأوردر ده ببلاش</p></div>
+                    </button>
+                    
+                    <button onclick="claimGift('upgrade', 'ترقية لطبق واحد')" class="w-full bg-white hover:bg-yellow-50 text-amber-600 font-black py-3.5 rounded-xl shadow-md transition-transform active:scale-95 flex items-center gap-3 px-4">
+                        <span class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center text-xl shrink-0"><i class="fa-solid fa-arrow-up-right-dots"></i></span>
+                        <div class="text-right flex-1"><p class="text-base leading-none mb-1">ترقية الحجم لطبق واحد</p><p class="text-[10px] text-amber-500 font-bold">هنديك الحجم الأكبر لطبق من طلباتك</p></div>
+                    </button>
+                </div>
             </div>
 
+            <!-- كارت الولاء العادي -->
             <div id="loyalty-card" class="bg-gradient-to-br from-orange-400 via-amber-500 to-red-500 rounded-[2rem] p-6 text-white shadow-xl animate-slide relative overflow-hidden border border-orange-300">
                 <div class="absolute inset-0 shimmer-bg opacity-40"></div>
                 <i class="fa-solid fa-gem absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
-                
                 <h3 class="font-black text-xl mb-1 relative z-10"><span id="greeting-time">أهلاً</span> يا <span id="res-name" class="text-yellow-200"></span>! ✨</h3>
                 <p id="loyalty-msg" class="text-xs font-bold opacity-90 relative z-10 mb-5"></p>
-                
                 <div class="relative z-10 bg-black/15 p-4 rounded-2xl backdrop-blur-sm border border-white/20 mb-4">
                     <div class="flex justify-between items-center relative">
                         <div class="absolute top-1/2 left-4 right-4 h-1 bg-white/20 -z-10 -translate-y-1/2 rounded-full"></div>
                         <div id="loyalty-line" class="absolute top-1/2 right-4 h-1 bg-white -z-10 -translate-y-1/2 rounded-full transition-all duration-1000 shadow-[0_0_10px_#fff]" style="width: 0%;"></div>
-                        
                         <div id="dot-1" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">1</div>
                         <div id="dot-2" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">2</div>
                         <div id="dot-3" class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-black transition-all duration-500 milestone-inactive">3</div>
@@ -99,12 +117,20 @@
                         <div id="dot-5" class="w-10 h-10 rounded-full flex items-center justify-center text-lg font-black transition-all duration-500 milestone-inactive border-2 border-white"><i class="fa-solid fa-gift"></i></div>
                     </div>
                 </div>
-                
-                <a href="#" id="invite-friend-btn" target="_blank" class="relative z-10 w-full bg-white text-orange-600 hover:bg-orange-50 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-black shadow-lg transition-transform active:scale-95">
-                    <i class="fa-solid fa-share-nodes"></i> اعزم صاحبك وخد نقطتك الجاية!
-                </a>
             </div>
 
+            <!-- رسالة تم اختيار الهدية بنجاح -->
+            <div id="gift-success-msg" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center animate-slide">
+                <h4 class="font-black text-emerald-600 text-base mb-1">تم اختيار هديتك بنجاح! 🎁</h4>
+                <p class="text-xs font-bold text-emerald-500">تم إبلاغ المطبخ لتنفيذها مع الأوردر.</p>
+            </div>
+
+            <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 animate-slide">
+                <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left mr-1"></i> أرشيف السعادة:</h4>
+                <div id="history-list" class="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scroll"></div>
+            </div>
+
+            <!-- 2. كارت التنبيهات -->
             <div id="alert-banner" class="hidden rounded-[1.5rem] p-5 animate-slide shadow-sm border">
                 <div class="flex items-start gap-3">
                     <div id="alert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"></div>
@@ -118,6 +144,7 @@
                 </a>
             </div>
 
+            <!-- 3. عرض اللحظة الأخيرة (Upsell) -->
             <div id="upsell-banner" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 border-dashed rounded-[1.5rem] p-4 animate-slide flex justify-between items-center cursor-pointer hover:bg-emerald-100 transition-colors group" onclick="handleUpsell()">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 bg-emerald-200 rounded-full flex items-center justify-center text-emerald-700 text-2xl group-hover:rotate-12 transition-transform"><i class="fa-solid fa-egg"></i></div>
@@ -129,6 +156,7 @@
                 <div class="w-8 h-8 bg-emerald-500 text-white rounded-full flex justify-center items-center shadow-md animate-bounce"><i class="fa-solid fa-plus"></i></div>
             </div>
 
+            <!-- 4. كارت التتبع الرئيسي -->
             <div class="glass-card rounded-[2rem] p-6 animate-slide" id="tracking-card">
                 <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                     <div>
@@ -146,10 +174,7 @@
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 bg-white rounded-full border-2 border-indigo-200 flex items-center justify-center text-indigo-500 text-xl shadow-sm relative">
                                 <i class="fa-solid fa-motorcycle"></i>
-                                <span class="absolute -bottom-1 -right-1 flex h-3 w-3">
-                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white"></span>
-                                </span>
+                                <span class="absolute -bottom-1 -right-1 flex h-3 w-3"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white"></span></span>
                             </div>
                             <div>
                                 <p class="text-[10px] font-bold text-indigo-400 mb-0.5">الطيار في السكة ليك</p>
@@ -267,35 +292,78 @@
             document.getElementById('result-section').classList.remove('hidden');
 
             let hr = new Date().getHours();
+            let cName = (currentOrder.customerName||'').split(' ')[0];
             document.getElementById('greeting-time').innerText = (hr >= 5 && hr < 12) ? "صباح الفل" : ((hr >= 12 && hr < 18) ? "مساء الروقان" : "يا هلا");
-            document.getElementById('res-name').innerText = (currentOrder.customerName||'').split(' ')[0];
+            document.getElementById('res-name').innerText = cName;
+            document.getElementById('gift-res-name').innerText = cName;
             document.getElementById('res-total').innerText = currentOrder.total || 0;
 
-            let points = totalOrders % 5; if(points === 0 && totalOrders > 0) points = 5; 
-            
-            setTimeout(() => { 
-                document.getElementById('loyalty-line').style.width = ((points - 1) / 4 * 100) + '%'; 
-                for(let i=1; i<=5; i++) {
-                    let dot = document.getElementById(`dot-${i}`);
-                    if(i <= points) {
-                        dot.classList.remove('milestone-inactive'); dot.classList.add('milestone-active');
-                        if(i === 5) dot.classList.add('animate-pulse');
-                    }
+            // هندسة الولاء واختيار الهدية 🎁
+            if (totalOrders > 0 && totalOrders % 5 === 0 && !currentOrder.loyaltyGift) {
+                // ده الأوردر الخامس والعميل لسه مختارش هديته!
+                document.getElementById('gift-selection-box').classList.remove('hidden');
+                document.getElementById('loyalty-card').classList.add('hidden');
+            } else {
+                // عرض كارت الولاء العادي
+                document.getElementById('gift-selection-box').classList.add('hidden');
+                document.getElementById('loyalty-card').classList.remove('hidden');
+                if (currentOrder.loyaltyGift) {
+                    document.getElementById('gift-success-msg').classList.remove('hidden');
                 }
-            }, 500);
-            
-            let lMsg = document.getElementById('loyalty-msg');
-            if (totalOrders === 1) lMsg.innerText = "أول مرة تطلب؟ نورتنا والمكسب الحقيقي معرفتك."; 
-            else if (points === 5) lMsg.innerText = `عاش! ده طلبك رقم ${totalOrders}.. جهز نفسك لهديتك 🎁`; 
-            else lMsg.innerText = `ده طلبك رقم ${totalOrders}.. هانت فاضلك ${5 - points} وتاخد الهدية!`;
-
-            let shareText = encodeURIComponent(`أنا جربت سمان ههيا وكان تحفة! 😋 ادخل اطلب من الموقع بتاعهم وشوف الدلع: https://smanhhya.github.io`);
-            document.getElementById('invite-friend-btn').href = `https://wa.me/?text=${shareText}`;
+                
+                let points = totalOrders % 5; if(points === 0 && totalOrders > 0) points = 5; 
+                setTimeout(() => { 
+                    document.getElementById('loyalty-line').style.width = ((points - 1) / 4 * 100) + '%'; 
+                    for(let i=1; i<=5; i++) {
+                        let dot = document.getElementById(`dot-${i}`);
+                        if(i <= points) {
+                            dot.classList.remove('milestone-inactive'); dot.classList.add('milestone-active');
+                            if(i === 5 && !currentOrder.loyaltyGift) dot.classList.add('animate-pulse');
+                        }
+                    }
+                }, 500);
+                
+                let lMsg = document.getElementById('loyalty-msg');
+                if (totalOrders === 1) lMsg.innerText = "أول مرة تطلب؟ نورتنا والمكسب الحقيقي معرفتك."; 
+                else if (points === 5) lMsg.innerText = `عاش! ده طلبك رقم ${totalOrders}.. هديتك اتسجلت 🎁`; 
+                else lMsg.innerText = `ده طلبك رقم ${totalOrders}.. هانت فاضلك ${5 - points} وتاخد الهدية!`;
+            }
 
             let itemsHtml = currentOrder.items ? currentOrder.items.map(i => `<span class="bg-white border border-slate-200 px-3 py-1.5 rounded-xl text-xs font-black text-slate-700 shadow-sm">${i.quantity}x ${i.name}</span>`).join('') : '';
             document.getElementById('res-items').innerHTML = itemsHtml;
 
             updateTimeline();
+        }
+
+        // 🌟 الدالة السحرية لإرسال اختيار العميل للـ CRM مباشرة 🌟
+        async function claimGift(giftType, giftText) {
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                let docSnap = await db.collection('orders').doc(currentOrder.id).get();
+                let oldNotes = docSnap.data().adminNote || '';
+                
+                // هنكتبها بخط واضح جداً للإدارة عشان تتنفذ
+                let newNote = `[${dateStr}] 🎁 العميل اختار هدية: ${giftText}`;
+                let updatedAdminNote = oldNotes ? newNote + '\n---\n' + oldNotes : newNote;
+
+                await db.collection('orders').doc(currentOrder.id).update({ 
+                    loyaltyGift: giftType, 
+                    adminNote: updatedAdminNote 
+                });
+
+                // إخفاء الصندوق والاحتفال
+                document.getElementById('gift-selection-box').classList.add('hidden');
+                document.getElementById('loyalty-card').classList.remove('hidden');
+                document.getElementById('gift-success-msg').classList.remove('hidden');
+                
+                confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, colors: ['#f59e0b', '#dc2626', '#10b981'] });
+                
+                currentOrder.loyaltyGift = giftType;
+                
+            } catch(e) {
+                console.error(e);
+                alert("حدث خطأ في حفظ الهدية، يرجى المحاولة مرة أخرى أو إبلاغنا على الواتساب.");
+            }
         }
 
         function updateTimeline() {
@@ -351,9 +419,8 @@
                         document.getElementById('driver-call-btn').classList.add('hidden');
                     }
 
-                    // 🌟 حساب الـ ETA الذكي بناءً على المنطقة 🌟
                     let zoneStr = currentOrder.zone || '';
-                    let etaText = "٣٠ - ٦٠ دقيقة"; // الافتراضي
+                    let etaText = "٣٠ - ٦٠ دقيقة";
                     if(zoneStr.includes('ههيا')) {
                         etaText = "٢٠ - ٤٠ دقيقة";
                     } else if(zoneStr.includes('زقازيق') || zoneStr.includes('الزقازيق')) {
@@ -438,7 +505,6 @@
             } catch(e) { alert("حدث خطأ."); }
         }
 
-        // 🌟 زرار اطلب زيه تاني مبرمج بشكل ديناميكي 🌟
         function toggleHistory() {
             let section = document.getElementById('history-section');
             if(section.classList.contains('hidden')) {
@@ -492,7 +558,6 @@
             document.getElementById('feedback-section').innerHTML = '<div class="bg-red-50 p-4 rounded-xl border border-red-100"><h4 class="font-black text-red-600 text-sm mb-1">صوتك وصل للإدارة!</h4><p class="text-xs font-bold text-red-500">بنعتذرلك جداً وهنكلمك فوراً نعوضك.</p></div>';
         }
 
-        // 🌟 التأكد من حفظ التقييم كرقم عشان صفحة الإدارة تقرأه صح 🌟
         async function saveRatingToCRM(stars, text) {
             try {
                 let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
