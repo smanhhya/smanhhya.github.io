@@ -77,7 +77,6 @@
 
         <div id="error-msg" class="hidden text-center py-8 bg-red-50 border border-red-200 rounded-2xl text-red-500 font-black text-sm mb-6"></div>
 
-        <!-- السجل الحي للتقييمات -->
         <div id="live-feed-container" class="hidden">
             <h3 class="font-black text-slate-800 text-lg mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
                 <i class="fa-solid fa-tower-broadcast text-brand-primary"></i> أحدث التقييمات الواردة:
@@ -85,7 +84,6 @@
             <div id="reviews-list" class="space-y-4"></div>
         </div>
 
-        <!-- نتائج البحث الفردي (مخفية افتراضياً) -->
         <div id="results-container" class="hidden space-y-6">
             <div class="bg-gradient-to-l from-slate-800 to-slate-700 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
                 <i class="fa-solid fa-id-card absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
@@ -108,7 +106,7 @@
                         <p class="text-2xl font-black text-white" id="c-orders">0</p>
                     </div>
                     <div class="text-center border-r border-white/10">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">إجمالي ما تم دفعه</p>
+                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">إجمالي الدفع</p>
                         <p class="text-2xl font-black text-amber-400"><span id="c-spent">0</span> <span class="text-sm">ج.م</span></p>
                     </div>
                 </div>
@@ -129,7 +127,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        let liveFeedUnsubscribe = null; // متغير لحفظ حالة الاتصال المباشر
+        let liveFeedUnsubscribe = null; 
 
         function normalizePhone(phone) {
             if (!phone) return '';
@@ -164,9 +162,6 @@
             return cleanText || "اكتفى بالتقييم بالنجوم ولم يكتب تعليقاً.";
         }
 
-        // ==========================================
-        // 🚀 الدالة الأساسية: السجل الحي الحقيقي (Real-Time Live Feed) 🚀
-        // ==========================================
         function loadLiveFeed() {
             let loader = document.getElementById('loading-spinner');
             let feedContainer = document.getElementById('live-feed-container');
@@ -175,7 +170,6 @@
             let statsContainer = document.getElementById('stats-container');
             let errBox = document.getElementById('error-msg');
             
-            // إظهار شاشة التحميل وإخفاء الباقي
             errBox.classList.add('hidden');
             resultsContainer.classList.add('hidden');
             document.getElementById('search-phone').value = '';
@@ -186,37 +180,37 @@
                 feedContainer.classList.add('hidden');
             }
 
-            // السحر هنا: onSnapshot بيسمع الداتابيز كل لحظة وبيرفش الشاشة لوحده!
+            // 🚀 التحديث الجذري: بيسحب "أي أوردر متقيم" في السيستم بغض النظر عن وقته 🚀
             liveFeedUnsubscribe = db.collection('orders')
-                .orderBy('createdAt', 'desc')
-                .limit(200) // سحب أحدث 200 أوردر لتسريع الأداء
+                .where('rating', '>', 0)
                 .onSnapshot(snap => {
                     let allRatedOrders = [];
                     let totalStars = 0, goodCount = 0, badCount = 0;
 
                     snap.forEach(doc => {
                         let d = doc.data();
-                        // فلترة الطلبات اللي فيها تقييم فقط
-                        if (d.rating && d.rating > 0) {
-                            allRatedOrders.push({id: doc.id, ...d});
-                            totalStars += d.rating;
-                            if(d.rating >= 4) goodCount++; else badCount++;
-                        }
+                        allRatedOrders.push({id: doc.id, ...d});
+                        totalStars += d.rating;
+                        if(d.rating >= 4) goodCount++; else badCount++;
                     });
 
-                    // تحديث الإحصائيات مع Animation خفيف
+                    // ترتيب زمني من الأحدث للأقدم
+                    allRatedOrders.sort((a, b) => {
+                        let timeA = a.createdAt ? a.createdAt.toMillis() : 0;
+                        let timeB = b.createdAt ? b.createdAt.toMillis() : 0;
+                        return timeB - timeA;
+                    });
+
                     let avg = allRatedOrders.length > 0 ? (totalStars / allRatedOrders.length).toFixed(1) : "0.0";
                     document.getElementById('stat-avg').innerHTML = `${avg} <i class="fa-solid fa-star text-sm"></i>`;
                     document.getElementById('stat-good').innerText = goodCount;
                     document.getElementById('stat-bad').innerText = badCount;
 
-                    // تأثير النبض عشان تحس إن الداتا اتحدثت
                     document.getElementById('card-avg').classList.add('scale-105');
                     setTimeout(() => document.getElementById('card-avg').classList.remove('scale-105'), 300);
 
-                    // رسم كروت التقييمات
                     if (allRatedOrders.length === 0) {
-                        reviewsList.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يتم العثور على تقييمات في أحدث 200 أوردر. جرب تعمل تقييم دلوقتي من موبايلك!</div>';
+                        reviewsList.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يتم العثور على أي تقييمات حتى الآن. جرب قيم أوردر من تليفونك!</div>';
                     } else {
                         reviewsList.innerHTML = allRatedOrders.map(o => createReviewCard(o)).join('');
                     }
@@ -225,16 +219,13 @@
                     feedContainer.classList.remove('hidden');
 
                 }, error => {
-                    console.error("خطأ في الاتصال الحي: ", error);
+                    console.error("خطأ: ", error);
                     loader.classList.add('hidden');
-                    errBox.innerText = "حدث خطأ في الاتصال المباشر بالسيرفر.";
+                    errBox.innerText = "حدث خطأ في الاتصال. تأكد من الإنترنت.";
                     errBox.classList.remove('hidden');
                 });
         }
 
-        // ==========================================
-        // دالة الاستعلام الفردي برقم التليفون
-        // ==========================================
         async function searchCustomerReview() {
             let phoneInput = document.getElementById('search-phone').value;
             let phone = normalizePhone(phoneInput);
@@ -245,15 +236,12 @@
             let statsContainer = document.getElementById('stats-container');
             let errBox = document.getElementById('error-msg');
 
-            if (phone.length < 10) {
-                errBox.innerText = "يرجى كتابة رقم موبايل صحيح!";
-                errBox.classList.remove('hidden'); return;
-            }
+            if (phone.length < 10) { errBox.innerText = "يرجى كتابة رقم موبايل صحيح!"; errBox.classList.remove('hidden'); return; }
 
             loader.classList.remove('hidden');
             feedContainer.classList.add('hidden');
             resultsContainer.classList.add('hidden');
-            statsContainer.classList.add('hidden'); // إخفاء الإحصائيات في البحث الفردي
+            statsContainer.classList.add('hidden'); 
             errBox.classList.add('hidden');
 
             try {
@@ -279,13 +267,12 @@
                 document.getElementById('c-address').innerText = `${customerData.zone || (latestOrder?latestOrder.zone:'')} - ${customerData.address || (latestOrder?latestOrder.customerAddress:'')}`;
                 
                 let ordersListHtml = '';
-                let totalSpent = 0;
-                let completedCount = 0;
+                let totalSpent = 0, completedCount = 0;
 
                 if(orders.length > 0) {
                     orders.forEach(o => {
                         if(o.status === 'completed') { totalSpent += (Number(o.total) || 0); completedCount++; }
-                        ordersListHtml += createReviewCard(o, true); // true عشان يظهر كل الأوردرات حتى اللي مفيهاش تقييم
+                        ordersListHtml += createReviewCard(o, true); 
                     });
                 } else {
                     ordersListHtml = '<div class="text-center py-8 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يقم هذا العميل بأي أوردرات.</div>';
@@ -299,20 +286,14 @@
                 resultsContainer.classList.remove('hidden');
 
             } catch(e) {
-                loader.classList.add('hidden');
-                errBox.innerText = "حدث خطأ أثناء جلب بيانات العميل.";
-                errBox.classList.remove('hidden');
+                loader.classList.add('hidden'); errBox.innerText = "حدث خطأ أثناء جلب بيانات العميل."; errBox.classList.remove('hidden');
             }
         }
 
-        // ==========================================
-        // دالة إنشاء كارت الأوردر والتقييم
-        // ==========================================
         function createReviewCard(o, showUnrated = false) {
             let ratingStars = generateStars(o.rating);
             let reviewText = extractReviewText(o.adminNote);
             
-            // لو بنعرض السجل الحي ومفيش تقييم، متعملش كارت أصلاً
             if (!showUnrated && (!o.rating || o.rating === 0)) return '';
 
             let reviewBoxHtml = '';
@@ -334,18 +315,13 @@
                     <p class="text-sm font-bold ${textColor} leading-relaxed bg-white/60 p-2.5 rounded-lg border border-white/50">${reviewText}</p>
                 </div>`;
             } else if (showUnrated) {
-                reviewBoxHtml = `
-                <div class="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center">
-                    <span class="text-xs font-bold text-slate-500">التقييم:</span>
-                    ${ratingStars}
-                </div>`;
+                reviewBoxHtml = `<div class="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center"><span class="text-xs font-bold text-slate-500">التقييم:</span>${ratingStars}</div>`;
             }
 
             let itemsStr = o.items ? o.items.map(i => `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-black inline-block m-0.5">${i.quantity}x ${i.name}</span>`).join('') : 'بدون تفاصيل';
             let dateStr = o.orderDate || (o.createdAt ? new Date(o.createdAt.toMillis()).toLocaleDateString('ar-EG') : 'غير مسجل');
             let dispZone = o.zone || 'منطقة غير محددة';
             
-            // بادج الحالة للأرشيف الفردي
             let statusBadge = '';
             if(showUnrated) {
                 if(o.status === 'completed') statusBadge = '<span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-black border border-emerald-100">مكتمل</span>';
@@ -374,20 +350,12 @@
                         <p class="font-black text-brand-primary text-sm">${o.total} <span class="text-[10px]">ج.م</span></p>
                     </div>
                 </div>
-                
-                <div class="mb-1">
-                    <p class="text-[10px] text-slate-400 font-bold mb-1">الطلبات:</p>
-                    ${itemsStr}
-                </div>
-                
+                <div class="mb-1"><p class="text-[10px] text-slate-400 font-bold mb-1">الطلبات:</p>${itemsStr}</div>
                 ${reviewBoxHtml}
             </div>`;
         }
 
-        // تشغيل التحميل التلقائي الحي عند فتح الصفحة
-        window.onload = () => {
-            loadLiveFeed();
-        };
+        window.onload = () => { loadLiveFeed(); };
     </script>
 </body>
 </html>
