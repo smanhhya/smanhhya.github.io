@@ -36,7 +36,6 @@
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen pb-10 relative">
 
-    <!-- زرار الدعم العائم (Floating WhatsApp) -->
     <a id="floating-wa" href="#" target="_blank" class="fixed bottom-6 left-6 w-14 h-14 bg-[#25D366] text-white rounded-full flex items-center justify-center text-3xl shadow-[0_4px_15px_rgba(37,211,102,0.4)] hover:scale-110 transition-transform z-[100] animate-bounce" title="تحتاج مساعدة؟">
         <i class="fa-brands fa-whatsapp"></i>
     </a>
@@ -50,7 +49,6 @@
 
     <main class="flex-1 max-w-md w-full mx-auto p-5 flex flex-col mt-2">
         
-        <!-- شاشة إدخال الرقم -->
         <div id="login-section" class="glass-card p-8 rounded-[2rem] animate-slide relative overflow-hidden mt-10">
             <div class="absolute -top-10 -right-10 w-32 h-32 bg-emerald-100 rounded-full blur-3xl opacity-60"></div>
             
@@ -68,10 +66,8 @@
             <p id="error-msg" class="hidden text-red-500 text-xs font-bold text-center mt-4 bg-red-50 border border-red-100 p-3 rounded-xl animate-pulse"></p>
         </div>
 
-        <!-- شاشة النتيجة -->
         <div id="result-section" class="hidden space-y-6">
             
-            <!-- أزرار التنقل العلوية -->
             <div class="flex justify-between items-center">
                 <button onclick="location.reload()" class="text-slate-500 hover:text-brand-primary text-xs font-bold flex items-center gap-1.5 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm transition-colors">
                     <i class="fa-solid fa-arrow-right-long"></i> خروج
@@ -81,13 +77,11 @@
                 </button>
             </div>
 
-            <!-- أرشيف الطلبات الذكي -->
             <div id="history-section" class="hidden glass-card rounded-[1.5rem] p-5 border border-indigo-100 animate-slide">
                 <h4 class="font-black text-indigo-800 text-sm mb-4"><i class="fa-solid fa-clock-rotate-left mr-1"></i> أرشيف السعادة:</h4>
                 <div id="history-list" class="space-y-4 max-h-72 overflow-y-auto pr-1 custom-scroll"></div>
             </div>
 
-            <!-- 1. كارت الولاء المتقدم -->
             <div id="loyalty-card" class="bg-gradient-to-br from-orange-400 via-amber-500 to-red-500 rounded-[2rem] p-6 text-white shadow-xl animate-slide relative overflow-hidden border border-orange-300">
                 <div class="absolute inset-0 shimmer-bg opacity-40"></div>
                 <i class="fa-solid fa-gem absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
@@ -95,7 +89,6 @@
                 <h3 class="font-black text-xl mb-1 relative z-10"><span id="greeting-time">أهلاً</span> يا <span id="res-name" class="text-yellow-200"></span>! ✨</h3>
                 <p id="loyalty-msg" class="text-xs font-bold opacity-90 relative z-10 mb-5"></p>
                 
-                <!-- Milestones UI -->
                 <div class="relative z-10 bg-black/15 p-4 rounded-2xl backdrop-blur-sm border border-white/20 mb-4">
                     <div class="flex justify-between items-center relative">
                         <div class="absolute top-1/2 left-4 right-4 h-1 bg-white/20 -z-10 -translate-y-1/2 rounded-full"></div>
@@ -114,7 +107,6 @@
                 </a>
             </div>
 
-            <!-- 2. كارت التنبيهات -->
             <div id="alert-banner" class="hidden rounded-[1.5rem] p-5 animate-slide shadow-sm border">
                 <div class="flex items-start gap-3">
                     <div id="alert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"></div>
@@ -128,7 +120,6 @@
                 </a>
             </div>
 
-            <!-- 3. عرض اللحظة الأخيرة (Upsell) -->
             <div id="upsell-banner" class="hidden bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-400 border-dashed rounded-[1.5rem] p-4 animate-slide flex justify-between items-center cursor-pointer hover:bg-emerald-100 transition-colors group" onclick="handleUpsell()">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 bg-emerald-200 rounded-full flex items-center justify-center text-emerald-700 text-2xl group-hover:rotate-12 transition-transform"><i class="fa-solid fa-egg"></i></div>
@@ -140,7 +131,6 @@
                 <div class="w-8 h-8 bg-emerald-500 text-white rounded-full flex justify-center items-center shadow-md animate-bounce"><i class="fa-solid fa-plus"></i></div>
             </div>
 
-            <!-- 4. كارت التتبع الرئيسي -->
             <div class="glass-card rounded-[2rem] p-6 animate-slide" id="tracking-card">
                 <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                     <div>
@@ -153,7 +143,6 @@
                     </div>
                 </div>
 
-                <!-- كارت الطيار (المندوب) مع الوقت الذكي -->
                 <div id="driver-info" class="hidden mb-6 flex-col gap-3 bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 rounded-[1.5rem] p-4 shadow-sm">
                     <div class="flex items-center justify-between">
                         <div class="flex items-center gap-3">
@@ -177,7 +166,6 @@
                     </div>
                 </div>
 
-                <!-- شريط التتبع (Timeline) -->
                 <div class="relative flex justify-between items-center mb-6 px-3" id="timeline-container">
                     <div class="absolute top-1/2 left-5 right-5 h-1.5 bg-slate-100 -z-10 rounded-full -translate-y-1/2 shadow-inner"></div>
                     <div id="progress-line" class="absolute top-1/2 right-5 h-1.5 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-1000 ease-out" style="width: 0%;"></div>
@@ -187,7 +175,6 @@
                     <div class="flex flex-col items-center gap-2 bg-white px-2"><div id="step-3-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-sm shadow-md transition-all duration-500"><i class="fa-solid fa-motorcycle"></i></div><span class="text-[10px] font-bold">توصيل</span></div>
                 </div>
 
-                <!-- نظام التقييم -->
                 <div id="feedback-section" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-6 mb-5 text-center shadow-inner">
                     <h4 class="font-black text-slate-800 text-base mb-1">إيه رأيك في العظمة دي؟</h4>
                     <p class="text-xs text-slate-500 font-bold mb-4">تقييمك هو البنزين اللي بيمشينا لقدام.</p>
@@ -232,7 +219,6 @@
         db.collection("inventory").doc("settings").get().then(doc => {
             if(doc.exists && doc.data().storePhone) { 
                 storeWhatsapp = doc.data().storePhone; 
-                // تحديث لينك الدعم العائم
                 document.getElementById('floating-wa').href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent('أهلاً، محتاج مساعدة أو استفسار سريع.')}`;
             }
         });
@@ -367,9 +353,8 @@
                         document.getElementById('driver-call-btn').classList.add('hidden');
                     }
 
-                    // 🌟 حساب الـ ETA الذكي بناءً على المنطقة 🌟
                     let zoneStr = currentOrder.zone || '';
-                    let etaText = "٣٠ - ٦٠ دقيقة"; // الافتراضي
+                    let etaText = "٣٠ - ٦٠ دقيقة";
                     if(zoneStr.includes('ههيا')) {
                         etaText = "٢٠ - ٤٠ دقيقة";
                     } else if(zoneStr.includes('زقازيق') || zoneStr.includes('الزقازيق')) {
@@ -454,7 +439,6 @@
             } catch(e) { alert("حدث خطأ."); }
         }
 
-        // 🌟 زرار اطلب زيه تاني 🌟
         function toggleHistory() {
             let section = document.getElementById('history-section');
             if(section.classList.contains('hidden')) {
@@ -463,7 +447,7 @@
                 if(pastOrders.length === 0) { list.innerHTML = '<p class="text-xs text-slate-400 font-bold text-center py-4">لسه مفيش طلبات سابقة مكتملة.</p>'; return; }
                 
                 list.innerHTML = pastOrders.map(o => {
-                    let itemsText = o.items ? o.items.map(i=>i.name).join(' + ') : 'بدون تفاصيل';
+                    let itemsText = o.items ? o.items.map(i=>`${i.quantity}x ${i.name}`).join(' + ') : 'بدون تفاصيل';
                     let waMsg = encodeURIComponent(`مساء الفل، كنت عايز أعمل نفس الأوردر ده تاني:\n(${itemsText})`);
                     return `
                     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
@@ -514,8 +498,16 @@
                 let docSnap = await db.collection('orders').doc(currentOrder.id).get();
                 let oldNotes = docSnap.data().adminNote || '';
                 let newNote = `[${dateStr}] ⭐️ تقييم: \n${text}`;
-                await db.collection('orders').doc(currentOrder.id).update({ rating: stars, adminNote: oldNotes ? oldNotes + '\n---\n' + newNote : newNote });
-            } catch(e) {}
+                
+                // ⚠️ التحديث هنا: تحويل stars لرقم Number(stars) عشان السيستم يقرأه صح ⚠️
+                await db.collection('orders').doc(currentOrder.id).update({ 
+                    rating: Number(stars), 
+                    adminNote: oldNotes ? oldNotes + '\n---\n' + newNote : newNote 
+                });
+            } catch(e) {
+                console.error(e);
+                alert("⚠️ حدث خطأ في حفظ التقييم! لو المشكلة مستمرة يرجى التأكد من اتصالك بالإنترنت.");
+            }
         }
 
         window.onload = () => {
