@@ -16,9 +16,7 @@
 
     <script>
         tailwind.config = {
-            theme: {
-                extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } }
-            }
+            theme: { extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b', light: '#dcfce7' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } } }
         }
     </script>
     <style>
@@ -353,8 +351,9 @@
                         document.getElementById('driver-call-btn').classList.add('hidden');
                     }
 
+                    // 🌟 حساب الـ ETA الذكي بناءً على المنطقة 🌟
                     let zoneStr = currentOrder.zone || '';
-                    let etaText = "٣٠ - ٦٠ دقيقة";
+                    let etaText = "٣٠ - ٦٠ دقيقة"; // الافتراضي
                     if(zoneStr.includes('ههيا')) {
                         etaText = "٢٠ - ٤٠ دقيقة";
                     } else if(zoneStr.includes('زقازيق') || zoneStr.includes('الزقازيق')) {
@@ -439,6 +438,7 @@
             } catch(e) { alert("حدث خطأ."); }
         }
 
+        // 🌟 زرار اطلب زيه تاني مبرمج بشكل ديناميكي 🌟
         function toggleHistory() {
             let section = document.getElementById('history-section');
             if(section.classList.contains('hidden')) {
@@ -492,14 +492,13 @@
             document.getElementById('feedback-section').innerHTML = '<div class="bg-red-50 p-4 rounded-xl border border-red-100"><h4 class="font-black text-red-600 text-sm mb-1">صوتك وصل للإدارة!</h4><p class="text-xs font-bold text-red-500">بنعتذرلك جداً وهنكلمك فوراً نعوضك.</p></div>';
         }
 
+        // 🌟 التأكد من حفظ التقييم كرقم عشان صفحة الإدارة تقرأه صح 🌟
         async function saveRatingToCRM(stars, text) {
             try {
                 let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
                 let docSnap = await db.collection('orders').doc(currentOrder.id).get();
                 let oldNotes = docSnap.data().adminNote || '';
                 let newNote = `[${dateStr}] ⭐️ تقييم: \n${text}`;
-                
-                // ⚠️ التحديث هنا: تحويل stars لرقم Number(stars) عشان السيستم يقرأه صح ⚠️
                 await db.collection('orders').doc(currentOrder.id).update({ 
                     rating: Number(stars), 
                     adminNote: oldNotes ? oldNotes + '\n---\n' + newNote : newNote 
