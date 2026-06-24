@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- نفس إعدادات قاعدة البيانات الخاصة بك -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
@@ -26,31 +25,30 @@
     </script>
     <style>
         body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
-        .step-active { color: #166534; font-weight: 900; }
-        .step-inactive { color: #cbd5e1; }
-        .line-active { background-color: #166534; }
-        .line-inactive { background-color: #e2e8f0; }
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-slide { animation: slideUp 0.4s ease-out forwards; }
+        @keyframes drive { 0% { right: -50px; } 100% { right: 100%; } }
+        .animate-drive { animation: drive 3s linear infinite; }
+        .star-rating i { cursor: pointer; transition: color 0.2s; }
+        .star-rating i:hover, .star-rating i.active { color: #f59e0b; }
     </style>
 </head>
-<body class="text-slate-800 flex flex-col min-h-screen">
+<body class="text-slate-800 flex flex-col min-h-screen pb-10">
 
-    <!-- الهيدر -->
-    <header class="bg-white shadow-sm py-4 px-6 text-center border-b border-slate-200">
+    <header class="bg-white shadow-sm py-4 px-6 text-center border-b border-slate-200 sticky top-0 z-50">
         <div class="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2 text-brand-primary text-2xl">
             <i class="fa-solid fa-kiwi-bird"></i>
         </div>
         <h1 class="text-xl font-black tracking-tight">سمان ههيا</h1>
-        <p class="text-xs text-slate-500 font-bold">بوابة تتبع الطلبات</p>
+        <p class="text-xs text-slate-500 font-bold">بوابة تتبع الطلبات الذكية</p>
     </header>
 
-    <main class="flex-1 max-w-md w-full mx-auto p-5 flex flex-col justify-center">
+    <main class="flex-1 max-w-md w-full mx-auto p-5 flex flex-col mt-4">
         
-        <!-- شاشة إدخال الرقم -->
+        <!-- شاشة تسجيل الدخول -->
         <div id="login-section" class="bg-white p-6 rounded-3xl shadow-lg border border-slate-100 animate-slide">
             <h2 class="text-lg font-black text-center mb-2">فين أوردري؟ 🛵</h2>
-            <p class="text-xs text-center text-slate-500 font-bold mb-6">اكتب رقم الموبايل اللي طلبت بيه عشان نتابع حالة طلبك لحظة بلحظة.</p>
+            <p class="text-xs text-center text-slate-500 font-bold mb-6">اكتب رقم الموبايل اللي طلبت بيه عشان نتابع حالة طلبك.</p>
             
             <div class="mb-4">
                 <input type="tel" id="customer-phone" placeholder="رقم الموبايل (مثال: 010...)" class="w-full border-2 border-slate-200 rounded-xl p-4 text-center font-black outline-none focus:border-brand-primary transition-colors text-lg" dir="ltr">
@@ -62,75 +60,122 @@
             <p id="error-msg" class="hidden text-red-500 text-xs font-bold text-center mt-4 bg-red-50 p-2 rounded-lg"></p>
         </div>
 
-        <!-- شاشة النتيجة (التتبع) -->
-        <div id="result-section" class="hidden space-y-4">
-            
-            <!-- زرار الرجوع -->
-            <button onclick="location.reload()" class="text-slate-400 hover:text-slate-600 text-sm font-bold flex items-center gap-1.5 mb-2">
+        <!-- شاشة النتيجة -->
+        <div id="result-section" class="hidden space-y-5">
+            <button onclick="location.reload()" class="text-slate-400 hover:text-slate-600 text-sm font-bold flex items-center gap-1.5 bg-white px-4 py-2 rounded-full shadow-sm w-max">
                 <i class="fa-solid fa-arrow-right"></i> بحث برقم آخر
             </button>
 
-            <!-- كارت الولاء -->
-            <div id="loyalty-card" class="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-5 text-white shadow-lg animate-slide hidden relative overflow-hidden">
-                <i class="fa-solid fa-crown absolute -left-4 -top-4 text-7xl opacity-20"></i>
-                <h3 class="font-black text-lg mb-1 relative z-10">أهلاً بيك يا <span id="res-name" class="text-amber-100"></span>! 🎉</h3>
-                <p id="loyalty-msg" class="text-sm font-bold opacity-90 relative z-10"></p>
+            <!-- 1. كارت الولاء المدمج بالألعاب (Gamification) -->
+            <div id="loyalty-card" class="bg-gradient-to-r from-amber-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg animate-slide relative overflow-hidden">
+                <i class="fa-solid fa-crown absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
+                <h3 class="font-black text-lg mb-1 relative z-10">أهلاً يا <span id="res-name" class="text-amber-100"></span>! 🎉</h3>
+                <p id="loyalty-msg" class="text-xs font-bold opacity-90 relative z-10 mb-4"></p>
+                
+                <div class="relative z-10 mb-4">
+                    <div class="flex justify-between text-[10px] font-black mb-1">
+                        <span>البداية</span>
+                        <span>الهدية المجانية 🎁</span>
+                    </div>
+                    <div class="w-full bg-orange-700/30 rounded-full h-2.5 overflow-hidden">
+                        <div id="loyalty-progress" class="bg-white h-full rounded-full transition-all duration-1000" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <a href="#" id="invite-friend-btn" target="_blank" class="relative z-10 w-full bg-white/20 hover:bg-white/30 border border-white/40 rounded-xl py-2.5 flex items-center justify-center gap-2 text-sm font-black transition-all">
+                    <i class="fa-solid fa-share-nodes"></i> اعزم صاحبك وخد نقطة ولائك الجاية!
+                </a>
             </div>
 
-            <!-- كارت حالة الطلب -->
+            <!-- 2. البيع الإضافي (Upselling) -->
+            <div id="upsell-banner" class="hidden bg-emerald-50 border-2 border-emerald-500 border-dashed rounded-2xl p-4 animate-slide flex items-center justify-between cursor-pointer hover:bg-emerald-100 transition-colors" onclick="requestUpsell()">
+                <div>
+                    <h4 class="font-black text-emerald-800 text-sm"><i class="fa-solid fa-egg text-emerald-600"></i> إضافة بيض سمان؟</h4>
+                    <p class="text-[10px] font-bold text-emerald-600 mt-1">ضيف طبق للأوردر ده بـ 50ج بدون مصاريف شحن زيادة!</p>
+                </div>
+                <div class="w-10 h-10 bg-emerald-500 text-white rounded-full flex justify-center items-center font-black shadow-md shrink-0">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+            </div>
+
+            <!-- كارت التتبع الأساسي -->
             <div class="bg-white rounded-3xl shadow-lg border border-slate-100 p-6 animate-slide" style="animation-delay: 0.1s;">
                 <div class="flex justify-between items-center mb-6 border-b border-slate-50 pb-4">
                     <div>
-                        <p class="text-[10px] text-slate-400 font-bold">حالة الطلب الحالي</p>
+                        <p class="text-[10px] text-slate-400 font-bold">حالة الطلب</p>
                         <h3 id="res-status-title" class="font-black text-brand-primary text-xl"></h3>
                     </div>
-                    <div class="text-left">
-                        <p class="text-[10px] text-slate-400 font-bold">الإجمالي</p>
+                    <div class="text-left bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100">
+                        <p class="text-[10px] text-slate-400 font-bold">المطلوب دفعه</p>
                         <p class="font-black text-lg text-slate-800"><span id="res-total">0</span> <span class="text-xs">ج</span></p>
                     </div>
                 </div>
 
-                <!-- شريط التتبع (Timeline) -->
+                <!-- 3. أنيميشن المندوب (يظهر وقت التوصيل) -->
+                <div id="driver-animation" class="hidden relative h-12 w-full overflow-hidden border-b-2 border-dashed border-slate-200 mb-6">
+                    <i class="fa-solid fa-motorcycle text-3xl text-indigo-500 absolute animate-drive" style="top: 5px;"></i>
+                    <p class="absolute bottom-0 w-full text-center text-[10px] font-black text-slate-400">جهز الفلوس يا بطل 💸</p>
+                </div>
+
+                <!-- شريط التتبع -->
                 <div class="relative flex justify-between items-center mb-6 px-2">
-                    <div class="absolute top-1/2 left-4 right-4 h-1 bg-slate-100 -z-10 rounded-full -translate-y-1/2"></div>
-                    <div id="progress-line" class="absolute top-1/2 right-4 h-1 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-700" style="width: 0%;"></div>
+                    <div class="absolute top-1/2 left-4 right-4 h-1.5 bg-slate-100 -z-10 rounded-full -translate-y-1/2"></div>
+                    <div id="progress-line" class="absolute top-1/2 right-4 h-1.5 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-700" style="width: 0%;"></div>
                     
-                    <!-- خطوة 1: المراجعة -->
                     <div class="flex flex-col items-center gap-2 bg-white px-1">
                         <div id="step-1-icon" class="w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-[10px] bg-slate-200 text-slate-400"><i class="fa-solid fa-clipboard-check"></i></div>
                         <span id="step-1-text" class="text-[9px] font-bold text-slate-400">مراجعة</span>
                     </div>
-                    <!-- خطوة 2: التجهيز -->
                     <div class="flex flex-col items-center gap-2 bg-white px-1">
                         <div id="step-2-icon" class="w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-[10px] bg-slate-200 text-slate-400"><i class="fa-solid fa-box-open"></i></div>
                         <span id="step-2-text" class="text-[9px] font-bold text-slate-400">تجهيز</span>
                     </div>
-                    <!-- خطوة 3: التوصيل -->
                     <div class="flex flex-col items-center gap-2 bg-white px-1">
                         <div id="step-3-icon" class="w-8 h-8 rounded-full border-4 border-white shadow-sm flex items-center justify-center text-[10px] bg-slate-200 text-slate-400"><i class="fa-solid fa-motorcycle"></i></div>
                         <span id="step-3-text" class="text-[9px] font-bold text-slate-400">في الطريق</span>
                     </div>
                 </div>
 
-                <p id="res-driver-note" class="text-xs font-bold text-slate-600 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center mb-4 hidden"></p>
+                <!-- 4. نظام التقييم اللحظي (Feedback Loop) -->
+                <div id="feedback-section" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-4 text-center">
+                    <h4 class="font-black text-slate-800 text-sm mb-1">إيه رأيك في أوردرك؟ 🤔</h4>
+                    <p class="text-[10px] text-slate-500 font-bold mb-3">رأيك هيساعدنا نطور دايماً من الجودة.</p>
+                    <div class="star-rating text-2xl text-slate-300 flex justify-center gap-2 flex-row-reverse mb-3" id="stars-container">
+                        <i class="fa-solid fa-star" onclick="rateOrder(5)"></i>
+                        <i class="fa-solid fa-star" onclick="rateOrder(4)"></i>
+                        <i class="fa-solid fa-star" onclick="rateOrder(3)"></i>
+                        <i class="fa-solid fa-star" onclick="rateOrder(2)"></i>
+                        <i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
+                    </div>
+                    
+                    <div id="complaint-box" class="hidden mt-3">
+                        <textarea id="complaint-text" rows="2" class="w-full rounded-xl border border-slate-200 p-2 text-xs font-bold outline-none focus:border-amber-400 transition-colors" placeholder="اكتبلنا إيه اللي معجبكش عشان نعوضك..."></textarea>
+                        <button onclick="submitComplaint()" class="mt-2 w-full bg-slate-800 text-white font-black py-2 rounded-xl text-xs shadow-md">إرسال للمدير مباشرة</button>
+                    </div>
+                    <p id="feedback-thanks" class="hidden text-emerald-600 font-black text-sm mt-2">شكراً لتقييمك! ❤️ فرحتنا جداً.</p>
+                </div>
 
-                <!-- تفاصيل المنتجات -->
                 <div class="bg-slate-50 rounded-xl p-4 border border-slate-100">
                     <p class="text-[10px] text-slate-500 font-bold mb-2">محتويات الطلب:</p>
                     <div id="res-items" class="flex flex-wrap gap-1.5"></div>
                 </div>
 
-                <!-- زرار التعديل (يظهر فقط لو الطلب جديد) -->
-                <a id="btn-edit-whatsapp" href="#" target="_blank" class="hidden w-full mt-4 bg-white border-2 border-brand-primary text-brand-primary hover:bg-emerald-50 font-black py-3 rounded-xl transition-all flex justify-center items-center gap-2 text-sm">
-                    <i class="fa-brands fa-whatsapp text-lg"></i> محتاج أعدل في الطلب
-                </a>
+                <!-- 5. زرار الإلغاء الذاتي / وتعديل الطلب -->
+                <div id="action-buttons" class="hidden grid-cols-2 gap-3 mt-4">
+                    <a id="btn-edit-whatsapp" href="#" target="_blank" class="bg-white border-2 border-brand-primary text-brand-primary hover:bg-emerald-50 font-black py-3 rounded-xl transition-all flex justify-center items-center gap-1.5 text-xs">
+                        <i class="fa-brands fa-whatsapp"></i> تعديل
+                    </a>
+                    <button onclick="cancelOrder()" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white font-black py-3 rounded-xl transition-all flex justify-center items-center gap-1.5 text-xs shadow-sm">
+                        <i class="fa-solid fa-xmark"></i> إلغاء الطلب
+                    </button>
+                </div>
 
             </div>
         </div>
     </main>
 
     <script>
-        // --- 1. إعدادات فايربيس (تم أخذها من الكود الخاص بك) ---
+        // إعدادات فايربيس (كما هي لديك)
         const firebaseConfig = { 
             apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
             authDomain: "sman-ca8f8.firebaseapp.com", 
@@ -142,13 +187,14 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
 
-        // --- 2. دالة تنظيف الرقم (نفس المستخدمة في السيستم بتاعك) ---
+        // متغيرات جلوبال للحفظ
+        let currentOrderId = null;
+        let currentOrderName = "";
+        let storeWhatsapp = "201000000000"; // ⚠️ غيّر الرقم ده لرقم الشغل ⚠️
+
         function normalizePhone(phone) {
             if (!phone) return '';
-            let normalized = phone.toString()
-                .replace(/[\u0660-\u0669]/g, c => c.charCodeAt(0) - 0x0660)
-                .replace(/[\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x06F0);
-            normalized = normalized.replace(/\D/g, '');
+            let normalized = phone.toString().replace(/[\u0660-\u0669\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x0660).replace(/\D/g, '');
             if (normalized.length >= 10) {
                 if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
                 else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
@@ -157,129 +203,113 @@
             return normalized;
         }
 
-        // --- 3. المنطق الأساسي للبحث والتتبع ---
         async function trackOrder() {
-            let rawPhone = document.getElementById('customer-phone').value;
-            let phone = normalizePhone(rawPhone);
+            let phone = normalizePhone(document.getElementById('customer-phone').value);
             let err = document.getElementById('error-msg');
             let btn = document.getElementById('btn-track');
 
-            if (phone.length < 10) {
-                err.innerText = "يرجى إدخال رقم موبايل صحيح (11 رقم).";
-                err.classList.remove('hidden'); return;
-            }
+            if (phone.length < 10) { err.innerText = "يرجى إدخال رقم موبايل صحيح."; err.classList.remove('hidden'); return; }
 
             err.classList.add('hidden');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...';
-            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; btn.disabled = true;
 
             try {
-                // 1. البحث عن آخر طلب للعميل
                 let ordersSnap = await db.collection('orders').where('customerPhone', '==', phone).get();
                 let orders = [];
                 ordersSnap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
-                
-                // تصفية الطلبات الممسوحة أو الملغية
                 orders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled');
 
                 if (orders.length === 0) {
-                    err.innerText = "مفيش أوردرات نشطة مسجلة بالرقم ده حالياً.";
-                    err.classList.remove('hidden');
-                    resetBtn(btn); return;
+                    err.innerText = "مفيش أوردرات نشطة مسجلة بالرقم ده حالياً."; err.classList.remove('hidden');
+                    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> تتبع الطلب'; btn.disabled = false; return;
                 }
 
-                // ترتيب الطلبات عشان نجيب الأحدث
                 orders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
                 let latestOrder = orders[0];
+                currentOrderId = latestOrder.id;
+                currentOrderName = latestOrder.customerName || "يا فندم";
 
-                // 2. البحث عن بيانات كارت الولاء
                 let cleanPhoneDb = phone.startsWith('0') ? phone : '0' + phone;
                 let customerSnap = await db.collection('customers').doc(cleanPhoneDb).get();
                 let ordersCount = customerSnap.exists ? (customerSnap.data().ordersCount || 1) : 1;
 
-                // 3. عرض النتيجة
                 displayResult(latestOrder, ordersCount);
-
             } catch (error) {
-                console.error(error);
-                err.innerText = "حدث خطأ في الاتصال، حاول مرة أخرى.";
-                err.classList.remove('hidden');
+                err.innerText = "حدث خطأ في الاتصال بالسيستم."; err.classList.remove('hidden');
             }
-            resetBtn(btn);
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> تتبع الطلب'; btn.disabled = false;
         }
 
-        function resetBtn(btn) {
-            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> تتبع الطلب';
-            btn.disabled = false;
-        }
-
-        // --- 4. دالة عرض البيانات ---
         function displayResult(order, totalOrders) {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('result-section').classList.remove('hidden');
 
-            document.getElementById('res-name').innerText = (order.customerName && order.customerName !== 'عميل') ? order.customerName.split(' ')[0] : 'يا فندم';
+            document.getElementById('res-name').innerText = currentOrderName.split(' ')[0];
             document.getElementById('res-total').innerText = order.total || 0;
 
-            // كارت الولاء
-            let loyaltyCard = document.getElementById('loyalty-card');
+            // Gamification الولاء
             let loyaltyMsg = document.getElementById('loyalty-msg');
-            loyaltyCard.classList.remove('hidden');
+            let progressBar = document.getElementById('loyalty-progress');
             
-            if (totalOrders === 1) {
-                loyaltyMsg.innerText = "نورتنا! ده أول أوردر ليك معانا، ويارب ميكونش الأخير.";
-            } else if (totalOrders % 5 === 0) {
-                loyaltyMsg.innerText = `عاش! ده أوردرك رقم ${totalOrders}.. إنت كده من الـ VIP بتوعنا 🌟`;
-            } else {
-                let remainder = 5 - (totalOrders % 5);
-                loyaltyMsg.innerText = `ده أوردرك رقم ${totalOrders}.. فاضلك ${remainder} أوردرات وتاخد هديتك!`;
-            }
+            let points = totalOrders % 5;
+            if(points === 0 && totalOrders > 0) points = 5; // لو أكمل الخمسة
+            
+            let percentage = (points / 5) * 100;
+            progressBar.style.width = percentage + '%';
 
-            // تفاصيل الأصناف
-            let itemsHtml = order.items ? order.items.map(i => `<span class="bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-[10px] font-black text-slate-700 shadow-sm">${i.quantity}x ${i.name}</span>`).join('') : '<span class="text-xs">بدون تفاصيل</span>';
+            if (totalOrders === 1) { loyaltyMsg.innerText = "أول أوردر! نورت عيلة سمان ههيا."; } 
+            else if (points === 5) { loyaltyMsg.innerText = `عاش جداً! ده طلبك رقم ${totalOrders}.. ليك هدية 🎁`; } 
+            else { loyaltyMsg.innerText = `ده أوردرك رقم ${totalOrders}.. فاضلك ${5 - points} وتستلم هديتك!`; }
+
+            // رابط دعوة الصديق
+            let shareText = encodeURIComponent(`جربت سمان ههيا وكان تحفة! 😋 ادخل اطلب من الموقع بتاعهم وشوف العروض: https://smanhhya.github.io`);
+            document.getElementById('invite-friend-btn').href = `https://wa.me/?text=${shareText}`;
+
+            let itemsHtml = order.items ? order.items.map(i => `<span class="bg-white border border-slate-200 px-2 py-1 rounded-lg text-[10px] font-black text-slate-700 shadow-sm">${i.quantity}x ${i.name}</span>`).join('') : '';
             document.getElementById('res-items').innerHTML = itemsHtml;
 
-            // تحديث شريط الحالة
             updateTimeline(order);
         }
 
         function updateTimeline(order) {
             let s = order.status;
-            let title = "";
-            let pWidth = "0%";
-            let activeSteps = 0;
-            let driverNoteEl = document.getElementById('res-driver-note');
-            let editBtn = document.getElementById('btn-edit-whatsapp');
+            let title = ""; let pWidth = "0%"; let activeSteps = 0;
+            
+            let actionBtns = document.getElementById('action-buttons');
+            let upsellBanner = document.getElementById('upsell-banner');
+            let driverAnim = document.getElementById('driver-animation');
+            let feedbackSec = document.getElementById('feedback-section');
 
-            // إخفاء الزراير والملاحظات كوضع افتراضي
-            driverNoteEl.classList.add('hidden');
-            editBtn.classList.add('hidden');
+            actionBtns.classList.add('hidden');
+            upsellBanner.classList.add('hidden');
+            driverAnim.classList.add('hidden');
+            feedbackSec.classList.add('hidden');
 
             if (s === 'new') {
                 title = "تم استلام الطلب 📝"; pWidth = "0%"; activeSteps = 1;
-                // السماح بالتعديل طالما لسه مفيش تجهيز
-                let waMsg = encodeURIComponent(`أهلاً، كنت حابب أعدل في الأوردر بتاعي (باسم ${order.customerName}).`);
-                editBtn.href = `https://wa.me/201000000000?text=${waMsg}`; // حط رقم واتساب الشغل هنا بدل الأصفار
-                editBtn.classList.remove('hidden');
-                editBtn.classList.add('flex');
+                actionBtns.classList.remove('hidden'); actionBtns.classList.add('grid');
+                upsellBanner.classList.remove('hidden');
+                
+                let waMsg = encodeURIComponent(`أهلاً، محتاج أعدل طلباتي للأوردر اللي لسه طالبه (باسم ${currentOrderName}).`);
+                document.getElementById('btn-edit-whatsapp').href = `https://wa.me/${storeWhatsapp}?text=${waMsg}`;
             } 
             else if (s === 'processing' || s === 'deferred' || s === 'no_answer') {
                 title = "جاري التجهيز ⏳"; pWidth = "50%"; activeSteps = 2;
+                upsellBanner.classList.remove('hidden');
+                
                 if (order.driverName) {
                     title = "خرج مع المندوب 🛵"; pWidth = "100%"; activeSteps = 3;
-                    driverNoteEl.innerHTML = `مندوبنا (الكابتن ${order.driverName}) استلم الأوردر وفي طريقه ليك.`;
-                    driverNoteEl.classList.remove('hidden');
+                    upsellBanner.classList.add('hidden');
+                    driverAnim.classList.remove('hidden'); // إظهار الموتوسيكل
                 }
             } 
             else if (s === 'completed') {
                 title = "تم التوصيل بنجاح ✅"; pWidth = "100%"; activeSteps = 3;
-                driverNoteEl.innerHTML = "بالهنا والشفا! نتمنى تكون التجربة عجبتك.";
-                driverNoteEl.classList.remove('hidden');
+                feedbackSec.classList.remove('hidden'); // إظهار التقييم
             }
 
             document.getElementById('res-status-title').innerText = title;
             
-            // تلوين الخطوات (Timeout عشان الـ Animation تبان ناعمة)
             setTimeout(() => {
                 document.getElementById('progress-line').style.width = pWidth;
                 for (let i = 1; i <= 3; i++) {
@@ -296,7 +326,73 @@
             }, 100);
         }
 
-        // لو العميل جاي من لينك سحري زي: track.html?phone=010...
+        // --- دوال الأزرار والأكشنز الجديدة ---
+
+        // 1. الإلغاء الذاتي
+        async function cancelOrder() {
+            if(!confirm("هل أنت متأكد من إلغاء الطلب؟ مش هنقدر نرجعه تاني!")) return;
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                await db.collection('orders').doc(currentOrderId).update({ 
+                    status: 'canceled',
+                    adminNote: `[${dateStr}] ❌ إلغاء ذاتي: العميل ألغى الطلب بنفسه من صفحة التتبع.`
+                });
+                alert("تم إلغاء الطلب بنجاح.");
+                location.reload();
+            } catch(e) { alert("حدث خطأ أثناء الإلغاء."); }
+        }
+
+        // 2. البيع الإضافي
+        function requestUpsell() {
+            let msg = encodeURIComponent(`أهلاً بيك، أنا ${currentOrderName}، كنت بتابع الأوردر بتاعي ولقيته بيتجهز، وحابب أضيف ليه (طبق بيض سمان) لو أمكن!`);
+            window.open(`https://wa.me/${storeWhatsapp}?text=${msg}`, '_blank');
+        }
+
+        // 3. التقييم اللحظي
+        let selectedStars = 0;
+        function rateOrder(stars) {
+            selectedStars = stars;
+            let starsElements = document.getElementById('stars-container').children;
+            for(let i=0; i<5; i++) {
+                if(i < stars) starsElements[4-i].classList.add('active', 'text-amber-500'); // reversed
+                else starsElements[4-i].classList.remove('active', 'text-amber-500');
+            }
+
+            if(stars <= 3) {
+                document.getElementById('complaint-box').classList.remove('hidden');
+                document.getElementById('feedback-thanks').classList.add('hidden');
+            } else {
+                document.getElementById('complaint-box').classList.add('hidden');
+                document.getElementById('feedback-thanks').classList.remove('hidden');
+                saveRatingToCRM(stars, "تقييم عالي - العميل مبسوط");
+            }
+        }
+
+        async function submitComplaint() {
+            let text = document.getElementById('complaint-text').value.trim();
+            if(!text) return alert("الرجاء كتابة تفاصيل المشكلة أولاً.");
+            
+            document.getElementById('complaint-box').innerHTML = '<i class="fa-solid fa-spinner fa-spin text-brand-primary text-2xl"></i>';
+            await saveRatingToCRM(selectedStars, `شكوى تقييم (${selectedStars} نجوم): ${text}`);
+            
+            document.getElementById('feedback-section').innerHTML = '<h4 class="font-black text-emerald-600">تم الإرسال للمدير! بنعتذرلك جداً وهنكلمك فوراً نعوضك.</h4>';
+        }
+
+        async function saveRatingToCRM(stars, text) {
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                let docSnap = await db.collection('orders').doc(currentOrderId).get();
+                let oldNotes = docSnap.data().adminNote || '';
+                let newNote = `[${dateStr}] ⭐️ تقييم العميل للمنصة: \n${text}`;
+                
+                await db.collection('orders').doc(currentOrderId).update({
+                    rating: stars,
+                    adminNote: oldNotes ? oldNotes + '\n---\n' + newNote : newNote
+                });
+            } catch(e) { console.log(e); }
+        }
+
+        // تشغيل اللينك السحري التلقائي
         window.onload = () => {
             const urlParams = new URLSearchParams(window.location.search);
             const phoneParam = urlParams.get('phone');
