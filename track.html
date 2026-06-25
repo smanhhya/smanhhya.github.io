@@ -117,7 +117,16 @@
                     <p class="text-xs text-slate-500 font-bold"><i class="fa-regular fa-clock"></i> متوقع وصول المندوب بين:</p>
                     <p class="text-base font-black text-brand-primary" id="driver-eta"></p>
                 </div>
+
+                <!-- زر تأكيد الاستلام (يظهر للعميل لتأكيد وصول المندوب) -->
+                <div id="confirm-receipt-box" class="mt-4 pt-4 border-t border-slate-200">
+                    <p class="text-[11px] text-slate-500 font-bold text-center mb-2">عند استلامك للطلب، تفضل بتأكيد الاستلام:</p>
+                    <button onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-white border border-brand-primary text-brand-primary hover:bg-green-50 font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm flex justify-center items-center gap-2">
+                        <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
+                    </button>
+                </div>
             </div>
+
 
             <!-- شريط التتبع الأساسي -->
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide" id="tracking-card">
@@ -521,7 +530,45 @@
             const params = new URLSearchParams(window.location.search);
             const phoneParam = params.get('phone');
             if(phoneParam) { document.getElementById('customer-phone').value = phoneParam; trackOrder(); }
+
         };
+        async function confirmReceipt() {
+            // رسالة تأكيد عشان لو داس بالغلط
+            if(!confirm("هل تم استلام الطلب بالكامل من المندوب؟")) return;
+            
+            let btn = document.getElementById('btn-confirm-receipt');
+            let originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأكيد الاستلام...';
+            btn.disabled = true;
+
+            try {
+                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+                let docSnap = await db.collection('orders').doc(currentOrder.id).get();
+                let oldNotes = docSnap.data().adminNote || '';
+                
+                // رسالة واضحة ليك في الإدارة
+                let newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
+                let finalAdminNote = oldNotes ? oldNotes + '\n---\n' + newNote : newNote;
+
+                // تحديث حالة الأوردر لـ completed في الداتابيز
+                await db.collection('orders').doc(currentOrder.id).update({ 
+                    status: 'completed',
+                    adminNote: finalAdminNote
+                });
+
+                // تحديث الواجهة قدام العميل فوراً ليدخل على التقييم
+                currentOrder.status = 'completed';
+                currentOrder.adminNote = finalAdminNote;
+                updateTimeline(); 
+                
+            } catch(e) {
+                console.error(e);
+                alert("حدث خطأ أثناء التأكيد، برجاء التحقق من الاتصال بالإنترنت.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        }
+  
     </script>
 </body>
 </html>
