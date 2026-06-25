@@ -383,16 +383,19 @@
                     document.getElementById('driver-info').classList.remove('hidden');
                     
                     let rawDriverData = currentOrder.driverName;
-                    let driverPhoneMatch = rawDriverData.match(/\b01[0125][0-9]{8}\b/);
                     
-                    if(driverPhoneMatch) {
-                        let dPhone = driverPhoneMatch[0];
-                        let dName = rawDriverData.replace(dPhone, '').replace(/[()-]/g, '').trim();
-                        document.getElementById('driver-name').innerText = dName || "مندوب التوصيل";
-                        document.getElementById('driver-call-btn').href = `tel:${dPhone}`;
+                    // استخراج الأرقام فقط للاتصال (حتى لو فيها + أو مسافات)
+                    let extractedPhone = rawDriverData.replace(/[^\d+]/g, '');
+                    
+                    if(extractedPhone.length >= 10) {
+                        // تنظيف الاسم (شطب الرقم والأقواس) عشان يظهر بشياكة
+                        let cleanName = rawDriverData.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
+                        
+                        document.getElementById('driver-name').innerText = cleanName || "مندوب التوصيل";
+                        document.getElementById('driver-call-btn').href = `tel:${extractedPhone}`;
                         document.getElementById('driver-call-btn').classList.remove('hidden');
                     } else {
-                        document.getElementById('driver-name').innerText = rawDriverData;
+                        document.getElementById('driver-name').innerText = rawDriverData || "مندوب التوصيل";
                         document.getElementById('driver-call-btn').classList.add('hidden');
                     }
 
@@ -430,6 +433,7 @@
                 }
             }, 100);
         }
+
 
         function showAlert(title, desc, bgClass, borderClass, titleClass, iconClass) {
             let banner = document.getElementById('alert-banner');
