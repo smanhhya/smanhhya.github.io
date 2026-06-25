@@ -10,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
@@ -25,8 +26,9 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .star-rating i { cursor: pointer; transition: color 0.2s ease-in-out; }
         .star-rating i:hover, .star-rating i.active { color: #f59e0b; }
-        .btn-qty { transition: all 0.2s; }
-        .btn-qty:active { transform: scale(0.9); }
+        /* إخفاء السكرول بار للقوائم الأفقية */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen pb-10">
@@ -62,24 +64,12 @@
         <!-- شاشة النتيجة والتتبع -->
         <div id="result-section" class="hidden space-y-5">
             
-            <!-- قائمة التنقل -->
-            <div class="flex justify-between items-center mb-2">
-                <button onclick="location.reload()" class="text-slate-500 hover:text-slate-800 text-sm font-bold flex items-center gap-1.5 transition-colors">
-                    <i class="fa-solid fa-arrow-right"></i> تسجيل خروج
-                </button>
-                <button onclick="toggleHistory()" class="text-brand-primary hover:text-green-800 text-sm font-bold flex items-center gap-1.5 transition-colors">
-                    <i class="fa-solid fa-clock-rotate-left"></i> سجل الطلبات
-                </button>
-            </div>
-
-            <!-- سجل الطلبات السابقة -->
-            <div id="history-section" class="hidden glass-card rounded-2xl p-5 animate-slide">
-                <h4 class="font-bold text-slate-800 text-base mb-4"><i class="fa-solid fa-list-check mr-1"></i> سجل الطلبات السابقة</h4>
-                <div id="history-list" class="space-y-3 max-h-72 overflow-y-auto pr-1"></div>
-            </div>
+            <!-- أزرار اختيار الطلب (في حالة وجود أكثر من طلب نشط لنفس العميل) -->
+            <div id="orders-selector" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
 
             <!-- الترحيب والإجمالي -->
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide">
+            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide mt-2">
+                <!-- عرض الاسم بالكامل هنا -->
                 <h3 class="font-bold text-lg text-slate-800 mb-1">أهلاً بحضرتك، أ. <span id="res-name" class="text-brand-primary"></span></h3>
                 <p class="text-sm text-slate-500 mb-4 border-b border-slate-100 pb-4">تفاصيل الطلب الحالي وحالته.</p>
                 
@@ -109,7 +99,7 @@
                 </a>
             </div>
 
-            <!-- معلومات المندوب والوقت (تظهر في حالة التوصيل) -->
+            <!-- معلومات المندوب والوقت -->
             <div id="driver-info" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 animate-slide">
                 <div class="flex items-center justify-between mb-3 border-b border-slate-200 pb-3">
                     <div class="flex items-center gap-3">
@@ -141,24 +131,17 @@
                 </div>
             </div>
 
-            <!-- تعديل الطلب (يظهر فقط إذا كان الطلب جديداً) -->
-            <div id="edit-section" class="hidden bg-white rounded-2xl p-5 shadow-sm border border-brand-primary animate-slide">
-                <h4 class="font-bold text-brand-primary text-sm mb-3 flex items-center gap-2"><i class="fa-solid fa-pen-to-square"></i> تعديل محتويات الطلب</h4>
-                <p class="text-xs text-slate-500 mb-4">يمكنك تعديل الكميات الآن قبل البدء في تجهيز الطلب بالمطبخ.</p>
-                
-                <div id="edit-items-container" class="space-y-3 mb-4"></div>
-                
-                <div class="mt-4 border-t border-slate-100 pt-4">
-                    <label class="text-xs font-bold text-slate-600 block mb-2">إضافة أصناف أخرى أو رقم هاتف بديل:</label>
-                    <textarea id="extra-notes-input" rows="2" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-brand-primary bg-slate-50" placeholder="مثال: أرجو إضافة صنف كذا، أو التواصل على الرقم 010..."></textarea>
-                    <button onclick="saveEdits()" class="w-full mt-3 bg-slate-800 hover:bg-black text-white font-bold py-3 rounded-xl text-sm transition-colors">حفظ التعديلات</button>
-                </div>
-            </div>
-
-            <!-- عرض محتويات الطلب (للقراءة فقط إذا كان قيد التجهيز أو التسليم) -->
+            <!-- عرض محتويات الطلب (للقراءة فقط دائماً) -->
             <div id="view-items-section" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide">
                 <h4 class="font-bold text-slate-800 text-sm mb-3">محتويات الطلب:</h4>
-                <div id="res-items" class="flex flex-col gap-2"></div>
+                <div id="res-items" class="flex flex-col gap-2 mb-4"></div>
+                
+                <!-- صندوق التعديل (يظهر فقط إذا كان الطلب جديداً) -->
+                <div id="edit-request-box" class="hidden border-t border-slate-100 pt-4 mt-2">
+                    <label class="text-xs font-bold text-brand-primary block mb-2"><i class="fa-solid fa-pen-to-square"></i> هل تود تعديل أو إضافة شيء للطلب؟</label>
+                    <textarea id="extra-notes-input" rows="2" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-brand-primary bg-slate-50" placeholder="اكتب هنا التعديل المطلوب (مثال: أرجو إضافة صنف كذا، أو زيادة الكمية)..."></textarea>
+                    <button id="btn-save-edit" onclick="sendEditRequest()" class="w-full mt-3 bg-slate-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-sm transition-colors">إرسال طلب التعديل للإدارة</button>
+                </div>
             </div>
 
             <!-- قسم التقييم الراقي (يظهر عند الاكتمال) -->
@@ -181,12 +164,18 @@
                 </div>
             </div>
 
-            <!-- زر الإلغاء (يظهر في الحالة الجديدة فقط) -->
-            <div id="action-buttons" class="hidden mt-4">
-                <button onclick="cancelOrder()" class="w-full bg-white border border-red-200 text-red-600 font-bold py-3 rounded-xl text-sm shadow-sm hover:bg-red-50 transition-colors">
-                    <i class="fa-solid fa-xmark mr-1"></i> طلب إلغاء الأوردر
-                </button>
+            <!-- سجل الطلبات السابقة (مخفي مبدئياً) -->
+            <div id="history-section" class="hidden bg-slate-50 rounded-2xl p-4 border border-slate-200 mt-6">
+                <h4 class="font-bold text-slate-600 text-sm mb-3"><i class="fa-solid fa-list-check mr-1"></i> الأرشيف</h4>
+                <div id="history-list" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
             </div>
+
+            <!-- روابط فرعية أسفل الصفحة (على استحياء) -->
+            <div class="flex flex-col items-center gap-3 pt-6 border-t border-slate-200">
+                <button onclick="toggleHistory()" class="text-slate-400 hover:text-brand-primary text-xs font-bold underline transition-colors">هل تود مراجعة سجل طلباتك السابقة؟</button>
+                <button onclick="location.reload()" class="text-slate-400 hover:text-red-500 text-xs font-bold underline transition-colors">تسجيل خروج من الحساب</button>
+            </div>
+
         </div>
     </main>
 
@@ -196,9 +185,9 @@
         const db = firebase.firestore();
 
         let currentOrder = null;
+        let allActiveOrders = []; // مصفوفة لتخزين كل الطلبات الحية
         let pastOrders = [];
         let storeWhatsapp = "201000000000"; 
-        let editedItems = []; // مصفوفة مؤقتة لتخزين التعديلات قبل الحفظ
 
         db.collection("inventory").doc("settings").get().then(doc => {
             if(doc.exists && doc.data().storePhone) { 
@@ -232,23 +221,23 @@
                 let orders = []; snap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
                 
                 pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-                let activeOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
+                allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
 
-                // إذا لم يكن هناك طلب نشط، نتحقق إذا كان هناك طلب مكتمل للتقييم
-                if (activeOrders.length === 0) {
+                if (allActiveOrders.length === 0) {
                     if (pastOrders.length > 0) {
-                        currentOrder = pastOrders[0]; // عرض أحدث طلب مكتمل للتقييم
+                        allActiveOrders = [pastOrders[0]]; // عرض أحدث طلب مكتمل للتقييم
                     } else {
                         showError("لا توجد طلبات مسجلة بهذا الرقم حالياً.");
                         btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false; return;
                     }
-                } else {
-                    activeOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                    currentOrder = activeOrders[0];
                 }
 
-                editedItems = JSON.parse(JSON.stringify(currentOrder.items || [])); // نسخة عميقة للتعديل
-                displayResult();
+                // ترتيب الطلبات الحية من الأحدث للأقدم
+                allActiveOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+                
+                renderOrderTabs();
+                selectOrder(0); // اختيار الطلب الأول كافتراضي
+
             } catch (error) { showError("حدث خطأ في الاتصال، برجاء المحاولة لاحقاً."); console.error(error); }
             btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false;
         }
@@ -258,12 +247,34 @@
             document.getElementById('error-msg').classList.remove('hidden');
         }
 
+        // رسم أزرار التنقل لو العميل عنده أكتر من أوردر حي
+        function renderOrderTabs() {
+            let selectorContainer = document.getElementById('orders-selector');
+            if(allActiveOrders.length > 1) {
+                selectorContainer.classList.remove('hidden');
+                selectorContainer.innerHTML = allActiveOrders.map((o, index) => {
+                    let isActive = currentOrder && currentOrder.id === o.id;
+                    let btnClass = isActive ? 'bg-brand-primary text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
+                    return `<button onclick="selectOrder(${index})" class="whitespace-nowrap px-4 py-2 rounded-xl text-xs font-bold transition-colors ${btnClass}">الطلب رقم ${index + 1} (${o.total} ج.م)</button>`;
+                }).join('');
+            } else {
+                selectorContainer.classList.add('hidden');
+            }
+        }
+
+        function selectOrder(index) {
+            currentOrder = allActiveOrders[index];
+            if(allActiveOrders.length > 1) renderOrderTabs(); // تحديث ألوان الأزرار
+            displayResult();
+        }
+
         function displayResult() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('result-section').classList.remove('hidden');
 
-            let cName = (currentOrder.customerName||'عميلنا العزيز').split(' ')[0];
-            document.getElementById('res-name').innerText = cName;
+            // عرض الاسم كاملاً كما هو محفوظ في قاعدة البيانات
+            let fullName = currentOrder.customerName || 'عميلنا العزيز';
+            document.getElementById('res-name').innerText = fullName;
             document.getElementById('res-total').innerText = currentOrder.total || 0;
 
             renderItemsList();
@@ -271,7 +282,7 @@
         }
 
         function renderItemsList() {
-            // عرض للقراءة فقط
+            // عرض المحتويات للقراءة فقط بشكل دائم
             let itemsHtml = currentOrder.items ? currentOrder.items.map(i => `
                 <div class="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-2 rounded-lg">
                     <span class="text-sm font-bold text-slate-700">${i.name}</span>
@@ -280,78 +291,47 @@
             `).join('') : '<p class="text-xs text-slate-500">لا توجد تفاصيل.</p>';
             document.getElementById('res-items').innerHTML = itemsHtml;
 
-            // عرض للتحرير (إذا كان الطلب جديداً)
+            // إظهار أو إخفاء صندوق "تعديل الطلب" بناءً على حالة الطلب
             if(currentOrder.status === 'new') {
-                let editHtml = editedItems.map((i, index) => `
-                    <div class="flex justify-between items-center bg-slate-50 border border-slate-200 px-3 py-2 rounded-xl">
-                        <div class="flex-1">
-                            <span class="text-sm font-bold text-slate-800 block">${i.name}</span>
-                            <span class="text-xs text-slate-500">${i.price} ج.م</span>
-                        </div>
-                        <div class="flex items-center gap-3 bg-white border border-slate-200 rounded-lg px-2 py-1 shadow-sm">
-                            <button onclick="changeQty(${index}, -1)" class="btn-qty w-6 h-6 rounded bg-slate-100 text-slate-600 flex items-center justify-center font-bold hover:bg-slate-200">-</button>
-                            <span class="text-sm font-bold w-4 text-center">${i.quantity}</span>
-                            <button onclick="changeQty(${index}, 1)" class="btn-qty w-6 h-6 rounded bg-brand-primary text-white flex items-center justify-center font-bold hover:bg-green-700">+</button>
-                        </div>
-                    </div>
-                `).join('');
-                document.getElementById('edit-items-container').innerHTML = editHtml;
+                document.getElementById('edit-request-box').classList.remove('hidden');
+            } else {
+                document.getElementById('edit-request-box').classList.add('hidden');
             }
         }
 
-        function changeQty(index, delta) {
-            if(editedItems[index].quantity + delta > 0) {
-                editedItems[index].quantity += delta;
-            } else if (confirm("هل تود حذف هذا الصنف من الطلب؟")) {
-                editedItems.splice(index, 1);
+        // إرسال طلب التعديل للإدارة عبر صندوق الرسائل
+        async function sendEditRequest() {
+            let noteInput = document.getElementById('extra-notes-input');
+            let noteText = noteInput.value.trim();
+            
+            if(!noteText) {
+                alert("برجاء كتابة التعديل أو الإضافة المطلوبة أولاً.");
+                return;
             }
-            renderItemsList();
-        }
 
-        async function saveEdits() {
-            let btn = document.querySelector('#edit-section button');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الحفظ...'; btn.disabled = true;
+            let btn = document.getElementById('btn-save-edit');
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...'; 
+            btn.disabled = true;
 
-            // حساب الإجمالي الجديد (بافتراض أن فرق الإجمالي والفرعي هو مصاريف التوصيل)
-            let oldSubtotal = Number(currentOrder.subtotal) || 0;
-            let oldTotal = Number(currentOrder.total) || 0;
-            let deliveryFee = oldTotal - oldSubtotal;
-            if(deliveryFee < 0) deliveryFee = 0;
-
-            let newSubtotal = editedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0);
-            let newTotal = newSubtotal + deliveryFee;
-
-            // إضافة الملاحظات الإضافية لملاحظات الإدارة
-            let extraNotes = document.getElementById('extra-notes-input').value.trim();
+            let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
             let finalAdminNote = currentOrder.adminNote || "";
-            if (extraNotes) {
-                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
-                finalAdminNote += `\n[${dateStr}] 📝 العميل طلب: ${extraNotes}`;
-            }
+            finalAdminNote += `\n[${dateStr}] 📝 العميل يطلب تعديلاً: ${noteText}`;
 
             try {
                 await db.collection('orders').doc(currentOrder.id).update({
-                    items: editedItems,
-                    subtotal: newSubtotal,
-                    total: newTotal,
                     adminNote: finalAdminNote
                 });
                 
-                alert("تم تحديث الطلب بنجاح.");
-                currentOrder.items = editedItems;
-                currentOrder.subtotal = newSubtotal;
-                currentOrder.total = newTotal;
+                alert("تم إرسال طلب التعديل للإدارة بنجاح. سيتم مراجعة الطلب وتحديثه.");
                 currentOrder.adminNote = finalAdminNote;
+                noteInput.value = ""; // تفريغ المربع
                 
-                document.getElementById('res-total').innerText = newTotal;
-                document.getElementById('extra-notes-input').value = "";
-                displayResult(); // إعادة الرسم
-
             } catch (e) {
                 console.error(e);
-                alert("حدث خطأ أثناء التحديث، برجاء المحاولة لاحقاً.");
+                alert("حدث خطأ أثناء الإرسال، برجاء المحاولة لاحقاً.");
             }
-            btn.innerHTML = 'حفظ التعديلات'; btn.disabled = false;
+            btn.innerHTML = 'إرسال طلب التعديل للإدارة'; 
+            btn.disabled = false;
         }
 
         function calculateETA(zone) {
@@ -384,16 +364,10 @@
             document.getElementById('alert-banner').classList.add('hidden');
             document.getElementById('driver-info').classList.add('hidden');
             document.getElementById('feedback-section').classList.add('hidden');
-            document.getElementById('action-buttons').classList.add('hidden');
             document.getElementById('tracking-card').classList.remove('hidden');
-            document.getElementById('edit-section').classList.add('hidden');
-            document.getElementById('view-items-section').classList.remove('hidden');
 
             if (s === 'new') {
                 title = "جاري مراجعة الطلب"; pWidth = "0%"; activeSteps = 1;
-                document.getElementById('action-buttons').classList.remove('hidden');
-                document.getElementById('edit-section').classList.remove('hidden'); // إظهار التعديل
-                document.getElementById('view-items-section').classList.add('hidden'); // إخفاء العرض العادي
             } 
             else if (s === 'deferred') {
                 document.getElementById('tracking-card').classList.add('hidden');
@@ -469,15 +443,6 @@
             document.getElementById('alert-desc').innerText = desc;
         }
 
-        async function cancelOrder() {
-            if(!confirm("هل تود بالتأكيد إلغاء هذا الطلب؟")) return;
-            try {
-                let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
-                await db.collection('orders').doc(currentOrder.id).update({ status: 'canceled', adminNote: `[${dateStr}] ❌ العميل أرسل طلب إلغاء من صفحة التتبع.` });
-                alert("تم إرسال طلب الإلغاء للإدارة."); location.reload();
-            } catch(e) { alert("حدث خطأ في الإرسال."); }
-        }
-
         function toggleHistory() {
             let section = document.getElementById('history-section');
             if(section.classList.contains('hidden')) {
@@ -489,15 +454,15 @@
                     let itemsText = o.items ? o.items.map(i=>`${i.quantity}x ${i.name}`).join(' ، ') : 'بدون تفاصيل';
                     let waMsg = encodeURIComponent(`مرحباً، أود تكرار هذا الطلب مرة أخرى:\n(${itemsText})`);
                     return `
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                        <div class="flex justify-between items-start mb-3">
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                        <div class="flex justify-between items-start mb-2">
                             <div>
-                                <p class="text-[11px] text-slate-400 font-bold mb-1">${o.orderDate || 'تاريخ غير محدد'}</p>
-                                <p class="text-sm font-bold text-slate-800">${itemsText}</p>
+                                <p class="text-[10px] text-slate-400 font-bold mb-1">${o.orderDate || 'تاريخ غير محدد'}</p>
+                                <p class="text-xs font-bold text-slate-800 leading-relaxed">${itemsText}</p>
                             </div>
-                            <span class="text-brand-primary font-bold text-sm bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">${o.total} ج.م</span>
+                            <span class="text-brand-primary font-bold text-xs bg-green-50 px-2 py-1 rounded border border-green-100 whitespace-nowrap">${o.total} ج.م</span>
                         </div>
-                        <a href="https://wa.me/${storeWhatsapp}?text=${waMsg}" target="_blank" class="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold py-2 rounded-lg flex justify-center items-center gap-2 text-sm transition-colors">
+                        <a href="https://wa.me/${storeWhatsapp}?text=${waMsg}" target="_blank" class="w-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold py-1.5 rounded-lg flex justify-center items-center gap-2 text-xs transition-colors">
                             <i class="fa-solid fa-rotate-right"></i> إعادة الطلب
                         </a>
                     </div>
