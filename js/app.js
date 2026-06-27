@@ -453,39 +453,109 @@ function listenToDatabase() {
         } 
     });
 
+    // ===== دالة لتغيير شكل الكارت فوراً وبشكل شيك عند الضغط =====
+    window.selectBatchCard = function(bId, initialLoad = false) {
+        let hiddenInput = document.getElementById('user-batch-select');
+        if(!hiddenInput) return;
+        
+        hiddenInput.value = bId;
+        
+        // تحديث الكروت بصرياً فوراً بدون انتظار
+        document.querySelectorAll('.batch-card-item').forEach(card => {
+            let iconContainer = card.querySelector('.check-icon-container');
+            if(card.id === `card-${bId}`) {
+                // شكل الكارت المختار (ألوان قوية، بارز، وعلامة صح)
+                card.className = "batch-card-item cursor-pointer border-2 border-brand-navy bg-brand-light shadow-md scale-[1.02] rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[110px]";
+                if(iconContainer) iconContainer.innerHTML = '<i class="fa-solid fa-circle-check text-brand-navy text-2xl drop-shadow-sm"></i>';
+            } else {
+                // شكل الكروت الباقية (باهتة قليلاً، إطار خفيف، ودائرة فاضية)
+                card.className = "batch-card-item cursor-pointer border-2 border-gray-200 bg-white hover:border-brand-cyan/30 hover:bg-gray-50 rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[110px] opacity-60 hover:opacity-100";
+                if(iconContainer) iconContainer.innerHTML = '<i class="fa-regular fa-circle text-gray-300 text-2xl"></i>';
+            }
+        });
+
+        // تشغيل التحديث للسيستم عشان السلة تتظبط بناءً على اختيار العميل
+        if(!initialLoad) {
+            hiddenInput.dispatchEvent(new Event('change'));
+        }
+    };
+
+    // ===== بلوك الدفعات اللي هيسحب الداتا ويرسم الكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
             let batchContainer = document.getElementById('batch-selection-container');
-            if(batchSelect && batchContainer) {
+            let cardsContainer = document.getElementById('batch-cards-wrapper');
+            
+            if(batchSelect && batchContainer && cardsContainer) {
                 let currentVal = batchSelect.value;
-                batchSelect.innerHTML = ''; 
                 let openBatchesCount = 0;
                 let firstOpenBatch = null;
                 
+                let cardsHtml = ''; // هنجمع الكود بتاع الكروت هنا الأول
+                
                 Object.keys(globalBatches).forEach(bId => {
                     if(globalBatches[bId].isOpen) {
+                        const batch = globalBatches[bId];
                         if(!firstOpenBatch) firstOpenBatch = bId;
-                        batchSelect.innerHTML += `<option value="${bId}">${globalBatches[bId].name}</option>`;
                         openBatchesCount++;
+
+                        let totalStock = 0, totalBooked = 0;
+                        if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
+                        if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
+                        
+                        let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
+                        let isLowStock = percent >= 80;
+                        
+                        // تحديد الكارت المختار مبدئياً
+                        let isSelected = currentVal === bId;
+                        let borderClass = isSelected ? 'border-brand-navy bg-brand-light shadow-md scale-[1.02]' : 'border-gray-200 bg-white opacity-60';
+                        let checkIcon = isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-2xl drop-shadow-sm"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-2xl"></i>';
+
+                        // بناء تصميم الكارت الشيك
+                        cardsHtml += `
+                            <div id="card-${bId}" onclick="selectBatchCard('${bId}')" class="batch-card-item cursor-pointer border-2 ${borderClass} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[110px]">
+                                <div class="flex justify-between items-start mb-2">
+                                    <div>
+                                        <span class="bg-green-100 text-green-700 text-[9px] font-black px-2 py-0.5 rounded mb-1.5 inline-block border border-green-200"><i class="fa-solid fa-bolt text-amber-500 mr-1"></i> متاح للحجز</span>
+                                        <h4 class="font-black text-brand-navy text-sm md:text-base leading-tight">${batch.name}</h4>
+                                    </div>
+                                    <div class="check-icon-container shrink-0 mt-1">
+                                        ${checkIcon}
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <div class="flex justify-between text-[10px] font-bold text-gray-500 mb-1">
+                                        <span>معدل الحجز</span>
+                                        <span class="${isLowStock ? 'text-red-500' : 'text-brand-navy'} font-black">${Math.round(percent)}%</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                                        <div class="h-1.5 rounded-full transition-all duration-1000 ${isLowStock ? 'bg-red-500' : 'bg-gradient-to-r from-[#86efac] to-brand-navy'}" style="width: ${Math.min(percent, 100)}%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
                     }
                 });
                 
-                if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
-                    batchSelect.value = currentVal;
-                } else if (firstOpenBatch) {
-                    batchSelect.value = firstOpenBatch;
+                // رسم الكروت في الصفحة
+                cardsContainer.innerHTML = cardsHtml;
+
+                // لو العميل لسه مختارش حاجة، السيستم بيختار أول دفعة أوتوماتيك وينورها
+                if (!currentVal && firstOpenBatch) {
+                    selectBatchCard(firstOpenBatch, true);
                 }
 
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
                 else batchContainer.style.display = 'none';
                 
-                if(isStoreDataLoaded) { renderProducts(); updateUI(); }
+                if(isStoreDataLoaded && !currentVal && firstOpenBatch) { renderProducts(); updateUI(); }
             }
         }
     });
-}
+
+
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
