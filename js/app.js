@@ -482,10 +482,12 @@ function listenToDatabase() {
 
                         cardsContainer.innerHTML += `
                             <div id="card-${bId}" onclick="selectBatchAndScroll('${bId}')" 
-                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white hover:border-brand-cyan/30 opacity-70 hover:opacity-100'} rounded-2xl p-4 transition-all relative overflow-hidden">
+                                 class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden">
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
-                                    ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
+                                    <div class="check-icon-container">
+                                        ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
+                                    </div>
                                 </div>
                                 <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
                                 <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
@@ -514,11 +516,28 @@ function listenToDatabase() {
     });
 } 
 
-// --- دالة النزول السلس وتحديد الكارت ---
+// ===== دالة النزول السلس وتحديث شكل الكارت فوراً =====
 window.selectBatchAndScroll = (bId) => {
-    document.getElementById('user-batch-select').value = bId;
-    document.getElementById('user-batch-select').dispatchEvent(new Event('change'));
+    let hiddenInput = document.getElementById('user-batch-select');
+    if(!hiddenInput) return;
     
+    // 1. تحديث القيمة في السيستم
+    hiddenInput.value = bId;
+    hiddenInput.dispatchEvent(new Event('change'));
+    
+    // 2. تحديث بصري فوري للكروت عشان العميل يحس بالاستجابة
+    document.querySelectorAll('.batch-card-item').forEach(card => {
+        let iconContainer = card.querySelector('.check-icon-container');
+        if(card.id === `card-${bId}`) {
+            card.className = "batch-card-item cursor-pointer border-2 border-brand-navy bg-brand-light scale-[1.02] shadow-md rounded-2xl p-4 transition-all duration-300 relative overflow-hidden";
+            if(iconContainer) iconContainer.innerHTML = '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>';
+        } else {
+            card.className = "batch-card-item cursor-pointer border-2 border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30 rounded-2xl p-4 transition-all duration-300 relative overflow-hidden";
+            if(iconContainer) iconContainer.innerHTML = '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>';
+        }
+    });
+    
+    // 3. النزول السلس للمنيو
     setTimeout(() => {
         const menuTitle = document.getElementById('lbl-menu-title');
         if(menuTitle) {
@@ -526,8 +545,10 @@ window.selectBatchAndScroll = (bId) => {
             const y = menuTitle.getBoundingClientRect().top + window.scrollY + yOffset;
             window.scrollTo({top: y, behavior: 'smooth'});
         }
-    }, 200);
+    }, 150);
 };
+
+
 
 
 
