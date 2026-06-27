@@ -1,4 +1,4 @@
- // js/app.js
+// js/app.js
 // المتغيرات الأساسية (cart, productsInfo, globalSettings...) بيتم قراءتها تلقائياً من ملف config.js
 
 let globalBatches = {};
@@ -430,12 +430,36 @@ function listenToDatabase() {
     });
 
     db.collection('inventory').doc('stock').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalStock, doc.data()); stockLoaded = true; checkAndRender(); } 
+    });
+
+    db.collection('inventory').doc('prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('discounts_status').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+
+    db.collection('inventory').doc('stats').onSnapshot(doc => { 
+        if(doc.exists) { 
+            dailyStats = doc.data(); 
+            if(document.getElementById('stat-sales')) document.getElementById('stat-sales').innerText = dailyStats.sales || 0; 
+            if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = dailyStats.orders || 0; 
+        } 
+    });
+
+    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
-            let batchSelect = document.getElementById('user-batch-select'); // الحقل المخفي
+            let batchSelect = document.getElementById('user-batch-select');
             let batchContainer = document.getElementById('batch-selection-container');
-            let cardsContainer = document.getElementById('batch-cards-wrapper'); // حاوية الكروت الجديدة
+            let cardsContainer = document.getElementById('batch-cards-wrapper');
             
             if(batchSelect && batchContainer && cardsContainer) {
                 let currentVal = batchSelect.value;
@@ -449,7 +473,6 @@ function listenToDatabase() {
                         if(!firstOpenBatch) firstOpenBatch = bId;
                         openBatchesCount++;
 
-                        // حساب نسبة الحجز لرسم شريط التقدم بدقة بناءً على كميات السمان
                         let totalStock = 0, totalBooked = 0;
                         if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
                         if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
@@ -458,7 +481,6 @@ function listenToDatabase() {
                         let isLowStock = percent >= 80;
                         let isSelected = currentVal === bId;
 
-                        // رسم الكارت وتلوينه باستخدام ألوان المتجر (brand-navy و brand-light)
                         cardsContainer.innerHTML += `
                             <div onclick="document.getElementById('user-batch-select').value='${bId}'; document.getElementById('user-batch-select').dispatchEvent(new Event('change'));" 
                                  class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02]' : 'border-gray-100 bg-white hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all shadow-sm hover:shadow-md relative overflow-hidden">
@@ -473,10 +495,8 @@ function listenToDatabase() {
                     }
                 });
                 
-                // اختيار أول دفعة أوتوماتيكياً لو العميل لسه مختارش
                 if (!currentVal && firstOpenBatch) {
                     batchSelect.value = firstOpenBatch;
-                    // تفعيل الحدث (Event) عشان الكود القديم يحس بالتغيير ويحسب المنتجات المتاحة
                     batchSelect.dispatchEvent(new Event('change')); 
                 }
 
@@ -487,10 +507,9 @@ function listenToDatabase() {
             }
         }
     });
+} // <--- القوس ده اللي كان ناقص وبيوقف الموقع
 
 
-
-}
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
