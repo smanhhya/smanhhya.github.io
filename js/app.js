@@ -34,6 +34,7 @@ function getAvailableStock(id) {
     
     if (batchId && globalBatches[batchId]) {
         const batch = globalBatches[batchId];
+        // هيقرأ من الـ CRM الأساسي لو الدفعة ملهاش رقم محدد
         const bStock = (batch.stock && batch.stock[id] !== undefined) ? parseInt(batch.stock[id]) : (globalStock[id] || 0);
         const bBooked = (batch.booked && batch.booked[id]) ? parseInt(batch.booked[id]) : 0;
         const remainingInBatch = Math.max(0, bStock - bBooked);
@@ -365,7 +366,7 @@ window.setupEventListeners = function() {
     }
 }
 
-// --- تهيئة Firebase ---
+// --- تهيئة Firebase مع تفعيل الكاش المحلي لإنقاذ الموقع ---
 function initFirebase() {
     const firebaseConfig = { 
         apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
@@ -378,10 +379,15 @@ function initFirebase() {
     try { 
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         db = firebase.firestore(); 
-        db.enablePersistence({synchronizeTabs: true}).catch(function(err) { console.log("Cache error: ", err); });
+        
+        // 🌟 التعديل السحري: تفعيل الذاكرة المخبأة (عشان لو السيرفر قفل، المنيو يظهر من الموبايل) 🌟
+        db.enablePersistence({synchronizeTabs: true}).catch(function(err) {
+            console.log("Cache persistence error: ", err);
+        });
 
         hasCloud = true; listenToDatabase(); 
         
+        // 🌟 تايمر الإنقاذ: لو فايربيس ماردش خلال 2.5 ثانية، افتح المنيو فوراً بالبيانات الأساسية 🌟
         setTimeout(() => {
             if (!isStoreDataLoaded) {
                 isStoreDataLoaded = true;
@@ -390,11 +396,13 @@ function initFirebase() {
                     if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice; 
                 });
                 renderProducts(); applySettingsToUI(); updateUI();
+                console.log("تم تشغيل وضع الإنقاذ (Offline Mode)");
             }
         }, 2500);
 
     } catch (e) { console.log("Firebase Error", e); }
 }
+
 
 function listenToDatabase() {
     if(!db) return;
@@ -433,6 +441,7 @@ function listenToDatabase() {
         if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
     
+    // 👇 السطر اللي كان مكسور اتصلح هنا 👇
     db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
         if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
@@ -445,15 +454,15 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== الدفعات التفاعلية (الكروت) =====
+    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
-            let cardsContainer = document.getElementById('batch-cards-wrapper');
             let batchContainer = document.getElementById('batch-selection-container');
+            let cardsContainer = document.getElementById('batch-cards-wrapper');
             
-            if(batchSelect && cardsContainer) {
+            if(batchSelect && batchContainer && cardsContainer) {
                 let currentVal = batchSelect.value;
                 cardsContainer.innerHTML = ''; 
                 let openBatchesCount = 0;
@@ -475,7 +484,7 @@ function listenToDatabase() {
 
                         cardsContainer.innerHTML += `
                             <div id="card-${bId}" onclick="selectBatchAndScroll('${bId}')" 
-                                 class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden">
+                                 class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between">
                                 <div class="flex justify-between items-start mb-2">
                                     <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
                                     <div class="check-icon-container">
@@ -496,19 +505,17 @@ function listenToDatabase() {
                     batchSelect.value = firstOpenBatch;
                     batchSelect.dispatchEvent(new Event('change')); 
                 }
-                
-                if(batchContainer) {
-                    if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
-                    else batchContainer.style.display = 'none';
-                }
+
+                if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
+                else batchContainer.style.display = 'none';
                 
                 if(isStoreDataLoaded) { renderProducts(); updateUI(); }
             }
         }
     });
-} 
+} // <--- نهاية listenToDatabase
 
-// ===== دالة التحديد والنزول السلس =====
+// ===== دالة التحديد والنزول السلس (خارج دالة listenToDatabase) =====
 window.selectBatchAndScroll = (bId) => {
     let hiddenInput = document.getElementById('user-batch-select');
     if(!hiddenInput) return;
@@ -519,10 +526,10 @@ window.selectBatchAndScroll = (bId) => {
     document.querySelectorAll('.batch-card-item').forEach(card => {
         let iconContainer = card.querySelector('.check-icon-container');
         if(card.id === `card-${bId}`) {
-            card.className = "batch-card-item cursor-pointer border-2 border-brand-navy bg-brand-light scale-[1.02] shadow-md rounded-2xl p-4 transition-all duration-300 relative overflow-hidden";
+            card.className = "batch-card-item cursor-pointer border-2 border-brand-navy bg-brand-light scale-[1.02] shadow-md rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between";
             if(iconContainer) iconContainer.innerHTML = '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>';
         } else {
-            card.className = "batch-card-item cursor-pointer border-2 border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30 rounded-2xl p-4 transition-all duration-300 relative overflow-hidden";
+            card.className = "batch-card-item cursor-pointer border-2 border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30 rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between";
             if(iconContainer) iconContainer.innerHTML = '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>';
         }
     });
@@ -536,6 +543,9 @@ window.selectBatchAndScroll = (bId) => {
         }
     }, 150);
 };
+
+
+
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
