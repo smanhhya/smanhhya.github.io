@@ -63,6 +63,64 @@
         .step-completed .step-icon { background-color: #10b981; color: white; border-color: #10b981; }
         .step-line { flex: 1; height: 2px; background-color: #e5e7eb; margin: 0 10px; }
         .step-line.active { background-color: #10b981; }
+/* تنسيقات كروت حجز الدفعات */
+.batch-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+}
+.batch-card {
+    border: 2px solid #e5e7eb;
+    border-radius: 1rem;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    background: #fff;
+    position: relative;
+}
+.batch-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+.batch-card.selected {
+    border-color: var(--brand-navy);
+    background-color: var(--brand-light);
+    border-width: 3px;
+}
+.batch-card.open { border-color: #10b981; }
+.batch-card.upcoming { border-color: #f59e0b; }
+.batch-card.closed { border-color: #ef4444; opacity: 0.6; cursor: not-allowed; }
+
+.batch-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 900;
+    margin-bottom: 8px;
+}
+.open .batch-badge { background: #d1fae5; color: #065f46; }
+.upcoming .batch-badge { background: #fef3c7; color: #92400e; }
+.closed .batch-badge { background: #fee2e2; color: #991b1b; }
+
+.batch-progress-bg {
+    width: 100%;
+    background-color: #f3f4f6;
+    border-radius: 10px;
+    height: 6px;
+    margin-top: 12px;
+    overflow: hidden;
+}
+.batch-progress-fill {
+    height: 100%;
+    background-color: #10b981;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+.batch-progress-fill.danger { background-color: #ef4444; }
+ 
     </style>
     
     <script>
@@ -352,17 +410,27 @@
                 <div>المتجر مغلق حالياً، نعود قريباً!</div>
             </div>
 
-            <div class="bg-white p-4 rounded-2xl shadow-sm border-2 border-brand-navy mb-8" id="batch-selection-container" style="display: none;">
-                <div class="flex items-center gap-2 mb-2">
+            <!-- بداية الجزء المعدل لكروت الدفعات -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border-2 border-brand-navy mb-8" id="batch-selection-container" style="display: none;">
+                <div class="flex items-center gap-2 mb-3 border-b border-gray-100 pb-3">
                     <i class="fa-solid fa-calendar-check text-brand-yellow text-xl"></i>
                     <h3 class="font-black text-brand-navy text-base">اختر ميعاد استلامك (حجز مسبق)</h3>
                 </div>
-                <p class="text-xs text-gray-500 mb-3 font-bold">المنتجات يتم تجهيزها طازجة حسب الحجز، برجاء اختيار الدفعة المتاحة لترى الكميات المتوفرة:</p>
-                <div class="relative">
-                    <select id="user-batch-select" onchange="renderProducts()" class="w-full border-2 border-gray-200 rounded-xl p-3 text-sm focus:border-brand-navy outline-none font-black text-brand-navy bg-brand-light transition-all appearance-none shadow-sm"></select>
-                    <div class="pointer-events-none absolute inset-y-0 left-4 flex items-center text-brand-navy"><i class="fa-solid fa-chevron-down text-sm"></i></div>
+                <p class="text-xs text-gray-500 mb-4 font-bold">المنتجات يتم تجهيزها طازجة حسب الحجز، برجاء اختيار الدفعة المتاحة لترى الكميات المتوفرة:</p>
+                
+                <!-- حاوية الكروت التفاعلية اللي الجافاسكريبت هيرسمها (باستخدام كلاسات Tailwind) -->
+                <div id="batch-cards-wrapper" class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+                    <div class="text-center py-4 text-brand-cyanDark col-span-full">
+                        <i class="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                        <p class="font-bold text-xs">جاري تحميل الدفعات...</p>
+                    </div>
                 </div>
+                
+                <!-- الحقل المخفي ده السِحر اللي بيربط الكروت بكود app.js القديم بتاعك بدون أخطاء -->
+                <input type="hidden" id="user-batch-select" value="" onchange="renderProducts()">
             </div>
+            <!-- نهاية الجزء المعدل -->
+
 
             <style>
                 #slider-track > img, 
