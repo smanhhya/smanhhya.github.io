@@ -419,6 +419,41 @@ function listenToDatabase() {
         } else if (isStoreDataLoaded) { renderProducts(); updateUI(); }
     };
 
+    db.collection('inventory').doc('settings').onSnapshot(doc => { 
+        if(doc.exists) { 
+            const data = doc.data(); 
+            if(data.productsData) productsInfo = data.productsData; 
+            Object.assign(globalSettings, data); 
+            if(data.deliveryZones) globalDeliveryZones = data.deliveryZones; 
+            applySettingsToUI(); renderDeliveryZones(); settingsLoaded = true; checkAndRender();
+        } 
+    });
+
+    db.collection('inventory').doc('stock').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalStock, doc.data()); stockLoaded = true; checkAndRender(); } 
+    });
+
+    db.collection('inventory').doc('prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('discounts_status').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+    
+    db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
+        if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
+    });
+
+    db.collection('inventory').doc('stats').onSnapshot(doc => { 
+        if(doc.exists) { 
+            dailyStats = doc.data(); 
+            if(document.getElementById('stat-sales')) document.getElementById('stat-sales').innerText = dailyStats.sales || 0; 
+            if(document.getElementById('stat-orders')) document.getElementById('stat-orders').innerText = dailyStats.orders || 0; 
+        } 
+    });
+
+    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
@@ -428,70 +463,41 @@ function listenToDatabase() {
             
             if(batchSelect && batchContainer && cardsContainer) {
                 let currentVal = batchSelect.value;
+                cardsContainer.innerHTML = ''; 
                 let openBatchesCount = 0;
                 let firstOpenBatch = null;
                 
-                cardsContainer.innerHTML = ''; // تفريغ الكروت القديمة
-                batchSelect.innerHTML = ''; // تفريغ الـ Select (لو لسه هتستخدمه كأوبشنز)
-                // في حالتنا الـ hidden input مالوش options، بس بنخلي الكود ده شغال تحسباً لأي نظام قديم
-                
                 Object.keys(globalBatches).forEach(bId => {
-                    const batch = globalBatches[bId];
-                    if(batch.isOpen) {
+                    if(globalBatches[bId].isOpen) {
+                        const batch = globalBatches[bId];
                         if(!firstOpenBatch) firstOpenBatch = bId;
                         openBatchesCount++;
 
-                        // حساب نسبة الحجز (لو الدفعة ليها total، غير كده هنفترض إنها شغالة بدون stock limit)
-                        // بنحسب إجمالي المحجوز للدفعة دي من كل المنتجات (بشكل تقريبي للعرض البصري)
-                        let totalBookedInBatch = 0;
-                        if(batch.booked) {
-                            Object.values(batch.booked).forEach(b => totalBookedInBatch += parseInt(b) || 0);
-                        }
-                        // افتراض إن الدفعة بتستوعب 100 طبق إجمالاً لو مفيش total متحدد في Firebase
-                        let batchCapacity = batch.totalCapacity || 100; 
-                        let percent = (totalBookedInBatch / batchCapacity) * 100;
+                        let totalStock = 0, totalBooked = 0;
+                        if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
+                        if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
+                        
+                        let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
                         let isLowStock = percent >= 80;
+                        let isSelected = currentVal === bId;
 
-                        // تحديد حالة الكارت
-                        // لو عندك status في الداتابيز استخدمه، أو هنعتمد على isOpen
-                        let statusClass = "open"; 
-                        let badgeText = "مفتوح للحجز";
-                        
-                        // بناء الكارت
-                        const card = document.createElement('div');
-                        card.className = `batch-card ${statusClass} ${currentVal === bId ? 'selected' : ''}`;
-                        card.setAttribute('data-batch-id', bId);
-                        
-                        card.innerHTML = `
-                            <span class="batch-badge">${badgeText}</span>
-                            <h4 class="font-black text-brand-navy text-sm mb-1">${batch.name}</h4>
-                            <div class="batch-progress-bg">
-                                <div class="batch-progress-fill ${isLowStock ? 'danger' : ''}" style="width: ${Math.min(percent, 100)}%"></div>
+                        cardsContainer.innerHTML += `
+                            <div onclick="document.getElementById('user-batch-select').value='${bId}'; document.getElementById('user-batch-select').dispatchEvent(new Event('change'));" 
+                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02]' : 'border-gray-100 bg-white hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all shadow-sm hover:shadow-md relative overflow-hidden">
+                                <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded mb-2 inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
+                                <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
+                                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
+                                    <div class="h-1.5 rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
+                                </div>
+                                <span class="text-[9px] text-gray-500 font-bold">تم حجز ${Math.round(percent)}% من الدفعة</span>
                             </div>
                         `;
-
-                        // تفاعلية الكارت عند الضغط
-                        card.onclick = () => {
-                            // إزالة التحديد من باقي الكروت
-                            document.querySelectorAll('.batch-card').forEach(c => c.classList.remove('selected'));
-                            card.classList.add('selected');
-                            
-                            // تحديث قيمة الـ Hidden Input وإجبار النظام على التحديث
-                            batchSelect.value = bId;
-                            
-                            // ده السطر السحري اللي بيخلي الكود القديم بتاعك يحس بالتغيير
-                            batchSelect.dispatchEvent(new Event('change'));
-                        };
-
-                        cardsContainer.appendChild(card);
                     }
                 });
                 
-                // تحديد أول دفعة مفتوحة لو العميل لسه مختارش
                 if (!currentVal && firstOpenBatch) {
                     batchSelect.value = firstOpenBatch;
-                    let firstCard = cardsContainer.querySelector(`[data-batch-id="${firstOpenBatch}"]`);
-                    if(firstCard) firstCard.classList.add('selected');
+                    batchSelect.dispatchEvent(new Event('change')); 
                 }
 
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
@@ -501,6 +507,8 @@ function listenToDatabase() {
             }
         }
     });
+} // <--- القوس ده اللي كان ناقص وبيوقف الموقع
+
 
 
 // --- نظام الكوبونات والخصم ---
