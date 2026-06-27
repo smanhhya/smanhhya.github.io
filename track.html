@@ -94,19 +94,19 @@
                 
                 <!-- الشبكة الجديدة اللي شايلة القديم والجديد بشياكة -->
                 <div class="grid grid-cols-2 gap-3 mb-4">
-                    <div class="bg-white p-2.5 rounded-xl border border-indigo-50 text-center shadow-sm">
+                    <div id="box-delivery-dates" class="hidden bg-white p-2.5 rounded-xl border border-indigo-50 text-center shadow-sm">
                         <span class="block text-[10px] font-bold text-slate-500 mb-1">أيام التسليم</span>
                         <span class="block text-sm font-black text-slate-800" id="batch-date-range">--</span>
                     </div>
-                    <div class="bg-white p-2.5 rounded-xl border border-indigo-50 text-center shadow-sm">
+                    <div id="box-delivery-left" class="hidden bg-white p-2.5 rounded-xl border border-indigo-50 text-center shadow-sm">
                         <span class="block text-[10px] font-bold text-slate-500 mb-1" id="batch-days-text">متبقي للتجهيز</span>
                         <span class="block text-sm font-black text-brand-primary" id="batch-days-left">--</span>
                     </div>
-                    <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center shadow-sm">
+                    <div id="box-quail-age" class="hidden bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center shadow-sm">
                         <span class="block text-[10px] font-bold text-amber-700 mb-1">عمر السمان الآن</span>
                         <span class="block text-sm font-black text-amber-900" id="batch-quail-age">--</span>
                     </div>
-                    <div class="bg-red-50 p-2.5 rounded-xl border border-red-100 text-center shadow-sm">
+                    <div id="box-slaughter-left" class="hidden bg-red-50 p-2.5 rounded-xl border border-red-100 text-center shadow-sm">
                         <span class="block text-[10px] font-bold text-red-700 mb-1">باقي على الذبح</span>
                         <span class="block text-sm font-black text-red-900" id="batch-slaughter-left">--</span>
                     </div>
@@ -118,7 +118,6 @@
                 </div>
             </div>
 
-            </div>
 
             <!-- التنبيهات الإدارية -->
             <div id="alert-banner" class="hidden rounded-2xl p-4 animate-slide shadow-sm border">
@@ -497,6 +496,7 @@
                 }
             }, 100);
             // ==========================================
+            // ==========================================
             // منطق تشغيل صندوق الدفعة والعداد الذكي (مضاد لأخطاء الشهور وبيقرأ لايف من الإدارة)
             // ==========================================
             let batchBox = document.getElementById('batch-info-box');
@@ -507,44 +507,69 @@
                         if (doc.exists && doc.data()[currentOrder.batchId]) {
                             let batchData = doc.data()[currentOrder.batchId];
                             
-                            // لو إنت مسجل تواريخ للدفعة دي في الـ CRM
-                            if(batchData.deliveryStart && batchData.deliveryEnd) {
+                            // 1. الأول نتأكد إن فيه أي داتا اتكتبت أساساً عشان نظهر الصندوق الكبير
+                            let hasDates = batchData.deliveryStart && batchData.deliveryEnd;
+                            let hasAge = batchData.quailAge && batchData.quailAge.trim() !== "";
+                            let hasSlaughter = batchData.daysLeft && batchData.daysLeft.trim() !== "";
+                            let hasMsg = batchData.customerMsg && batchData.customerMsg.trim() !== "";
+
+                            if(hasDates || hasAge || hasSlaughter || hasMsg) {
                                 batchBox.classList.remove('hidden');
                                 document.getElementById('batch-display-name').innerText = batchData.name || currentOrder.batchName;
                                 
-                                // تحويل التواريخ لكائنات ذكية تفهم الشهور (نفس الكود بتاعك القديم بالمللي)
-                                let startDate = new Date(batchData.deliveryStart);
-                                let endDate = new Date(batchData.deliveryEnd);
-                                let now = new Date();
-                                now.setHours(0,0,0,0); // تصفير الوقت لحساب الأيام بدقة
-                                
-                                // استخراج اليوم فقط للعرض (مثال: 1 إلى 5)
-                                document.getElementById('batch-date-range').innerText = startDate.getDate() + " إلى " + endDate.getDate();
+                                // 2. منطق التواريخ والعداد بتاعك (سليم 100% ومفيش فيه تغيير)
+                                if (hasDates) {
+                                    document.getElementById('box-delivery-dates').classList.remove('hidden');
+                                    document.getElementById('box-delivery-left').classList.remove('hidden');
 
-                                let diffTime = startDate.getTime() - now.getTime();
-                                let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                                    let startDate = new Date(batchData.deliveryStart);
+                                    let endDate = new Date(batchData.deliveryEnd);
+                                    let now = new Date();
+                                    now.setHours(0,0,0,0); 
+                                    
+                                    document.getElementById('batch-date-range').innerText = startDate.getDate() + " إلى " + endDate.getDate();
 
-                                // نفس شروطك وألوانك القديمة
-                                if (diffDays > 0) {
-                                    document.getElementById('batch-days-left').innerText = diffDays + " أيام";
-                                    document.getElementById('batch-days-left').className = "block text-lg font-black text-brand-primary";
-                                    document.getElementById('batch-days-text').innerText = "متبقي على التجهيز";
-                                } else if (now >= startDate && now <= endDate) {
-                                    document.getElementById('batch-days-left').innerText = "الآن";
-                                    document.getElementById('batch-days-left').className = "block text-xl font-black text-emerald-500 animate-pulse";
-                                    document.getElementById('batch-days-text').innerText = "جاري التجهيز والتسليم";
+                                    let diffTime = startDate.getTime() - now.getTime();
+                                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                    if (diffDays > 0) {
+                                        document.getElementById('batch-days-left').innerText = diffDays + " أيام";
+                                        document.getElementById('batch-days-left').className = "block text-lg font-black text-brand-primary";
+                                        document.getElementById('batch-days-text').innerText = "متبقي على التجهيز";
+                                    } else if (now >= startDate && now <= endDate) {
+                                        document.getElementById('batch-days-left').innerText = "الآن";
+                                        document.getElementById('batch-days-left').className = "block text-xl font-black text-emerald-500 animate-pulse";
+                                        document.getElementById('batch-days-text').innerText = "جاري التجهيز والتسليم";
+                                    } else {
+                                        document.getElementById('batch-days-left').innerText = "انتظر مكالمتنا";
+                                        document.getElementById('batch-days-left').className = "block text-sm font-black text-amber-500";
+                                        document.getElementById('batch-days-text').innerText = "موعدك المحدد قريباً";
+                                    }
                                 } else {
-                                    document.getElementById('batch-days-left').innerText = "انتظر مكالمتنا";
-                                    document.getElementById('batch-days-left').className = "block text-sm font-black text-amber-500";
-                                    document.getElementById('batch-days-text').innerText = "موعدك المحدد قريباً";
+                                    // لو التواريخ فاضية، نخفي مربعات التواريخ بس
+                                    document.getElementById('box-delivery-dates').classList.add('hidden');
+                                    document.getElementById('box-delivery-left').classList.add('hidden');
                                 }
 
-                                // تغذية الخانات الجديدة بتاعة المزرعة (السمان والرسالة)
-                                document.getElementById('batch-quail-age').innerText = batchData.quailAge || '--';
-                                document.getElementById('batch-slaughter-left').innerText = batchData.daysLeft || '--';
+                                // 3. منطق إظهار عمر السمان
+                                if (hasAge) {
+                                    document.getElementById('box-quail-age').classList.remove('hidden');
+                                    document.getElementById('batch-quail-age').innerText = batchData.quailAge;
+                                } else {
+                                    document.getElementById('box-quail-age').classList.add('hidden');
+                                }
 
+                                // 4. منطق إظهار المتبقي على الذبح
+                                if (hasSlaughter) {
+                                    document.getElementById('box-slaughter-left').classList.remove('hidden');
+                                    document.getElementById('batch-slaughter-left').innerText = batchData.daysLeft;
+                                } else {
+                                    document.getElementById('box-slaughter-left').classList.add('hidden');
+                                }
+
+                                // 5. منطق إظهار رسالة الإدارة
                                 let msgBox = document.getElementById('batch-msg-container');
-                                if(batchData.customerMsg && batchData.customerMsg.trim() !== "") {
+                                if (hasMsg) {
                                     msgBox.classList.remove('hidden');
                                     document.getElementById('batch-customer-msg').innerText = batchData.customerMsg;
                                 } else {
@@ -552,6 +577,7 @@
                                 }
                                 
                             } else {
+                                // لو إنت مش كاتب ولا حرف في الـ CRM، الصندوق كله يختفي
                                 batchBox.classList.add('hidden');
                             }
                         } else {
@@ -567,9 +593,8 @@
                 }
             }
 
+        } // <-- دي القفلة الأخيرة بتاعت دالة updateTimeline
 
-
-        } // <-- دي القفلة الأخيرة بتاعت دالة updateTimeline 
 
 
         function showAlert(title, desc, bgClass, borderClass, titleClass, iconClass) {
