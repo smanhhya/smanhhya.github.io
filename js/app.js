@@ -453,51 +453,29 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
             let batchContainer = document.getElementById('batch-selection-container');
-            let cardsContainer = document.getElementById('batch-cards-wrapper');
-            
-            if(batchSelect && batchContainer && cardsContainer) {
+            if(batchSelect && batchContainer) {
                 let currentVal = batchSelect.value;
-                cardsContainer.innerHTML = ''; 
+                batchSelect.innerHTML = ''; 
                 let openBatchesCount = 0;
                 let firstOpenBatch = null;
                 
                 Object.keys(globalBatches).forEach(bId => {
                     if(globalBatches[bId].isOpen) {
-                        const batch = globalBatches[bId];
                         if(!firstOpenBatch) firstOpenBatch = bId;
+                        batchSelect.innerHTML += `<option value="${bId}">${globalBatches[bId].name}</option>`;
                         openBatchesCount++;
-
-                        let totalStock = 0, totalBooked = 0;
-                        if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
-                        if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
-                        
-                        let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
-                        let isLowStock = percent >= 80;
-                        let isSelected = currentVal === bId;
-
-                        cardsContainer.innerHTML += `
-                            <div onclick="document.getElementById('user-batch-select').value='${bId}'; document.getElementById('user-batch-select').dispatchEvent(new Event('change'));" 
-                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02]' : 'border-gray-100 bg-white hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all shadow-sm hover:shadow-md relative overflow-hidden">
-                                <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded mb-2 inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
-                                <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
-                                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                                    <div class="h-1.5 rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
-                                </div>
-                                <span class="text-[9px] text-gray-500 font-bold">تم حجز ${Math.round(percent)}% من الدفعة</span>
-                            </div>
-                        `;
                     }
                 });
                 
-                if (!currentVal && firstOpenBatch) {
+                if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
+                    batchSelect.value = currentVal;
+                } else if (firstOpenBatch) {
                     batchSelect.value = firstOpenBatch;
-                    batchSelect.dispatchEvent(new Event('change')); 
                 }
 
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
@@ -507,9 +485,7 @@ function listenToDatabase() {
             }
         }
     });
-} // <--- القوس ده اللي كان ناقص وبيوقف الموقع
-
-
+}
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
@@ -608,36 +584,22 @@ window.renderProducts = function() {
 };
 
 // --- منطق السلة والكميات ---
-window.scrollToBatch = function() {
-    const batchBox = document.getElementById('batch-selection-container');
-    if(batchBox) {
-        // الشاشة تطلع لفوق ببطء
-        batchBox.scrollIntoView({behavior: 'smooth', block: 'center'});
-        
-        // تأثير نبض/نور باللون الأحمر عشان يشتغل عندك 100%
-        batchBox.classList.add('ring-4', 'ring-red-500', 'scale-105', 'transition-all', 'duration-300');
-        setTimeout(() => {
-            batchBox.classList.remove('ring-4', 'ring-red-500', 'scale-105');
-        }, 1500);
-    } else {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-};
-
 window.getCardActionHTML = function(id) {
     if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-xs text-center">مغلق</div>`;
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
-    // 👇 زرار العميل البسيط (مظبوط عشان ميبوظش مساحة الكارت)
     if (available === 0 && inCart === 0) {
-        return `
-        <div onclick="scrollToBatch()" class="w-full bg-red-50 flex flex-col justify-center items-center py-1 rounded-xl border border-red-300 cursor-pointer hover:bg-red-100 transition-colors shadow-sm">
-            <span class="text-[11px] font-black text-red-600 mb-0.5">نفذت (خلصت)</span>
-            <span class="text-[10px] font-bold text-white bg-red-500 px-2 py-0.5 rounded shadow-sm flex items-center gap-1 animate-pulse">
-                غير الميعاد <i class="fa-solid fa-arrow-up"></i>
-            </span>
-        </div>`;
+        const nextCartQty = window.nextBatchCart[id] || 0;
+        if (nextCartQty > 0) {
+            return `
+            <div class="flex items-center justify-between bg-orange-50 border border-orange-300 rounded-xl p-1 h-[36px]">
+                <div onclick="updateNextBatch('${id}', 1)" class="w-8 h-full bg-white text-orange-600 rounded-lg shadow-sm font-black text-lg flex items-center justify-center cursor-pointer select-none">+</div>
+                <span class="font-black text-orange-700 text-xs min-w-[20px] text-center">⏳ ${nextCartQty}</span>
+                <div onclick="updateNextBatch('${id}', -1)" class="w-8 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none">-</div>
+            </div>`;
+        }
+        return `<div onclick="updateNextBatch('${id}', 1)" class="w-full bg-orange-50 text-orange-600 font-bold py-2 rounded-xl text-[11px] flex justify-center items-center gap-1 cursor-pointer border border-orange-200 hover:bg-orange-100 transition-colors"><i class="fa-regular fa-clock"></i> للدفعة الجاية</div>`;
     }
     
     if (inCart > 0) {
@@ -650,7 +612,6 @@ window.getCardActionHTML = function(id) {
     }
     return `<div onclick="addToCart('${id}')" class="w-full bg-brand-navy text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer shadow-sm hover:opacity-90"><i class="fa-solid fa-plus"></i> إضافة</div>`;
 }
-
 
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
@@ -801,8 +762,7 @@ window.updateUI = function() {
         if (totalItems > 0 && deliverySelect && deliverySelect.value !== "" && meetsMinOrder) {
             if (nameVal && nameVal.length >= 3 && phoneVal && phoneVal.length >= 10) validForm = true;
         }
-        checkoutBtn.disabled = false;
-
+        checkoutBtn.disabled = !validForm;
         if(!validForm && totalItems > 0) checkoutHintStep2.classList.remove('hidden'); 
         else checkoutHintStep2.classList.add('hidden');
     }
@@ -841,63 +801,15 @@ window.acceptCrossSell = function() { addToCart(globalSettings.crossSellProductI
 window.declineCrossSell = function() { const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
 
 window.finalCheckoutStep = async function() {
-    const checkoutBtn = document.getElementById('checkout-btn'); 
-    const originalBtnHtml = checkoutBtn.innerHTML; 
-    checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; 
-    checkoutBtn.disabled = true;
+    const checkoutBtn = document.getElementById('checkout-btn'); const originalBtnHtml = checkoutBtn.innerHTML; checkoutBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin text-2xl"></i> جاري تسجيل الطلب...'; checkoutBtn.disabled = true;
 
-    const deliverySelect = document.getElementById('delivery-zone'); 
-    const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value || z.name === deliverySelect.value); 
-    const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; 
-    const deliveryFee = selectedZone ? parseInt(selectedZone.price) || 0 : 0;
+    const deliverySelect = document.getElementById('delivery-zone'); const selectedZone = globalDeliveryZones.find(z => z.id === deliverySelect.value); const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; const deliveryFee = selectedZone ? selectedZone.price : 0;
+    const batchSelect = document.getElementById('user-batch-select'); const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
     
-    const batchSelect = document.getElementById('user-batch-select'); 
-    const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; 
-    const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
-    
-    let customerName = document.getElementById('customer-name').value.trim(); 
-    let customerPhone = document.getElementById('customer-phone').value.trim(); 
-    let customerAddress = document.getElementById('customer-address').value.trim();
-    
-    // 👇 التعديل هنا: سحب الملاحظة اللي العميل بيكتبها
-    let customerNotesInput = document.getElementById('customer-notes') ? document.getElementById('customer-notes').value.trim() : '';
+    let customerName = document.getElementById('customer-name').value.trim(); let customerPhone = document.getElementById('customer-phone').value.trim(); let customerAddress = document.getElementById('customer-address').value.trim();
 
-    // 1. فحص صحة الاسم
-    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) {
-        showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز.");
-        checkoutBtn.innerHTML = originalBtnHtml;
-        checkoutBtn.disabled = false;
-        return;
-    }
-
-    // 2. فحص كود الخصم (إذا كان مخصصاً لرقم محدد)
-    if (appliedPromo && appliedPromo.customerPhone) {
-        let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10);
-        let userPhone = customerPhone.replace(/\D/g, '').slice(-10);
-        
-        if (phoneToMatch !== userPhone && phoneToMatch !== '') {
-            showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه.");
-            checkoutBtn.innerHTML = originalBtnHtml;
-            checkoutBtn.disabled = false;
-            return;
-        }
-    }
-
-    // 3. فحص طول رقم الموبايل (التعديل الجديد)
-    if (customerPhone.length < 10) { 
-        showAlert("تنبيه", "يرجى التأكد من كتابة رقم الموبايل بالكامل عشان نقدر نتواصل معاك."); 
-        checkoutBtn.innerHTML = originalBtnHtml; 
-        checkoutBtn.disabled = false; 
-        return; 
-    }
-
-    // 4. فحص اختيار منطقة التوصيل (التعديل الجديد)
-    if (!deliverySelect || deliverySelect.value === "") { 
-        showAlert("تنبيه", "نسيت تختار منطقة التوصيل! يرجى تحديدها لحساب الإجمالي."); 
-        checkoutBtn.innerHTML = originalBtnHtml; 
-        checkoutBtn.disabled = false; 
-        return; 
-    }
+    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) { showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; }
+    if (appliedPromo && appliedPromo.customerPhone) { let phoneToMatch = appliedPromo.customerPhone.replace(/\D/g, '').slice(-10); let userPhone = customerPhone.replace(/\D/g, '').slice(-10); if (phoneToMatch !== userPhone && phoneToMatch !== '') { showAlert("تنبيه", "عفواً، كود الخصم هذا مخصص لرقم هاتف آخر ولا يمكنك استخدامه."); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false; return; } }
 
     for (let id in cart) { 
         if(!productsInfo[id]) continue; 
@@ -919,22 +831,12 @@ window.finalCheckoutStep = async function() {
         } 
     }
 
-    const orderDate = new Date().toLocaleDateString('ar-EG'); 
-    const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
+    const orderDate = new Date().toLocaleDateString('ar-EG'); const orderTime = new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
     let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = ["#طلب_مباشر"];
     if (globalSettings.batchHashtag) { let cleanHashtag = globalSettings.batchHashtag.trim(); if (!cleanHashtag.startsWith('#')) cleanHashtag = '#' + cleanHashtag; smartTagsArray.push(cleanHashtag.replace(/\s+/g, '_')); }
     
     let customerDetailsStr = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}🕒 الوقت: ${orderDate} - ${orderTime}`;
-    let itemsStr = ""; 
-    for (let id in cart) { 
-        if(!productsInfo[id]) continue; 
-        const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; 
-        let shortName = item.name.replace('طبق ', '').split(' (')[0]; 
-        itemsSummaryArray.push(`${item.quantity} ${shortName}`); 
-        let tagName = "#" + shortName.replace(/ /g, '_'); 
-        if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); 
-        itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; 
-    }
+    let itemsStr = ""; for (let id in cart) { if(!productsInfo[id]) continue; const item = cart[id]; const itemTotal = item.quantity * item.price; subTotal += itemTotal; let shortName = item.name.replace('طبق ', '').split(' (')[0]; itemsSummaryArray.push(`${item.quantity} ${shortName}`); let tagName = "#" + shortName.replace(/ /g, '_'); if(!smartTagsArray.includes(tagName)) smartTagsArray.push(tagName); itemsStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${itemTotal} ج.م\n`; }
 
     let discountAmount = 0; let discountTextTemplate = "";
     if (appliedPromo) { if(appliedPromo.type === 'free_delivery') { discountTextTemplate = `🎁 ${appliedPromo.code}: توصيل مجاني\n`; } else { discountAmount = appliedPromo.type === 'percent' ? (subTotal * (appliedPromo.discount / 100)) : appliedPromo.discount; if (appliedPromo.type === 'percent' && appliedPromo.maxDiscount > 0) { discountAmount = Math.min(discountAmount, appliedPromo.maxDiscount); } discountAmount = Math.round(Math.min(discountAmount, subTotal)); discountTextTemplate = `🎁 كود (${appliedPromo.code}): -${discountAmount} ج\n`; } }
@@ -955,28 +857,22 @@ window.finalCheckoutStep = async function() {
 
     let nextBatchNotes = "";
     for (let id in window.nextBatchCart) { if(productsInfo[id]) nextBatchNotes += `▪ ${productsInfo[id].name} (الكمية: ${window.nextBatchCart[id]})\n`; }
-    
-    // 👇 التعديل هنا: تجهيز الملاحظات ودمجها مع بعض
-    let adminAndCustomerNotes = earnedLoyalty ? `🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
-    if (nextBatchNotes) {
-        adminAndCustomerNotes += `\n⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`;
-        message += `\n\n⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`; 
-    }
-    
-    if (customerNotesInput) {
-        adminAndCustomerNotes += `\n\n📌 **ملاحظة من العميل:** ${customerNotesInput}`;
-        message += `\n\n📌 *ملاحظة من العميل:* ${customerNotesInput}`; // رسالة الواتساب
-    }
+    let finalAdminNote = "";
+    if (nextBatchNotes) finalAdminNote = `⏳ **مطلوب حجزه في الدفعة القادمة:**\n${nextBatchNotes.trim()}`;
 
     let addressText = customerAddress ? `🏠 العنوان: ${customerAddress}` : "";
     let tickTickItemsStr = ""; for (let id in cart) { if(productsInfo[id]) tickTickItemsStr += `[ ${cart[id].quantity} ] ${cart[id].name} = ${cart[id].quantity * cart[id].price} ج.م\n`; }
     
     let discountTickTickText = discountAmount > 0 ? `🎁 الخصم: -${discountAmount} ج.م\n` : ""; 
     
+    let notesText = earnedLoyalty ? `\n🎟 ملاحظة: كود المرة القادمة (${newPromoCode})` : "";
+    if (nextBatchNotes) notesText += `\n\n${finalAdminNote}`;
+    if (nextBatchNotes) message += `\n\n${finalAdminNote}`; 
+
     let batchTickTickLine = batchName ? `\n\n📌 **حجز تبع: ${batchName}**\n` : '';
     let defaultTickTick = "🧾 **تفاصيل الأوردر كاملة:**" + batchTickTickLine + "\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}";
 
-    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', adminAndCustomerNotes).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
+    let orderDetailsForTickTick = (globalSettings.ticktickTemplate || defaultTickTick).replace('{اسم_العميل}', customerName).replace('{الموبايل}', customerPhone).replace('{المنطقة}', zoneName).replace('{العنوان}', addressText).replace('{الوقت}', `${orderDate} - ${orderTime}`).replace('{تفاصيل_الطلبات}', tickTickItemsStr.trim()).replace('{قيمة_الطلبات}', subTotal).replace('{الخصم}', discountTickTickText).replace('{التوصيل}', deliveryText).replace('{الاجمالي}', finalTotal).replace('{ملاحظات}', notesText).replace('{الهاشتاجات}', smartTagsArray.join(' ')); orderDetailsForTickTick = orderDetailsForTickTick.replace(/\n\s*\n/g, '\n');
 
     try {
         if(typeof WEB3FORMS_ACCESS_KEY !== 'undefined') {
@@ -987,18 +883,21 @@ window.finalCheckoutStep = async function() {
             const orderData = { 
                 customerName, customerPhone, customerAddress: customerAddress||"غير محدد", zone: zoneName, items: [], subtotal: subTotal, discount: discountAmount, deliveryFee: finalDelivery, total: finalTotal, status: "new", 
                 usedPromo: appliedPromo ? appliedPromo.code : null, generatedPromo: newPromoCode || null, batch: globalSettings.batchHashtag || "", orderDate: orderDate, orderTime: orderTime, isRead: false, createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                batchId: batchId, batchName: batchName, 
-                adminNote: adminAndCustomerNotes // 👇 حفظ الملاحظة هنا في الـ CRM
+                batchId: batchId, batchName: batchName, adminNote: finalAdminNote 
             };
             for (let id in cart) orderData.items.push({ id, name: cart[id].name, quantity: cart[id].quantity, price: cart[id].price });
             
+            // 1. تسجيل الأوردر
             await db.collection("orders").add(orderData);
             
+            // 2. تحديث الإحصائيات
             await db.collection('inventory').doc('stats').set({ sales: firebase.firestore.FieldValue.increment(finalTotal), orders: firebase.firestore.FieldValue.increment(1) }, { merge: true });
             
+            // 3. تحديث ملف العميل
             let cleanPhoneForDB = window.formatPhoneNumber(customerPhone);
             await db.collection("customers").doc(cleanPhoneForDB).set({ name: customerName, phone: cleanPhoneForDB, zone: zoneName, address: customerAddress || "", lastOrder: firebase.firestore.FieldValue.serverTimestamp(), imported: false }, { merge: true });
             
+            // 4. الخصم من الدفعة بأمر صارم
             if(batchId) {
                 let bookedUpdates = {};
                 for (let id in cart) { 
@@ -1007,10 +906,12 @@ window.finalCheckoutStep = async function() {
                 await db.collection("inventory").doc("batches").set({ [batchId]: { booked: bookedUpdates } }, { merge: true });
             }
 
+            // 5. تحديث الكوبونات
             if(promoUpdated) { 
                 await db.collection("inventory").doc("settings").set({ promoCodes: globalSettings.promoCodes, rewardMaxGenerations: globalSettings.rewardMaxGenerations }, { merge: true }); 
             }
             
+            // 6. الخصم من المخزن العام
             let stockUpdates = {}; 
             for (let id in cart) { 
                 stockUpdates[id] = firebase.firestore.FieldValue.increment(-cart[id].quantity); 
@@ -1020,15 +921,8 @@ window.finalCheckoutStep = async function() {
         }
     } catch(e) { console.log("Sync Error", e); }
 
-    cart = {}; window.nextBatchCart = {}; saveCart(); appliedPromo = null; 
-    if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; 
-    if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
-    document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; 
-    
-    // تصفير خانة الملاحظات بعد الإرسال
-    if(document.getElementById('customer-notes')) document.getElementById('customer-notes').value = ""; 
-    
-    updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
+    cart = {}; window.nextBatchCart = {}; saveCart(); appliedPromo = null; if(document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = ""; if(document.getElementById('promo-message')) document.getElementById('promo-message').classList.add('hidden');
+    document.getElementById('customer-name').value = ""; document.getElementById('customer-phone').value = ""; document.getElementById('customer-address').value = ""; document.getElementById('delivery-zone').value = ""; updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
 
     if (earnedLoyalty) {
         const rewardDesc = globalSettings.rewardType === 'free_delivery' ? 'توصيل مجاني' : globalSettings.rewardType === 'percent' ? `خصم ${globalSettings.rewardValue}%` : `خصم ${globalSettings.rewardValue} ج.م`;
@@ -1051,10 +945,7 @@ window.finalCheckoutStep = async function() {
 
         window.currentOrderWaLink = `https://api.whatsapp.com/send?phone=20${globalSettings.storePhone}&text=${encodeURIComponent(message)}`;
 
-        const msgHTML = `<div dir="rtl" class="w-full block clear-both" style="font-family: 'Cairo', sans-serif; text-align: right; direction: rtl;"><div class="text-center w-full mb-2"><div class="w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto text-2xl shadow-sm"><i class="fa-solid fa-check"></i></div><h3 class="font-black text-brand-navy mt-2 text-base md:text-lg">${titleText}</h3></div><div class="text-xs md:text-sm font-bold text-green-800 leading-relaxed bg-[#f0fdf4] p-3 rounded-xl border border-green-200 block w-full mb-4 shadow-inner" style="text-align: right; direction: rtl; white-space: normal; word-break: break-word;">${bodyText}</div><div class="flex flex-col gap-2 w-full">
-        <button onclick="closeAlert(); window.location.href='track.html?phone=${customerPhone}';" class="w-full bg-brand-navy hover:bg-green-800 text-white font-black py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-md text-center"><i class="fa-solid fa-route"></i><span>تتبع حالة الطلب الآن</span></button>
-        <button onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-md text-center"><i class="fa-brands fa-whatsapp text-xl"></i><span>${waBtnText}</span></button>
-        <button onclick="closeAlert()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 px-4 rounded-xl transition-colors shadow-sm text-center text-xs">${closeBtnText}</button></div></div>`;
+        const msgHTML = `<div dir="rtl" class="w-full block clear-both" style="font-family: 'Cairo', sans-serif; text-align: right; direction: rtl;"><div class="text-center w-full mb-2"><div class="w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto text-2xl shadow-sm"><i class="fa-solid fa-check"></i></div><h3 class="font-black text-brand-navy mt-2 text-base md:text-lg">${titleText}</h3></div><div class="text-xs md:text-sm font-bold text-green-800 leading-relaxed bg-[#f0fdf4] p-3 rounded-xl border border-green-200 block w-full mb-4 shadow-inner" style="text-align: right; direction: rtl; white-space: normal; word-break: break-word;">${bodyText}</div><div class="flex flex-col gap-2 w-full"><button onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl transition-all flex justify-center items-center gap-2 shadow-md text-center"><i class="fa-brands fa-whatsapp text-xl"></i><span>${waBtnText}</span></button><button onclick="closeAlert()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 px-4 rounded-xl transition-colors shadow-sm text-center text-xs">${closeBtnText}</button></div></div>`;
         const alertBtn = document.querySelector('#alert-box button'); if(alertBtn) alertBtn.classList.add('hidden');
         document.getElementById('alert-icon-container').classList.add('hidden'); document.getElementById('alert-title').classList.add('hidden'); 
         const alertMsg = document.getElementById('alert-message'); if(alertMsg) { alertMsg.className = "w-full block p-0 m-0"; alertMsg.style.textAlign = "right"; alertMsg.innerHTML = msgHTML; }
