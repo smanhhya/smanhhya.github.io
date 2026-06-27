@@ -441,7 +441,6 @@ function listenToDatabase() {
         if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
     
-    // --- السطر اللي كان ناقص هنا ---
     db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
         if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
@@ -454,7 +453,7 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== الدفعات التفاعلية (بعد التعديل) =====
+    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
@@ -464,48 +463,67 @@ function listenToDatabase() {
             if(batchSelect && cardsContainer) {
                 let currentVal = batchSelect.value;
                 cardsContainer.innerHTML = ''; 
+                let openBatchesCount = 0;
+                let firstOpenBatch = null;
                 
                 Object.keys(globalBatches).forEach(bId => {
                     if(globalBatches[bId].isOpen) {
                         const batch = globalBatches[bId];
+                        if(!firstOpenBatch) firstOpenBatch = bId;
+                        openBatchesCount++;
+
                         let totalStock = 0, totalBooked = 0;
                         if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
                         if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
                         
                         let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
+                        let isLowStock = percent >= 80;
                         let isSelected = currentVal === bId;
 
                         cardsContainer.innerHTML += `
                             <div id="card-${bId}" onclick="selectBatchAndScroll('${bId}')" 
-                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all shadow-sm relative overflow-hidden">
+                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white hover:border-brand-cyan/30 opacity-70 hover:opacity-100'} rounded-2xl p-4 transition-all relative overflow-hidden">
                                 <div class="flex justify-between items-start mb-2">
-                                    <span class="bg-green-100 text-green-700 text-[9px] font-black px-2 py-0.5 rounded"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
+                                    <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
                                     ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
                                 </div>
                                 <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
                                 <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                                    <div class="h-1.5 rounded-full transition-all duration-500 ${percent >= 80 ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
+                                    <div class="h-1.5 rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
                                 </div>
                                 <span class="text-[9px] text-gray-500 font-bold">تم حجز ${Math.round(percent)}% من الدفعة</span>
-                            </div>`;
+                            </div>
+                        `;
                     }
                 });
+                
+                if (!currentVal && firstOpenBatch) {
+                    batchSelect.value = firstOpenBatch;
+                    batchSelect.dispatchEvent(new Event('change')); 
+                }
+                
+                let batchContainer = document.getElementById('batch-selection-container');
+                if(batchContainer) {
+                    if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
+                    else batchContainer.style.display = 'none';
+                }
+                
                 if(isStoreDataLoaded) { renderProducts(); updateUI(); }
             }
         }
     });
 } 
 
-// --- دالة النزول السلس وتحديد الكارت (تتحط بره listenToDatabase) ---
+// --- دالة النزول السلس وتحديد الكارت ---
 window.selectBatchAndScroll = (bId) => {
     document.getElementById('user-batch-select').value = bId;
     document.getElementById('user-batch-select').dispatchEvent(new Event('change'));
     
-    // النزول للمنيو
     setTimeout(() => {
         const menuTitle = document.getElementById('lbl-menu-title');
         if(menuTitle) {
-            const y = menuTitle.getBoundingClientRect().top + window.scrollY - 80;
+            const yOffset = -70; 
+            const y = menuTitle.getBoundingClientRect().top + window.scrollY + yOffset;
             window.scrollTo({top: y, behavior: 'smooth'});
         }
     }, 200);
