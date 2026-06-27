@@ -67,13 +67,7 @@
             <!-- أزرار اختيار الطلب (في حالة وجود أكثر من طلب نشط لنفس العميل) -->
             <div id="orders-selector" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
 
-            <!-- الترحيب والإجمالي -->
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide mt-2">
-                <!-- عرض الاسم بالكامل هنا -->
-                <h3 class="font-bold text-lg text-slate-800 mb-1">أهلاً بحضرتك، أ. <span id="res-name" class="text-brand-primary"></span></h3>
-                <p class="text-sm text-slate-500 mb-4 border-b border-slate-100 pb-4">تفاصيل الطلب الحالي وحالته.</p>
-                
-            <!-- الترحيب والإجمالي -->
+            <!-- الترحيب والإجمالي (النسخة النظيفة المتظبطة) -->
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide mt-2">
                 <!-- عرض الاسم بالكامل هنا -->
                 <h3 class="font-bold text-lg text-slate-800 mb-1">أهلاً بحضرتك، أ. <span id="res-name" class="text-brand-primary"></span></h3>
@@ -93,6 +87,7 @@
                     </div>
                 </div>
             </div>
+
 
             <!-- صندوق موعد وتفاصيل الدفعة (يظهر للحجوزات المسبقة ويقرأ لايف من الـ CRM) -->
             <div id="batch-info-box" class="hidden bg-gradient-to-l from-indigo-50 to-white rounded-2xl p-5 shadow-sm border border-indigo-100 mt-3 animate-slide">
@@ -329,6 +324,7 @@
         }
 
         function displayResult() {
+        function displayResult() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('result-section').classList.remove('hidden');
 
@@ -337,19 +333,23 @@
             document.getElementById('res-name').innerText = fullName;
             document.getElementById('res-total').innerText = currentOrder.total || 0;
 
-            // 👇👇 السحر الجديد بتاع تفاصيل الحساب 👇👇
-            let totalQty = currentOrder.items ? currentOrder.items.reduce((sum, item) => sum + item.quantity, 0) : 0;
+            // 👇👇 السحر الجديد بتاع تفاصيل الحساب بأسماء الأصناف 👇👇
             let itemsCost = currentOrder.subtotal || 0;
             let deliveryFee = currentOrder.deliveryFee || 0;
             let discountVal = currentOrder.discount || 0;
 
-            let detailsHtml = `<span class="bg-white px-2 py-0.5 rounded border border-slate-100 shadow-sm">${totalQty} منتج بـ ${itemsCost}ج</span>`;
+            // هنا بنسحب أسماء الأصناف وكمياتها ونربطهم بحرف "و"
+            let itemsString = currentOrder.items && currentOrder.items.length > 0 
+                ? currentOrder.items.map(i => `${i.quantity} ${i.name}`).join(' و ') 
+                : 'بدون تفاصيل';
+
+            let detailsHtml = `<span class="bg-white px-2 py-0.5 rounded border border-slate-100 shadow-sm">${itemsString} بـ ${itemsCost}ج</span>`;
             detailsHtml += `<span class="bg-white px-2 py-0.5 rounded border border-slate-100 shadow-sm">توصيل ${deliveryFee}ج</span>`;
+            
             if (discountVal > 0) {
                 detailsHtml += `<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 shadow-sm">خصم -${discountVal}ج</span>`;
             }
             
-            // التأكد إن المربع موجود في الـ HTML عشان ميعملش إيرور
             let detailsContainer = document.getElementById('res-total-details');
             if(detailsContainer) {
                 detailsContainer.innerHTML = detailsHtml;
@@ -359,6 +359,7 @@
             renderItemsList();
             updateTimeline();
         }
+
 
         function renderItemsList() {
             // عرض المحتويات للقراءة فقط بشكل دائم
