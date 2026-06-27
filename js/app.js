@@ -453,51 +453,29 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== التعديل الجديد للدفعات بالكروت =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
             let batchContainer = document.getElementById('batch-selection-container');
-            let cardsContainer = document.getElementById('batch-cards-wrapper');
-            
-            if(batchSelect && batchContainer && cardsContainer) {
+            if(batchSelect && batchContainer) {
                 let currentVal = batchSelect.value;
-                cardsContainer.innerHTML = ''; 
+                batchSelect.innerHTML = ''; 
                 let openBatchesCount = 0;
                 let firstOpenBatch = null;
                 
                 Object.keys(globalBatches).forEach(bId => {
                     if(globalBatches[bId].isOpen) {
-                        const batch = globalBatches[bId];
                         if(!firstOpenBatch) firstOpenBatch = bId;
+                        batchSelect.innerHTML += `<option value="${bId}">${globalBatches[bId].name}</option>`;
                         openBatchesCount++;
-
-                        let totalStock = 0, totalBooked = 0;
-                        if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
-                        if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
-                        
-                        let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
-                        let isLowStock = percent >= 80;
-                        let isSelected = currentVal === bId;
-
-                        cardsContainer.innerHTML += `
-                            <div onclick="document.getElementById('user-batch-select').value='${bId}'; document.getElementById('user-batch-select').dispatchEvent(new Event('change'));" 
-                                 class="cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02]' : 'border-gray-100 bg-white hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all shadow-sm hover:shadow-md relative overflow-hidden">
-                                <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-1 rounded mb-2 inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
-                                <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
-                                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                                    <div class="h-1.5 rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
-                                </div>
-                                <span class="text-[9px] text-gray-500 font-bold">تم حجز ${Math.round(percent)}% من الدفعة</span>
-                            </div>
-                        `;
                     }
                 });
                 
-                if (!currentVal && firstOpenBatch) {
+                if (currentVal && globalBatches[currentVal] && globalBatches[currentVal].isOpen) {
+                    batchSelect.value = currentVal;
+                } else if (firstOpenBatch) {
                     batchSelect.value = firstOpenBatch;
-                    batchSelect.dispatchEvent(new Event('change')); 
                 }
 
                 if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
@@ -507,9 +485,7 @@ function listenToDatabase() {
             }
         }
     });
-} // <--- القوس ده اللي كان ناقص وبيوقف الموقع
-
-
+}
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
