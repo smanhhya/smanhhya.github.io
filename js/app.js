@@ -34,7 +34,6 @@ function getAvailableStock(id) {
     
     if (batchId && globalBatches[batchId]) {
         const batch = globalBatches[batchId];
-        // هيقرأ من الـ CRM الأساسي لو الدفعة ملهاش رقم محدد
         const bStock = (batch.stock && batch.stock[id] !== undefined) ? parseInt(batch.stock[id]) : (globalStock[id] || 0);
         const bBooked = (batch.booked && batch.booked[id]) ? parseInt(batch.booked[id]) : 0;
         const remainingInBatch = Math.max(0, bStock - bBooked);
@@ -366,7 +365,7 @@ window.setupEventListeners = function() {
     }
 }
 
-// --- تهيئة Firebase مع تفعيل الكاش المحلي لإنقاذ الموقع ---
+// --- تهيئة Firebase ---
 function initFirebase() {
     const firebaseConfig = { 
         apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
@@ -379,15 +378,10 @@ function initFirebase() {
     try { 
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         db = firebase.firestore(); 
-        
-        // 🌟 التعديل السحري: تفعيل الذاكرة المخبأة (عشان لو السيرفر قفل، المنيو يظهر من الموبايل) 🌟
-        db.enablePersistence({synchronizeTabs: true}).catch(function(err) {
-            console.log("Cache persistence error: ", err);
-        });
+        db.enablePersistence({synchronizeTabs: true}).catch(function(err) { console.log("Cache error: ", err); });
 
         hasCloud = true; listenToDatabase(); 
         
-        // 🌟 تايمر الإنقاذ: لو فايربيس ماردش خلال 2.5 ثانية، افتح المنيو فوراً بالبيانات الأساسية 🌟
         setTimeout(() => {
             if (!isStoreDataLoaded) {
                 isStoreDataLoaded = true;
@@ -396,13 +390,11 @@ function initFirebase() {
                     if(globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice; 
                 });
                 renderProducts(); applySettingsToUI(); updateUI();
-                console.log("تم تشغيل وضع الإنقاذ (Offline Mode)");
             }
         }, 2500);
 
     } catch (e) { console.log("Firebase Error", e); }
 }
-
 
 function listenToDatabase() {
     if(!db) return;
@@ -453,12 +445,13 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== التعديل الجديد للدفعات بالكروت =====
+    // ===== الدفعات التفاعلية (الكروت) =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
             let cardsContainer = document.getElementById('batch-cards-wrapper');
+            let batchContainer = document.getElementById('batch-selection-container');
             
             if(batchSelect && cardsContainer) {
                 let currentVal = batchSelect.value;
@@ -504,7 +497,6 @@ function listenToDatabase() {
                     batchSelect.dispatchEvent(new Event('change')); 
                 }
                 
-                let batchContainer = document.getElementById('batch-selection-container');
                 if(batchContainer) {
                     if(openBatchesCount > 0) batchContainer.style.display = 'block'; 
                     else batchContainer.style.display = 'none';
@@ -516,16 +508,14 @@ function listenToDatabase() {
     });
 } 
 
-// ===== دالة النزول السلس وتحديث شكل الكارت فوراً =====
+// ===== دالة التحديد والنزول السلس =====
 window.selectBatchAndScroll = (bId) => {
     let hiddenInput = document.getElementById('user-batch-select');
     if(!hiddenInput) return;
     
-    // 1. تحديث القيمة في السيستم
     hiddenInput.value = bId;
     hiddenInput.dispatchEvent(new Event('change'));
     
-    // 2. تحديث بصري فوري للكروت عشان العميل يحس بالاستجابة
     document.querySelectorAll('.batch-card-item').forEach(card => {
         let iconContainer = card.querySelector('.check-icon-container');
         if(card.id === `card-${bId}`) {
@@ -537,7 +527,6 @@ window.selectBatchAndScroll = (bId) => {
         }
     });
     
-    // 3. النزول السلس للمنيو
     setTimeout(() => {
         const menuTitle = document.getElementById('lbl-menu-title');
         if(menuTitle) {
@@ -547,10 +536,6 @@ window.selectBatchAndScroll = (bId) => {
         }
     }, 150);
 };
-
-
-
-
 
 // --- نظام الكوبونات والخصم ---
 window.applyPromoCode = function() {
