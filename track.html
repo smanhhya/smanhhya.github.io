@@ -480,42 +480,44 @@
             }, 100);
 
             // ==========================================
-            // منطق تشغيل صندوق الدفعة والعداد التنازلي المطور
+            // منطق تشغيل صندوق الدفعة والعداد الذكي (مضاد لأخطاء الشهور)
             // ==========================================
             let batchBox = document.getElementById('batch-info-box');
             if (batchBox) {
                 if (currentOrder.batchName && currentOrder.deliveryStart && currentOrder.deliveryEnd) {
                     batchBox.classList.remove('hidden');
                     document.getElementById('batch-display-name').innerText = currentOrder.batchName;
-                    document.getElementById('batch-date-range').innerText = currentOrder.deliveryStart + " إلى " + currentOrder.deliveryEnd;
-
+                    
+                    // تحويل التواريخ لكائنات ذكية تفهم الشهور
+                    let startDate = new Date(currentOrder.deliveryStart);
+                    let endDate = new Date(currentOrder.deliveryEnd);
                     let now = new Date();
-                    let currentDay = now.getDate();
-                    let targetDay = parseInt(currentOrder.deliveryStart);
-                    let endDay = parseInt(currentOrder.deliveryEnd);
+                    now.setHours(0,0,0,0); // تصفير الوقت لحساب الأيام بدقة
+                    
+                    // استخراج اليوم فقط للعرض (مثال: 1 إلى 5)
+                    document.getElementById('batch-date-range').innerText = startDate.getDate() + " إلى " + endDate.getDate();
 
-                    if (currentDay < targetDay) {
-                        // ميعاد التسليم لسه مجاش
-                        let diffDays = targetDay - currentDay;
+                    let diffTime = startDate.getTime() - now.getTime();
+                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diffDays > 0) {
                         document.getElementById('batch-days-left').innerText = diffDays + " أيام";
                         document.getElementById('batch-days-left').className = "block text-lg font-black text-brand-primary";
-                        document.getElementById('batch-days-text').innerText = "متبقي على بدء الدفعة";
-                    } else if (currentDay >= targetDay && currentDay <= endDay) {
-                        // إحنا في فترة التسليم الحالية!
+                        document.getElementById('batch-days-text').innerText = "متبقي على التجهيز";
+                    } else if (now >= startDate && now <= endDate) {
                         document.getElementById('batch-days-left').innerText = "الآن";
                         document.getElementById('batch-days-left').className = "block text-xl font-black text-emerald-500 animate-pulse";
                         document.getElementById('batch-days-text').innerText = "جاري التجهيز والتسليم";
                     } else {
-                        // الأيام عدت (مثلاً الدفعة خلصت أو إحنا في تحديث جديد مخصص لليوم)
-                        document.getElementById('batch-days-left').innerText = "انتظر تواصلنا";
+                        document.getElementById('batch-days-left').innerText = "انتظر مكالمتنا";
                         document.getElementById('batch-days-left').className = "block text-sm font-black text-amber-500";
                         document.getElementById('batch-days-text').innerText = "موعدك المحدد قريباً";
                     }
                 } else {
-                    // لو الأوردر فوري ومفيش تواريخ دفعة، اخفي الصندوق
                     batchBox.classList.add('hidden');
                 }
             }
+
         } // <-- دي القفلة الأخيرة بتاعت دالة updateTimeline 
 
 
