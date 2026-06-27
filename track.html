@@ -260,8 +260,15 @@
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; btn.disabled = true; document.getElementById('error-msg').classList.add('hidden');
 
             try {
-                let snap = await db.collection('orders').where('customerPhone', '==', phone).get();
-                let orders = []; snap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
+                // البحث في الرقم الأساسي والرقم الإضافي للعميل في نفس الوقت
+                let snap1 = await db.collection('orders').where('customerPhone', '==', phone).get();
+                let snap2 = await db.collection('orders').where('customerPhone2', '==', phone).get();
+                
+                let ordersMap = {}; // استخدمنا Map عشان نمنع تكرار الأوردر لو الرقمين شبه بعض
+                snap1.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+                snap2.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+                
+                let orders = Object.values(ordersMap);
                 
                 pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
                 allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
