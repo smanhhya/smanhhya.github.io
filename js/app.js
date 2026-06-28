@@ -887,9 +887,22 @@ window.finalCheckoutStep = async function() {
     const zoneName = selectedZone ? selectedZone.name : 'غير محدد'; 
     const deliveryFee = selectedZone ? parseInt(selectedZone.price) || 0 : 0;
     
-    const batchSelect = document.getElementById('user-batch-select'); 
-    const batchId = (batchSelect && batchSelect.value !== "") ? batchSelect.value : ''; 
-    const batchName = (batchSelect && batchSelect.value !== "") ? batchSelect.options[batchSelect.selectedIndex].text : '';
+    const batchIdInput = document.getElementById('user-batch-select'); 
+    const batchNameInput = document.getElementById('selected-batch-name'); 
+    const batchId = (batchIdInput && batchIdInput.value !== "") ? batchIdInput.value : ''; 
+    const batchName = (batchNameInput && batchNameInput.value !== "") ? batchNameInput.value : '';
+    
+    // شرط إجباري: العميل لازم يختار كارت الدفعة قبل ما يبعت الأوردر
+    if (batchId === '') {
+        let errorMsg = document.getElementById('batch-error-msg');
+        if (errorMsg) {
+            errorMsg.classList.remove('hidden');
+            errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        checkoutBtn.innerHTML = originalBtnHtml; 
+        checkoutBtn.disabled = false;
+        return;
+    }
     
     let customerName = document.getElementById('customer-name').value.trim(); 
     let customerPhone = document.getElementById('customer-phone').value.trim(); 
