@@ -473,12 +473,12 @@
                 document.getElementById('tracking-card').classList.add('hidden');
                 showAlert("تعذر الوصول لحضرتك", "حاول مندوب التوصيل التواصل ولم يتم الرد، الطلب محفوظ لدينا، برجاء التواصل معنا لإعادة الإرسال.", "bg-red-50", "border-red-200", "text-red-700", "fa-solid fa-phone-slash");
             }
-            else if (s === 'processing') {
-                if (currentOrder.driverName) {
+            else if (s === 'processing' || s === 'dispatched') {
+                if (s === 'dispatched' || currentOrder.driverName) {
                     title = "في الطريق إليك"; pWidth = "100%"; activeSteps = 3;
                     document.getElementById('driver-info').classList.remove('hidden');
                     
-                    let rawDriverData = currentOrder.driverName;
+                    let rawDriverData = currentOrder.driverName || "مندوب التوصيل";
                     
                     // استخراج الأرقام فقط للاتصال (حتى لو فيها + أو مسافات)
                     let extractedPhone = rawDriverData.replace(/[^\d+]/g, '');
