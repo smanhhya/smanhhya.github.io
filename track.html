@@ -235,7 +235,9 @@
         let currentOrder = null;
         let allActiveOrders = []; // مصفوفة لتخزين كل الطلبات الحية
         let pastOrders = [];
-        let storeWhatsapp = "201000000000"; 
+        let storeWhatsapp = "201000000000";
+        let orderListener = null; // 🌟 الخط المفتوح لايف للتتبع الذكي
+
 
         db.collection("inventory").doc("settings").get().then(doc => {
             if(doc.exists && doc.data().storePhone) { 
@@ -317,11 +319,25 @@
             }
         }
 
-        function selectOrder(index) {
-            currentOrder = allActiveOrders[index];
-            if(allActiveOrders.length > 1) renderOrderTabs(); // تحديث ألوان الأزرار
-            displayResult();
+function selectOrder(index) {
+    currentOrder = allActiveOrders[index];
+    if(allActiveOrders.length > 1) renderOrderTabs(); // تحديث ألوان الأزرار
+    
+    // 🌟 لو في اتصال قديم مفتوح بأوردر تاني.. اقفله الأول
+    if (orderListener) orderListener();
+    
+    // 🌟 افتح اتصال لايف مع وثيقة الأوردر ده بالذات
+    orderListener = db.collection('orders').doc(currentOrder.id).onSnapshot(doc => {
+        if (doc.exists) {
+            // تحديث البيانات محلياً فوراً بمجرد تعديلها في الـ CRM
+            currentOrder = { id: doc.id, ...doc.data() };
+            displayResult(); // إعادة رسم الشاشة بالبيانات الجديدة لايف
         }
+    }, error => {
+        console.error("Live tracking error:", error);
+    });
+}
+
 
         function displayResult() {
             document.getElementById('login-section').classList.add('hidden');
