@@ -454,7 +454,7 @@ function listenToDatabase() {
         } 
     });
 
-    // ===== التعديل الجديد للدفعات بالكروت =====
+    // ===== التعديل الجديد للدفعات بالكروت (بالتصميم الراقي) =====
     db.collection('inventory').doc('batches').onSnapshot(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
@@ -479,23 +479,31 @@ function listenToDatabase() {
                         if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
                         
                         let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
-                        let isLowStock = percent >= 80;
                         let isSelected = currentVal === bId;
 
+                        // 👇 التعديل الشيك: الحالات الذكية بدل الأرقام وشريط التقدم 👇
+                        let smartBadgeHtml = '';
+                        if (percent >= 80) {
+                            smartBadgeHtml = `<div class="mt-2.5 flex items-center justify-center gap-1.5 bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-hourglass-half"></i> <span>اقترب اكتمال العدد لضمان الجودة</span></div>`;
+                        } else if (percent >= 50) {
+                            smartBadgeHtml = `<div class="mt-2.5 flex items-center justify-center gap-1.5 bg-brand-light border border-brand-navy/10 text-brand-navy text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-chart-line"></i> <span>الدفعة قيد الاكتمال والتجهيز</span></div>`;
+                        } else {
+                            smartBadgeHtml = `<div class="mt-2.5 flex items-center justify-center gap-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-leaf"></i> <span>متاح لتسجيل حجزك الآن</span></div>`;
+                        }
+
+                        // رسم الكارت بالشكل الجديد
                         cardsContainer.innerHTML += `
                             <div id="card-${bId}" onclick="selectBatchAndScroll('${bId}')" 
-                                 class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-70 hover:opacity-100 hover:border-brand-cyan/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between">
-                                <div class="flex justify-between items-start mb-2">
-                                    <span class="bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded inline-block"><i class="fa-solid fa-circle-check"></i> متاح للحجز</span>
-                                    <div class="check-icon-container">
-                                        ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
+                                 class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-80 hover:opacity-100 hover:border-brand-navy/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between min-h-[100px]">
+                                
+                                <div class="flex justify-between items-start mb-1">
+                                    <h4 class="font-black text-brand-navy text-sm md:text-base">${batch.name}</h4>
+                                    <div class="check-icon-container shrink-0">
+                                        ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl drop-shadow-sm"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
                                     </div>
                                 </div>
-                                <h4 class="font-black text-brand-navy text-sm mb-2">${batch.name}</h4>
-                                <div class="w-full bg-gray-100 rounded-full h-1.5 mb-1 overflow-hidden">
-                                    <div class="h-1.5 rounded-full transition-all duration-500 ${isLowStock ? 'bg-red-500' : 'bg-green-500'}" style="width: ${Math.min(percent, 100)}%"></div>
-                                </div>
-                                <span class="text-[9px] text-gray-500 font-bold">تم حجز ${Math.round(percent)}% من الدفعة</span>
+                                
+                                ${smartBadgeHtml}
                             </div>
                         `;
                     }
