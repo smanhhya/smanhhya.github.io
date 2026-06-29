@@ -897,20 +897,35 @@ window.finalCheckoutStep = async function() {
     
     const batchIdInput = document.getElementById('user-batch-select'); 
     const batchNameInput = document.getElementById('selected-batch-name'); 
-    const batchId = (batchIdInput && batchIdInput.value !== "") ? batchIdInput.value : ''; 
-    const batchName = (batchNameInput && batchNameInput.value !== "") ? batchNameInput.value : '';
     
-    // شرط إجباري: العميل لازم يختار كارت الدفعة قبل ما يبعت الأوردر
+    let batchId = (batchIdInput && batchIdInput.value !== "") ? batchIdInput.value : ''; 
+    let batchName = (batchNameInput && batchNameInput.value !== "") ? batchNameInput.value : '';
+    
+    // 🌟 التعديل الاحترافي: اختيار أول دفعة متاحة تلقائياً لو حصلت تهنيجة 🌟
     if (batchId === '') {
-        let errorMsg = document.getElementById('batch-error-msg');
-        if (errorMsg) {
-            errorMsg.classList.remove('hidden');
-            errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // البحث عن أول دفعة مفتوحة في السيستم
+        let firstAvailableBatchId = Object.keys(globalBatches).find(bId => globalBatches[bId].isOpen);
+        
+        if (firstAvailableBatchId) {
+            // لو لقينا دفعة مفتوحة، هنحمل بياناتها ونكمل الطلب عادي جداً
+            batchId = firstAvailableBatchId;
+            batchName = globalBatches[firstAvailableBatchId].name;
+            
+            let errorMsg = document.getElementById('batch-error-msg');
+            if (errorMsg) errorMsg.classList.add('hidden');
+        } else {
+            // لو مفيش ولا دفعة مفتوحة أصلاً في السيستم، هنا بس لازم نوقفه ونطلعله رسالة
+            let errorMsg = document.getElementById('batch-error-msg');
+            if (errorMsg) {
+                errorMsg.classList.remove('hidden');
+                errorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            checkoutBtn.innerHTML = originalBtnHtml; 
+            checkoutBtn.disabled = false;
+            return; // الطلب هيقف هنا عشان مفيش دفعات
         }
-        checkoutBtn.innerHTML = originalBtnHtml; 
-        checkoutBtn.disabled = false;
-        return;
     }
+
     
     let customerName = document.getElementById('customer-name').value.trim(); 
     let customerPhone = document.getElementById('customer-phone').value.trim(); 
