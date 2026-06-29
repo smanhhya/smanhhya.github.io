@@ -1123,10 +1123,24 @@ window.finalCheckoutStep = async function() {
     
     updateUI(); const container = document.getElementById('products-container'); if(container) container.innerHTML = '<div class="text-center py-10 text-brand-cyanDark"><i class="fa-solid fa-spinner fa-spin text-3xl mb-3"></i><p class="font-bold text-sm">جاري التحديث...</p></div>'; renderProducts(); toggleCart(); checkoutBtn.innerHTML = originalBtnHtml; checkoutBtn.disabled = false;
 
+    // 🌟 1. استخراج وقت الدفعة التفاعلي (ليعمل في الشاشتين معاً) 🌟
+    let interactiveTime = "";
+    let loyaltyBatchHtml = "";
+
+    if (batchId && globalBatches[batchId]) {
+        const batchData = globalBatches[batchId];
+        interactiveTime = window.getFriendlyBatchDatePhrase(batchData.deliveryStart, batchData.deliveryEnd);
+        // تصميم رسالة الدفعة اللي هتظهر في شاشة הـ VIP
+        loyaltyBatchHtml = `<div class="bg-red-50 border border-red-100 p-3 rounded-xl mt-3 mb-3 shadow-sm"><span class="font-black text-brand-navy block mb-1">📦 ميعاد استلامك مخصص:</span><span class="font-black text-red-600">${interactiveTime}</span></div>`;
+    }
+
     if (earnedLoyalty) {
         const rewardDesc = globalSettings.rewardType === 'free_delivery' ? 'توصيل مجاني' : globalSettings.rewardType === 'percent' ? `خصم ${globalSettings.rewardValue}%` : `خصم ${globalSettings.rewardValue} ج.م`;
         const customMsg = globalSettings.autoPromoModalMsg || "تم إصدار كود خصم خاص بك لطلبك القادم 🎁";
-        const msgHTML = `<div class="text-5xl mb-3">🎉</div><div class="font-black text-brand-navy mb-2 text-lg">شكراً لطلبك يا ${customerName.split(' ')[0]}!</div><div class="text-green-600 font-black text-sm mb-2">${customMsg}</div><div class="bg-gray-100 border-2 border-dashed border-gray-300 p-4 rounded-xl mb-4 relative"><span class="text-xs font-bold text-gray-500 block mb-1">كود الخصم الخاص بك:</span><span class="font-black text-3xl text-brand-cyanDark tracking-wider select-all block mb-2">${newPromoCode}</span><button onclick="navigator.clipboard.writeText('${newPromoCode}'); this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> تم النسخ بنجاح'; this.classList.replace('bg-brand-navy', 'bg-green-500'); setTimeout(() => { this.innerHTML='<i class=\\'fa-regular fa-copy\\'></i> انسخ الكود'; this.classList.replace('bg-green-500', 'bg-brand-navy'); }, 2000);" class="w-full bg-brand-navy hover:opacity-90 text-white text-sm py-2 rounded-lg font-bold transition-colors flex justify-center items-center gap-2 shadow-sm"><i class="fa-regular fa-copy"></i> انسخ الكود</button><span class="text-xs font-bold text-gray-600 block mt-3">يمنحك ${rewardDesc}</span></div><div class="text-sm font-bold text-brand-navy mt-2">الأوردر وصل السيستم بنجاح وسيتم تجهيزه.</div>`;
+        
+        // 🌟 2. دمج رسالة الدفعة (loyaltyBatchHtml) في كود הـ VIP بدون حذف أي شيء 🌟
+        const msgHTML = `<div class="text-5xl mb-3">🎉</div><div class="font-black text-brand-navy mb-2 text-lg">شكراً لطلبك يا ${customerName.split(' ')[0]}!</div><div class="text-green-600 font-black text-sm mb-2">${customMsg}</div><div class="bg-gray-100 border-2 border-dashed border-gray-300 p-4 rounded-xl mb-4 relative"><span class="text-xs font-bold text-gray-500 block mb-1">كود الخصم الخاص بك:</span><span class="font-black text-3xl text-brand-cyanDark tracking-wider select-all block mb-2">${newPromoCode}</span><button onclick="navigator.clipboard.writeText('${newPromoCode}'); this.innerHTML='<i class=\\'fa-solid fa-check\\'></i> تم النسخ بنجاح'; this.classList.replace('bg-brand-navy', 'bg-green-500'); setTimeout(() => { this.innerHTML='<i class=\\'fa-regular fa-copy\\'></i> انسخ الكود'; this.classList.replace('bg-green-500', 'bg-brand-navy'); }, 2000);" class="w-full bg-brand-navy hover:opacity-90 text-white text-sm py-2 rounded-lg font-bold transition-colors flex justify-center items-center gap-2 shadow-sm"><i class="fa-regular fa-copy"></i> انسخ الكود</button><span class="text-xs font-bold text-gray-600 block mt-3">يمنحك ${rewardDesc}</span></div>${loyaltyBatchHtml}<div class="text-sm font-bold text-brand-navy mt-2">الأوردر وصل السيستم بنجاح وسيتم تجهيزه.</div>`;
+        
         document.getElementById('alert-icon-container').classList.add('hidden'); document.getElementById('alert-title').classList.add('hidden'); document.getElementById('alert-message').innerHTML = msgHTML;
 
         const alertBtn = document.querySelector('#alert-box button'); 
@@ -1141,13 +1155,8 @@ window.finalCheckoutStep = async function() {
         // 1. الرسالة الافتراضية (لو الأوردر فوري مش تبع دفعة)
         let bodyText = uiTexts['successMsgTemplate'] || `أوردرك اتسجل في السيستم عندنا خلاص. هيتم التجهيز عشان تستلمه.`;
         
-        // 2. 🌟 التعديل التفاعلي الجديد (لو الأوردر تبع دفعة) 🌟
+        // 2. التعديل التفاعلي (لو الأوردر تبع دفعة)
         if (batchId && globalBatches[batchId]) {
-            const batchData = globalBatches[batchId];
-            
-            // استدعاء دالة الترجمة الذكية للوقت (اللي ضفناها في الخطوة اللي فاتت)
-            const interactiveTime = window.getFriendlyBatchDatePhrase(batchData.deliveryStart, batchData.deliveryEnd);
-            
             bodyText = `أوردرك اتسجل بنجاح في <span class="font-black text-brand-navy">${batchName}</span>.<br>📦 وميعاد تسليم حضرتك مخصص <span class="font-black text-red-600">${interactiveTime}</span>. هيتم التواصل معاك للتأكيد قبل التحرك!`;
         }
 
