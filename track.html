@@ -246,16 +246,33 @@
             }
         });
 
-        function normalizePhone(phone) {
-            if (!phone) return '';
-            let normalized = phone.toString().replace(/[\u0660-\u0669\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x0660).replace(/\D/g, '');
-            if (normalized.length >= 10) {
-                if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
-                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
-                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
-            }
-            return normalized;
+// 🌟 الدالة الجديدة: المفرمة الذكية لأرقام الموبايلات 🌟
+function normalizePhone(phone) {
+    if (!phone) return '';
+    
+    // 1. تحويل الأرقام العربية/الهندية (٠-٩) إلى إنجليزية (0-9)
+    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+    let cleaned = phone.toString().replace(/[٠-٩]/g, w => arabicNumbers.indexOf(w));
+    
+    // 2. إزالة أي مسافات، حروف، أو رموز (+, -, أقواس) نهائياً
+    cleaned = cleaned.replace(/\D/g, '');
+    
+    // 3. معالجة كل أشكال أكواد مصر (0020, 020, 20) وتوحيدها لتبدأ بـ 0
+    if (cleaned.length >= 10) {
+        if (cleaned.startsWith('00201')) {
+            cleaned = '0' + cleaned.substring(4); // لو 002010
+        } else if (cleaned.startsWith('0201')) {
+            cleaned = '0' + cleaned.substring(3); // لو 02010
+        } else if (cleaned.startsWith('201')) {
+            cleaned = '0' + cleaned.substring(2); // لو 2010
+        } else if (cleaned.length === 10 && cleaned.startsWith('1')) {
+            cleaned = '0' + cleaned;              // لو العميل نسي الصفر وكتب 10..
         }
+    }
+    
+    return cleaned;
+}
+
 
         async function trackOrder() {
             let phone = normalizePhone(document.getElementById('customer-phone').value);
