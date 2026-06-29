@@ -883,6 +883,27 @@ window.initiateCheckout = function() {
 
 window.acceptCrossSell = function() { addToCart(globalSettings.crossSellProductId); const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
 window.declineCrossSell = function() { const m = document.getElementById('cross-sell-modal'); m.classList.add('opacity-0'); setTimeout(() => { m.classList.add('hidden'); finalCheckoutStep(); }, 300); };
+// 🌟 دالة ذكية لتحويل تواريخ الـ CRM إلى رسائل تفاعلية للعميل
+window.getFriendlyBatchDatePhrase = function(startDateStr, endDateStr) {
+    if (!startDateStr) return "قريباً فور تجهيزها";
+    
+    const startDate = new Date(startDateStr);
+    const day = startDate.getDate();
+    const monthNames = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    const monthText = monthNames[startDate.getMonth()];
+    
+    let timePhrase = "";
+    // تحديد الفترة جوه الشهر (أول الشهر، منتصفه، آخره)
+    if (day <= 10) {
+        timePhrase = `أول شهر ${monthText}`; // مثلاً: أول شهر سبتمبر
+    } else if (day > 10 && day <= 20) {
+        timePhrase = `منتصف شهر ${monthText}`;
+    } else {
+        timePhrase = `أواخر شهر ${monthText}`;
+    }
+    
+    return `خلال ${timePhrase} (وتحديداً من يوم ${day} في الشهر)`;
+};
 
 window.finalCheckoutStep = async function() {
     const checkoutBtn = document.getElementById('checkout-btn'); 
@@ -1116,8 +1137,23 @@ window.finalCheckoutStep = async function() {
     } else {
         const uiTexts = globalSettings.uiTexts || {};
         const titleText = uiTexts['successTitle'] || 'تم تأكيد أوردرك بنجاح! 🎉';
-        let bodyText = uiTexts['successMsgTemplate'] || `أوردرك اتسجل في السيستم عندنا خلاص. ${batchId ? `وميعاد استلامك في الدفعة: ${batchName}` : 'هيتم التجهيز عشان تستلمه.'}`;
+        
+        // 1. الرسالة الافتراضية (لو الأوردر فوري مش تبع دفعة)
+        let bodyText = uiTexts['successMsgTemplate'] || `أوردرك اتسجل في السيستم عندنا خلاص. هيتم التجهيز عشان تستلمه.`;
+        
+        // 2. 🌟 التعديل التفاعلي الجديد (لو الأوردر تبع دفعة) 🌟
+        if (batchId && globalBatches[batchId]) {
+            const batchData = globalBatches[batchId];
+            
+            // استدعاء دالة الترجمة الذكية للوقت (اللي ضفناها في الخطوة اللي فاتت)
+            const interactiveTime = window.getFriendlyBatchDatePhrase(batchData.deliveryStart, batchData.deliveryEnd);
+            
+            bodyText = `أوردرك اتسجل بنجاح في <span class="font-black text-brand-navy">${batchName}</span>.<br>📦 وميعاد تسليم حضرتك مخصص <span class="font-black text-red-600">${interactiveTime}</span>. هيتم التواصل معاك للتأكيد قبل التحرك!`;
+        }
+
+        // 3. سطر الفورمات الممتاز بتاعك (عشان لو فيه أي تاريخ صريح 2026/09/03 يتنسق صح)
         bodyText = bodyText.replace(/(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/g, '<span dir="ltr" style="display: inline-block; font-weight: 900; color: #b91c1c;">$1</span>');
+        
         const waBtnText = uiTexts['waFollowUpBtn'] || 'التواصل والمتابعة ع الواتساب';
         const closeBtnText = uiTexts['closeFollowUpBtn'] || 'تمام، شكراً 👍';
 
