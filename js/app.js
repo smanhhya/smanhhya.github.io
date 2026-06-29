@@ -948,9 +948,15 @@ window.finalCheckoutStep = async function() {
     }
 
     
+    // 🌟 الكود الجديد: تنظيف وتحويل فوري للأرقام العربية إلى إنجليزية عند المنبع 🌟
     let customerName = document.getElementById('customer-name').value.trim(); 
     let customerPhone = document.getElementById('customer-phone').value.trim(); 
+    
+    // استخدام دالة الفورمات اللي إنت كاتبها تحت عشان تفرتك أي أرقام هندية/عربية وتحولها إنجليزي فوراً
+    customerPhone = window.formatPhoneNumber(customerPhone); 
+    
     let customerAddress = document.getElementById('customer-address').value.trim();
+
     
     // 👇 التعديل هنا: سحب الملاحظة اللي العميل بيكتبها
     let customerNotesInput = document.getElementById('customer-notes') ? document.getElementById('customer-notes').value.trim() : '';
