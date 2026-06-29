@@ -365,6 +365,29 @@ function selectOrder(index) {
                 detailsHtml += `<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 shadow-sm">خصم -${discountVal}ج</span>`;
             }
             
+            // 🌟 الإضافة الجديدة والمحسنة (بدون تضييع أي داتا قديمة) 🌟
+            let orderDateVal = currentOrder.orderDate || '';
+            let orderTimeVal = currentOrder.orderTime || '';
+            let addressVal = currentOrder.customerAddress || 'لم يتم تسجيل عنوان تفصيلي';
+
+            // دمج الوقت والعنوان في حاوية مستقلة تأخذ العرض الكامل عشان شكل الـ Spans ما يبوظش
+            detailsHtml += `
+                <div class="w-full text-right mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2 text-slate-600 font-medium">
+                    <div class="flex items-center gap-1.5 text-xs">
+                        <i class="fa-regular fa-clock text-slate-400"></i>
+                        <span>وقت تسجيل الطلب:</span>
+                        <span class="text-slate-800 font-bold">${orderDateVal} ${orderTimeVal ? '— ' + orderTimeVal : ''}</span>
+                    </div>
+                    <div class="flex items-start gap-1.5 text-xs leading-relaxed">
+                        <i class="fa-solid fa-location-dot text-brand-primary mt-0.5"></i>
+                        <div class="w-full">
+                            <span class="text-slate-500">العنوان بالتفصيل:</span>
+                            <span class="text-slate-800 font-bold block mt-1 bg-slate-50 p-2.5 rounded-xl border border-slate-200/60">${addressVal}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
             let detailsContainer = document.getElementById('res-total-details');
             if(detailsContainer) {
                 detailsContainer.innerHTML = detailsHtml;
