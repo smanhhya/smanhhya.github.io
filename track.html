@@ -246,75 +246,100 @@
             }
         });
 
-// 🌟 الدالة الجديدة: المفرمة الذكية لأرقام الموبايلات 🌟
+// 🌟 1. المفرمة الذكية (تفرم العربي والفارسي والمسافات والرموز تماماً) 🌟
 function normalizePhone(phone) {
     if (!phone) return '';
+    let normalized = phone.toString();
     
-    // 1. تحويل الأرقام العربية/الهندية (٠-٩) إلى إنجليزية (0-9)
-    const arabicNumbers = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-    let cleaned = phone.toString().replace(/[٠-٩]/g, w => arabicNumbers.indexOf(w));
+    // تحويل الأرقام العربية والفارسية إلى إنجليزية فوراً
+    normalized = normalized.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => d.charCodeAt(0) - 1632)
+                           .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => d.charCodeAt(0) - 1776);
+                           
+    // تنظيف أي مسافات أو رموز أو أقواس (+, -)
+    normalized = normalized.replace(/\D/g, '');
     
-    // 2. إزالة أي مسافات، حروف، أو رموز (+, -, أقواس) نهائياً
-    cleaned = cleaned.replace(/\D/g, '');
-    
-    // 3. معالجة كل أشكال أكواد مصر (0020, 020, 20) وتوحيدها لتبدأ بـ 0
-    if (cleaned.length >= 10) {
-        if (cleaned.startsWith('00201')) {
-            cleaned = '0' + cleaned.substring(4); // لو 002010
-        } else if (cleaned.startsWith('0201')) {
-            cleaned = '0' + cleaned.substring(3); // لو 02010
-        } else if (cleaned.startsWith('201')) {
-            cleaned = '0' + cleaned.substring(2); // لو 2010
-        } else if (cleaned.length === 10 && cleaned.startsWith('1')) {
-            cleaned = '0' + cleaned;              // لو العميل نسي الصفر وكتب 10..
-        }
+    if (normalized.length >= 10) {
+        if (normalized.startsWith('00201')) normalized = '0' + normalized.substring(4);
+        else if (normalized.startsWith('0201')) normalized = '0' + normalized.substring(3);
+        else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
+        else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
     }
-    
-    return cleaned;
+    return normalized;
 }
 
 
-        async function trackOrder() {
-            let phone = normalizePhone(document.getElementById('customer-phone').value);
-            let btn = document.getElementById('btn-track');
-            if (phone.length < 10) { 
-                showError("برجاء إدخال رقم هاتف صحيح ومكتمل."); return; 
-            }
+async function trackOrder() {
+    let rawInput = document.getElementById('customer-phone').value.trim(); // المدخل الخام للعميل
+    let phone = normalizePhone(rawInput); // المدخل بعد التنظيف
+    let btn = document.getElementById('btn-track');
+    
+    if (phone.length < 10) { 
+        showError("برجاء إدخال رقم هاتف صحيح ومكتمل."); return; 
+    }
 
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; btn.disabled = true; document.getElementById('error-msg').classList.add('hidden');
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; 
+    btn.disabled = true; 
+    document.getElementById('error-msg').classList.add('hidden');
 
-            try {
-                // البحث في الرقم الأساسي والرقم الإضافي للعميل في نفس الوقت
-                let snap1 = await db.collection('orders').where('customerPhone', '==', phone).get();
-                let snap2 = await db.collection('orders').where('customerPhone2', '==', phone).get();
-                
-                let ordersMap = {}; // استخدمنا Map عشان نمنع تكرار الأوردر لو الرقمين شبه بعض
-                snap1.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
-                snap2.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
-                
-                let orders = Object.values(ordersMap);
-                
-                pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-                allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
+    try {
+        let ordersMap = {}; // مصفوفة تجميع الطلبات بدون تكرار
 
-                if (allActiveOrders.length === 0) {
-                    if (pastOrders.length > 0) {
-                        allActiveOrders = [pastOrders[0]]; // عرض أحدث طلب مكتمل للتقييم
-                    } else {
-                        showError("لا توجد طلبات مسجلة بهذا الرقم حالياً.");
-                        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false; return;
-                    }
+        // 🌟 أولاً: البحث السريع بالمطابقة الحرفية (للبيانات الجديدة المضبوطة)
+        let snap1 = await db.collection('orders').where('customerPhone', '==', phone).get();
+        let snap2 = await db.collection('orders').where('customerPhone2', '==', phone).get();
+        // وأيضاً بالمدخل الخام بالظبط عشان لو متسجل بمسافته قديماً والعميل كتب المسافة بالصدفة
+        let snap3 = await db.collection('orders').where('customerPhone', '==', rawInput).get();
+
+        snap1.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+        snap2.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+        snap3.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+        
+        // 🌟 ثانياً: رادار البحث العميق (Deep Search) لاصطياد الداتا القديمة المعلقة بمسافات أو عربي جوة الداتابيز 🚀
+        if (Object.keys(ordersMap).length === 0) {
+            // هنسحب أحدث 200 أوردر من السيرفر ونفحصهم إحنا بذكاء بعيد عن غباء الفايربيس
+            let deepSnap = await db.collection('orders').orderBy('createdAt', 'desc').limit(200).get();
+            
+            deepSnap.forEach(doc => {
+                let orderData = doc.data();
+                // هنا السحر: بنفرم رقم الأوردر اللي متخزن جوة قاعدة البيانات نفسها ونوحده
+                let dbPhone1 = normalizePhone(orderData.customerPhone);
+                let dbPhone2 = normalizePhone(orderData.customerPhone2);
+                
+                // ونقارنه بالرقم النظيف اللي العميل بيبحث بيه دلوقتي
+                if (dbPhone1 === phone || dbPhone2 === phone) {
+                    ordersMap[doc.id] = {id: doc.id, ...orderData};
                 }
-
-                // ترتيب الطلبات الحية من الأحدث للأقدم
-                allActiveOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                
-                renderOrderTabs();
-                selectOrder(0); // اختيار الطلب الأول كافتراضي
-
-            } catch (error) { showError("حدث خطأ في الاتصال، برجاء المحاولة لاحقاً."); console.error(error); }
-            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false;
+            });
         }
+
+        let orders = Object.values(ordersMap);
+        
+        pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+        allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
+
+        if (allActiveOrders.length === 0) {
+            if (pastOrders.length > 0) {
+                allActiveOrders = [pastOrders[0]]; // عرض أحدث طلب مكتمل للتقييم
+            } else {
+                showError("لا توجد طلبات مسجلة بهذا الرقم حالياً.");
+                btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false; return;
+            }
+        }
+
+        // ترتيب الطلبات الحية تصاعدياً (من الأقدم للأحدث: شهر 7 قبل شهر 8) كما طلبنا سابقاً
+        allActiveOrders.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+        
+        renderOrderTabs();
+        selectOrder(0); // اختيار الطلب الأول كافتراضي
+
+    } catch (error) { 
+        showError("حدث خطأ في الاتصال، برجاء المحاولة لاحقاً."); 
+        console.error(error); 
+    }
+    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; 
+    btn.disabled = false;
+}
+
 
         function showError(msg) {
             document.getElementById('error-msg').innerText = msg;
