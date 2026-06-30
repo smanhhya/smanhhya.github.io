@@ -419,7 +419,7 @@ function listenToDatabase() {
         } else if (isStoreDataLoaded) { renderProducts(); updateUI(); }
     };
 
-    db.collection('inventory').doc('settings').onSnapshot(doc => { 
+    db.collection('inventory').doc('settings').get().then(doc => { 
         if(doc.exists) { 
             const data = doc.data(); 
             if(data.productsData) productsInfo = data.productsData; 
@@ -429,20 +429,20 @@ function listenToDatabase() {
         } 
     });
 
-    db.collection('inventory').doc('stock').onSnapshot(doc => { 
+    db.collection('inventory').doc('stock').get().then(doc => { 
         if(doc.exists) { Object.assign(globalStock, doc.data()); stockLoaded = true; checkAndRender(); } 
     });
 
-    db.collection('inventory').doc('prices').onSnapshot(doc => { 
+    db.collection('inventory').doc('prices').get().then(doc => { 
         if(doc.exists) { Object.assign(globalPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
     
-    db.collection('inventory').doc('discounts_status').onSnapshot(doc => { 
+    db.collection('inventory').doc('discounts_status').get().then(doc => { 
         if(doc.exists) { Object.assign(globalDiscounts, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
     
     // 👇 السطر اللي كان مكسور اتصلح هنا 👇
-    db.collection('inventory').doc('old_prices').onSnapshot(doc => { 
+    db.collection('inventory').doc('stats').get().then(doc => { 
         if(doc.exists) { Object.assign(globalOldPrices, doc.data()); if(isStoreDataLoaded) renderProducts(); } 
     });
 
@@ -455,7 +455,7 @@ function listenToDatabase() {
     });
 
     // ===== التعديل الجديد للدفعات بالكروت (بالتصميم الراقي) =====
-    db.collection('inventory').doc('batches').onSnapshot(doc => {
+    db.collection('inventory').doc('batches').get().then(doc => {
         if(doc.exists) {
             globalBatches = doc.data() || {};
             let batchSelect = document.getElementById('user-batch-select');
