@@ -696,15 +696,35 @@ window.getCardActionHTML = function(id) {
 }
 
 
+// --- الدالة الأصلية بعد إضافة حماية الدفعة ---
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
+
+    // 🛡️ [تعديل] التحقق من الدفعة قبل الإضافة
+    const batchSelect = document.getElementById('user-batch-select');
+    if (!batchSelect || batchSelect.value === "") {
+        showAlert("تنبيه", "برجاء اختيار ميعاد الاستلام (الدفعة) أولاً.");
+        window.scrollToBatch(); // الدالة اللي بتوديه للدفعة اللي إنت عاملها
+        return;
+    }
+
     if (getAvailableStock(id) <= 0) { showAlert("عذراً", "الكمية المتاحة لا تكفي حالياً."); return; } 
     if (cart[id]) cart[id].quantity++; else cart[id] = { quantity: 1, price: globalPrices[id] || productsInfo[id].basePrice, name: productsInfo[id].name }; 
     saveCart(); updateUI(); renderProducts(); 
 };
 
+// --- الدالة الأصلية بعد إضافة حماية الدفعة ---
 window.updateQuantity = function(id, delta) { 
     if (!cart[id] || globalSettings.storeOpen === false) return; 
+
+    // 🛡️ [تعديل] التحقق من الدفعة عند محاولة زيادة الكمية
+    const batchSelect = document.getElementById('user-batch-select');
+    if (delta === 1 && (!batchSelect || batchSelect.value === "")) {
+        showAlert("تنبيه", "برجاء اختيار ميعاد الاستلام (الدفعة) أولاً.");
+        window.scrollToBatch();
+        return;
+    }
+
     if (delta === 1) { 
         if (getAvailableStock(id) > 0) cart[id].quantity++; else showAlert("عذراً", "لا يوجد مخزون إضافي متاح."); 
     } else if (delta === -1) { 
@@ -713,7 +733,19 @@ window.updateQuantity = function(id, delta) {
     saveCart(); updateUI(); renderProducts(); 
 };
 
+
 window.goToCheckoutStep2 = function() {
+    // 👇 الحماية الجديدة: التأكد إن العميل مختار دفعة قبل ما يروح لصفحة الدفع
+    const batchSelect = document.getElementById('user-batch-select');
+    if (batchSelect && batchSelect.value === "") {
+        showAlert("تنبيه مهم", "برجاء تحديد ميعاد الاستلام (الدفعة) من القائمة قبل إتمام الطلب.");
+        toggleCart(); // بيقفل السلة عشان العميل يشوف الصفحة
+        setTimeout(() => { if(typeof scrollToBatch === 'function') scrollToBatch(); }, 300); // بينزله عند كروت الدفعات
+        return; // بيوقف الدالة هنا عشان الكود اللي تحت ميشتغلش
+    }
+    // 👆 نهاية الحماية
+
+    // كودك الأصلي زي ما هو بالمللي:
     document.getElementById('checkout-step-1').classList.add('hidden');
     document.getElementById('checkout-step-2').classList.remove('hidden');
     document.getElementById('btn-back-step').classList.remove('hidden');
@@ -723,6 +755,7 @@ window.goToCheckoutStep2 = function() {
     document.getElementById('step-2-indicator').classList.replace('opacity-50', 'step-active');
     updateUI();
 };
+
 
 window.backToCart = function() {
     document.getElementById('checkout-step-2').classList.add('hidden');
