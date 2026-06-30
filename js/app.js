@@ -606,45 +606,48 @@ window.renderProducts = function() {
         
         let priceHtml = ''; let saleBadgeHtml = '';
         if (isDiscountActive) { 
-            saleBadgeHtml = `<div class="absolute top-2 right-2 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm sale-badge z-10"><i class="fa-solid fa-tag"></i> عرض</div>`; 
-            priceHtml = `<div class="flex items-center gap-2"><span class="text-[11px] text-gray-400 line-through decoration-red-500 font-bold">${oldPrice}</span><span class="font-black text-red-600 text-lg">${currentPrice} <span class="text-[9px] text-gray-500">ج.م</span></span></div>`; 
+            saleBadgeHtml = `<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg sale-badge z-10"><i class="fa-solid fa-tag"></i> عرض</div>`; 
+            priceHtml = `<div class="flex flex-col"><span class="text-[11px] text-gray-400 line-through decoration-red-500 font-bold">${oldPrice} ج.م</span><span class="font-black text-red-600 text-xl">${currentPrice} <span class="text-[10px] text-gray-500">ج.م</span></span></div>`; 
         } else {
-            priceHtml = `<span class="font-black text-brand-cyanDark text-lg">${currentPrice} <span class="text-[9px] text-gray-400">ج.م</span></span>`;
+            priceHtml = `<span class="font-black text-brand-cyanDark text-lg">${currentPrice} <span class="text-[10px] text-gray-400">ج.م</span></span>`;
         }
 
-        let bestSellerHtml = isBestSeller ? `<div class="absolute bottom-2 right-2 bg-brand-navy/90 backdrop-blur-sm text-brand-yellow text-[9px] font-black px-2 py-1 rounded shadow-sm z-10">الأكثر طلباً 🔥</div>` : ''; 
+        let bestSellerHtml = isBestSeller ? `<div class="absolute bottom-2 right-2 bg-brand-navy text-brand-yellow text-[10px] font-black px-2 py-1 rounded shadow z-10 border border-brand-yellow/30">الأكثر طلباً 🔥</div>` : ''; 
         const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : '';
         
         let customTagHtml = '';
-        if(item.tag === 'new') customTagHtml = `<span class="bg-blue-50 text-blue-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-blue-200 shadow-sm">🆕 جديد</span>`;
-        else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-50 text-orange-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-orange-200 shadow-sm">🔥 قرب يخلص</span>`;
-        else if(item.tag === 'offer') customTagHtml = `<span class="bg-purple-50 text-purple-600 text-[9px] font-black px-1.5 py-0.5 rounded border border-purple-200 shadow-sm">⏱ عرض محدود</span>`;
+        if(item.tag === 'new') customTagHtml = `<span class="bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-200">🆕 جديد</span>`;
+        else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-orange-200">🔥 قرب يخلص</span>`;
+        else if(item.tag === 'offer') customTagHtml = `<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-purple-200">⏱ عرض محدود</span>`;
 
         const cardHTML = `
-            <div class="bg-white rounded-[1.5rem] shadow-sm hover:shadow-md border ${isDiscountActive ? 'border-red-200' : 'border-gray-100'} overflow-hidden flex flex-row p-3 gap-3.5 relative transition-all duration-300 hover:-translate-y-1 group mb-3">
+            <div class="bg-white rounded-2xl shadow-sm border ${isDiscountActive ? 'border-red-200' : 'border-gray-200'} overflow-hidden flex flex-row h-[140px] relative transition-transform hover:shadow-md mb-3">
+                ${saleBadgeHtml}
                 
-                <div class="w-28 h-28 sm:w-32 sm:h-32 shrink-0 relative rounded-[1rem] overflow-hidden bg-gray-50 cursor-zoom-in shadow-inner" onclick="openImageModal('${imgSrc}')">
-                    ${saleBadgeHtml}
-                    ${bestSellerHtml}
-                    <img loading="lazy" src="${imgSrc}" class="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'">
+                <!-- التفاصيل والسعر (يمين) -->
+                <div class="p-3 flex-1 flex flex-col justify-between bg-white min-w-0 z-10">
+                    <div>
+                        <div class="flex gap-1 items-center mb-1">
+                            <h3 class="text-sm md:text-base font-black text-brand-navy truncate">${item.name}</h3>
+                            ${customTagHtml}
+                        </div>
+                        <div class="flex items-center justify-between gap-2 mb-1">
+                            ${priceHtml}
+                            <span class="bg-gray-50 text-gray-500 text-[10px] px-1.5 py-0.5 rounded border border-gray-200 font-bold whitespace-nowrap"><i class="fa-solid fa-scale-balanced mr-1"></i> ${item.weight}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-auto">
+                        <div class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${stockBadgeClass} shrink-0">المتاح: <span id="stock-display-${id}">${available}</span></div>
+                        <div class="w-28 shrink-0" id="card-action-${id}">${getCardActionHTML(id)}</div>
+                    </div>
                 </div>
 
-                <div class="flex-1 flex flex-col justify-between py-0.5 min-w-0">
-                    <div>
-                        <div class="flex justify-between items-start gap-1 mb-1">
-                            <h3 class="text-sm md:text-base font-black text-brand-navy truncate">${item.name}</h3>
-                            <div class="shrink-0">${customTagHtml}</div>
-                        </div>
-                        <p class="text-[10px] text-gray-400 font-bold mb-2 flex items-center gap-1.5"><i class="fa-solid fa-scale-balanced text-gray-300"></i> ${item.weight}</p>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mt-auto mb-2.5">
-                        ${priceHtml}
-                        <div class="text-[9px] font-bold px-2 py-1 rounded-md border ${stockBadgeClass} shrink-0">المتاح: <span id="stock-display-${id}">${available}</span></div>
-                    </div>
-                    
-                    <div class="w-full" id="card-action-${id}">${getCardActionHTML(id)}</div>
+                <!-- الصورة (شمال) -->
+                <div class="w-32 sm:w-36 shrink-0 relative border-r border-gray-100 overflow-hidden bg-gray-50 cursor-zoom-in" onclick="openImageModal('${imgSrc}')">
+                    ${bestSellerHtml}
+                    <img loading="lazy" src="${imgSrc}" class="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-110" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'">
                 </div>
+
             </div>`;
 
         if (!item.isExtra) { 
@@ -656,6 +659,7 @@ window.renderProducts = function() {
     
     if(mainProductsCount === 0) container.innerHTML = `<div class="text-center py-10 text-gray-400 font-bold">${globalSettings.uiTexts?.emptyMenuMsg || "لا توجد منتجات حالياً"}</div>`;
 };
+
 
 
 // --- منطق السلة والكميات ---
