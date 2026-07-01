@@ -1,4 +1,5 @@
-const CACHE_NAME = 'sman-hhya-v3'; // رفعنا رقم الإصدار عشان يجبر أجهزة العملاء تتحدث
+const CACHE_NAME = 'sman-hhya-v4'; 
+
 
 // 1. الملفات الأساسية اللي عايزين المتصفح يحفظها عشان يفتح الموقع طلقة
 const ASSETS_TO_CACHE = [
