@@ -159,11 +159,16 @@
                 </div>
 
                 <!-- زر تأكيد الاستلام (يظهر للعميل لتأكيد وصول المندوب) -->
-                <div id="confirm-receipt-box" class="mt-4 pt-4 border-t border-slate-200">
-                    <p class="text-[11px] text-slate-500 font-bold text-center mb-2">عند استلامك للطلب، تفضل بتأكيد الاستلام:</p>
-                    <button onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-white border border-brand-primary text-brand-primary hover:bg-green-50 font-bold py-2.5 rounded-xl text-sm transition-colors shadow-sm flex justify-center items-center gap-2">
+                <div id="confirm-receipt-box" class="mt-5 pt-5 border-t border-slate-100 hidden">
+                    <p class="text-[11px] text-slate-500 font-bold text-center mb-3">
+                        <i class="fa-solid fa-bell text-amber-500 animate-pulse mr-1"></i> 
+                        عند استلامك للطلب، تفضل بتأكيد الاستلام:
+                    </p>
+                    <button onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-white border-2 border-brand-primary text-brand-primary hover:bg-brand-primary hover:text-white font-black py-3 rounded-xl text-sm transition-all shadow-sm active:scale-95 flex justify-center items-center gap-2">
                         <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
                     </button>
+                </div>
+
                 </div>
             </div>
 
@@ -808,6 +813,8 @@ function selectOrder(index) {
             if(!confirm("هل تم استلام الطلب بالكامل من المندوب؟")) return;
             
             let btn = document.getElementById('btn-confirm-receipt');
+            if(!btn) return; // حماية إضافية سريعة
+            
             let originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأكيد الاستلام...';
             btn.disabled = true;
@@ -821,16 +828,21 @@ function selectOrder(index) {
                 let newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
                 let finalAdminNote = oldNotes ? oldNotes + '\n---\n' + newNote : newNote;
 
-                // تحديث حالة الأوردر لـ completed في الداتابيز
+                // تحديث حالة الأوردر لـ completed في الداتابيز + (الإضافات السحرية للربط مع الإدارة)
                 await db.collection('orders').doc(currentOrder.id).update({ 
                     status: 'completed',
-                    adminNote: finalAdminNote
+                    adminNote: finalAdminNote,
+                    completedAtStr: new Date().toLocaleDateString('en-US'), // عشان يسمّع في درج الفلوس لإيرادات اليوم
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp() // عشان يظبط السجل الزمني والترتيب
                 });
 
                 // تحديث الواجهة قدام العميل فوراً ليدخل على التقييم
                 currentOrder.status = 'completed';
                 currentOrder.adminNote = finalAdminNote;
                 updateTimeline(); 
+                
+                // إخفاء الزرار بعد النجاح عشان العميل ما يعملش طلب متكرر
+                btn.style.display = 'none';
                 
             } catch(e) {
                 console.error(e);
@@ -839,6 +851,7 @@ function selectOrder(index) {
                 btn.disabled = false;
             }
         }
+
   
     </script>
 </body>
