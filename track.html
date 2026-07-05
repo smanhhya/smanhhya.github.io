@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -47,7 +46,6 @@
 
     <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col mt-2">
         
-        <!-- شاشة تسجيل الدخول -->
         <div id="login-section" class="glass-card p-8 rounded-2xl animate-slide mt-8">
             <h2 class="text-xl font-bold text-center mb-2 text-slate-800">مرحباً بك في نظام التتبع</h2>
             <p class="text-sm text-center text-slate-500 mb-8">برجاء إدخال رقم الهاتف المسجل في الطلب لمتابعة حالة طلبك.</p>
@@ -62,15 +60,11 @@
             <p id="error-msg" class="hidden text-red-600 text-sm font-bold text-center mt-4 bg-red-50 p-3 rounded-xl border border-red-100"></p>
         </div>
 
-        <!-- شاشة النتيجة والتتبع -->
         <div id="result-section" class="hidden space-y-5">
             
-            <!-- أزرار اختيار الطلب (في حالة وجود أكثر من طلب نشط لنفس العميل) -->
             <div id="orders-selector" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
 
-            <!-- الترحيب والإجمالي (النسخة النظيفة المتظبطة) -->
             <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide mt-2">
-                <!-- عرض الاسم بالكامل هنا -->
                 <h3 class="font-bold text-lg text-slate-800 mb-1">أهلاً بحضرتك، أ. <span id="res-name" class="text-brand-primary"></span></h3>
                 <p class="text-sm text-slate-500 mb-4 border-b border-slate-100 pb-4">تفاصيل الطلب الحالي وحالته.</p>
                 
@@ -83,22 +77,17 @@
                         <p class="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-1">الإجمالي المطلوب</p>
                         <p class="font-black text-2xl text-slate-800"><span id="res-total">0</span> <span class="text-sm text-slate-500">ج.م</span></p>
                         <div id="res-total-details" class="text-[11px] text-slate-600 font-bold border-t border-slate-200 pt-2 mt-2 flex flex-wrap justify-center gap-x-2 gap-y-1">
-                            <!-- التفاصيل هتظهر هنا بالجافاسكريبت -->
                         </div>
                     </div>
                 </div>
             </div>
 
-
-            <!-- صندوق موعد وتفاصيل الدفعة (يظهر للحجوزات المسبقة ويقرأ لايف من الـ CRM) -->
             <div id="batch-info-box" class="hidden bg-gradient-to-l from-indigo-50 to-white rounded-2xl p-5 shadow-sm border border-indigo-100 mt-3 animate-slide">
-                <!-- الهيدر القديم بتاعك سليم زي ما هو -->
                 <div class="flex items-center gap-2 mb-4 border-b border-indigo-100/50 pb-2">
                     <i class="fa-solid fa-calendar-check text-indigo-500 text-lg"></i>
                     <h4 class="font-black text-indigo-800 text-sm">متابعة حجوزات: <span id="batch-display-name" class="text-brand-primary">--</span></h4>
                 </div>
                 
-                <!-- الشبكة الجديدة اللي شايلة القديم والجديد بشياكة -->
                 <div class="grid grid-cols-2 gap-3 mb-4">
                     <div id="box-delivery-dates" class="hidden bg-white p-2.5 rounded-xl border border-indigo-50 text-center shadow-sm">
                         <span class="block text-[10px] font-bold text-slate-500 mb-1">أيام التسليم</span>
@@ -118,14 +107,11 @@
                     </div>
                 </div>
 
-                <!-- صندوق رسالة الإدارة (بيظهر بس لو كتبت رسالة للعملاء في الـ CRM) -->
                 <div id="batch-msg-container" class="hidden bg-indigo-100/50 p-3 rounded-xl border border-indigo-200 text-xs font-bold text-indigo-900 leading-relaxed shadow-inner">
                     <i class="fa-solid fa-circle-info text-indigo-500 ml-1"></i> <span id="batch-customer-msg"></span>
                 </div>
             </div>
 
-
-            <!-- التنبيهات الإدارية -->
             <div id="alert-banner" class="hidden rounded-2xl p-4 animate-slide shadow-sm border">
                 <div class="flex items-start gap-3">
                     <div id="alert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0"></div>
@@ -139,7 +125,6 @@
                 </a>
             </div>
 
-            <!-- معلومات المندوب والوقت -->
             <div id="driver-info" class="hidden bg-slate-50 border border-slate-200 rounded-2xl p-4 animate-slide">
                 <div class="flex items-center justify-between mb-3 border-b border-slate-200 pb-3">
                     <div class="flex items-center gap-3">
@@ -158,8 +143,7 @@
                     <p class="text-base font-black text-brand-primary" id="driver-eta"></p>
                 </div>
 
-                <!-- زر تأكيد الاستلام (يظهر للعميل لتأكيد وصول المندوب) -->
-                <div id="confirm-receipt-box" class="mt-5 pt-5 border-t border-slate-100 hidden">
+                <div id="confirm-receipt-box" class="mt-5 pt-5 border-t border-slate-200 hidden">
                     <p class="text-[11px] text-slate-500 font-bold text-center mb-3">
                         <i class="fa-solid fa-bell text-amber-500 animate-pulse mr-1"></i> 
                         عند استلامك للطلب، تفضل بتأكيد الاستلام:
@@ -168,13 +152,7 @@
                         <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
                     </button>
                 </div>
-
-                </div>
-            </div>
-
-
-            <!-- شريط التتبع الأساسي -->
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide" id="tracking-card">
+            </div> <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide" id="tracking-card">
                 <div class="relative flex justify-between items-center px-2" id="timeline-container">
                     <div class="absolute top-1/2 left-4 right-4 h-1 bg-slate-100 -z-10 rounded-full -translate-y-1/2"></div>
                     <div id="progress-line" class="absolute top-1/2 right-4 h-1 bg-brand-primary -z-10 rounded-full -translate-y-1/2 transition-all duration-1000" style="width: 0%;"></div>
@@ -185,12 +163,10 @@
                 </div>
             </div>
 
-            <!-- عرض محتويات الطلب (للقراءة فقط دائماً) -->
             <div id="view-items-section" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide">
                 <h4 class="font-bold text-slate-800 text-sm mb-3">محتويات الطلب:</h4>
                 <div id="res-items" class="flex flex-col gap-2 mb-4"></div>
                 
-                <!-- صندوق التعديل (يظهر فقط إذا كان الطلب جديداً) -->
                 <div id="edit-request-box" class="hidden border-t border-slate-100 pt-4 mt-2">
                     <label class="text-xs font-bold text-brand-primary block mb-2"><i class="fa-solid fa-pen-to-square"></i> هل تود تعديل أو إضافة شيء للطلب؟</label>
                     <textarea id="extra-notes-input" rows="2" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-brand-primary bg-slate-50" placeholder="اكتب هنا التعديل المطلوب (مثال: أرجو إضافة صنف كذا، أو زيادة الكمية)..."></textarea>
@@ -198,7 +174,6 @@
                 </div>
             </div>
 
-            <!-- قسم التقييم الراقي (يظهر عند الاكتمال) -->
             <div id="feedback-section" class="hidden bg-white border border-brand-primary rounded-2xl p-6 mb-5 text-center shadow-md animate-slide">
                 <div class="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-3 text-brand-primary text-2xl">
                     <i class="fa-solid fa-check-double"></i>
@@ -218,20 +193,17 @@
                 </div>
             </div>
 
-            <!-- سجل الطلبات السابقة (مخفي مبدئياً) -->
             <div id="history-section" class="hidden bg-slate-50 rounded-2xl p-4 border border-slate-200 mt-6">
                 <h4 class="font-bold text-slate-600 text-sm mb-3"><i class="fa-solid fa-list-check mr-1"></i> الأرشيف</h4>
                 <div id="history-list" class="space-y-3 max-h-60 overflow-y-auto pr-1"></div>
             </div>
 
-            <!-- روابط فرعية أسفل الصفحة (على استحياء) -->
             <div class="flex flex-col items-center gap-3 pt-6 border-t border-slate-200">
                 <button onclick="toggleHistory()" class="text-slate-400 hover:text-brand-primary text-xs font-bold underline transition-colors">هل تود مراجعة سجل طلباتك السابقة؟</button>
                 <button onclick="location.reload()" class="text-slate-400 hover:text-red-500 text-xs font-bold underline transition-colors">تسجيل خروج من الحساب</button>
             </div>
 
-        </div>
-    </main>
+        </div> </main>
 
     <script>
         const firebaseConfig = { apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", authDomain: "sman-ca8f8.firebaseapp.com", projectId: "sman-ca8f8", storageBucket: "sman-ca8f8.firebasestorage.app", messagingSenderId: "538778803310", appId: "1:538778803310:web:5eeff42bae534375a21a7f" };
@@ -239,11 +211,10 @@
         const db = firebase.firestore();
 
         let currentOrder = null;
-        let allActiveOrders = []; // مصفوفة لتخزين كل الطلبات الحية
+        let allActiveOrders = []; 
         let pastOrders = [];
         let storeWhatsapp = "201000000000";
-        let orderListener = null; // 🌟 الخط المفتوح لايف للتتبع الذكي
-
+        let orderListener = null; 
 
         db.collection("inventory").doc("settings").get().then(doc => {
             if(doc.exists && doc.data().storePhone) { 
@@ -252,107 +223,88 @@
             }
         });
 
-// 🌟 1. المفرمة الذكية (تفرم العربي والفارسي والمسافات والرموز تماماً) 🌟
-function normalizePhone(phone) {
-    if (!phone) return '';
-    let normalized = phone.toString();
-    
-    // تحويل الأرقام العربية والفارسية إلى إنجليزية فوراً
-    normalized = normalized.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => d.charCodeAt(0) - 1632)
-                           .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => d.charCodeAt(0) - 1776);
-                           
-    // تنظيف أي مسافات أو رموز أو أقواس (+, -)
-    normalized = normalized.replace(/\D/g, '');
-    
-    if (normalized.length >= 10) {
-        if (normalized.startsWith('00201')) normalized = '0' + normalized.substring(4);
-        else if (normalized.startsWith('0201')) normalized = '0' + normalized.substring(3);
-        else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
-        else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
-    }
-    return normalized;
-}
-
-
-async function trackOrder() {
-    let rawInput = document.getElementById('customer-phone').value.trim(); // المدخل الخام للعميل
-    let phone = normalizePhone(rawInput); // المدخل بعد التنظيف
-    let btn = document.getElementById('btn-track');
-    
-    if (phone.length < 10) { 
-        showError("برجاء إدخال رقم هاتف صحيح ومكتمل."); return; 
-    }
-
-    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; 
-    btn.disabled = true; 
-    document.getElementById('error-msg').classList.add('hidden');
-
-    try {
-        let ordersMap = {}; // مصفوفة تجميع الطلبات بدون تكرار
-
-        // 🌟 أولاً: البحث السريع بالمطابقة الحرفية (للبيانات الجديدة المضبوطة)
-        let snap1 = await db.collection('orders').where('customerPhone', '==', phone).get();
-        let snap2 = await db.collection('orders').where('customerPhone2', '==', phone).get();
-        // وأيضاً بالمدخل الخام بالظبط عشان لو متسجل بمسافته قديماً والعميل كتب المسافة بالصدفة
-        let snap3 = await db.collection('orders').where('customerPhone', '==', rawInput).get();
-
-        snap1.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
-        snap2.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
-        snap3.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
-        
-        // 🌟 ثانياً: رادار البحث العميق (Deep Search) لاصطياد الداتا القديمة المعلقة بمسافات أو عربي جوة الداتابيز 🚀
-        if (Object.keys(ordersMap).length === 0) {
-            // هنسحب أحدث 200 أوردر من السيرفر ونفحصهم إحنا بذكاء بعيد عن غباء الفايربيس
-            let deepSnap = await db.collection('orders').orderBy('createdAt', 'desc').limit(200).get();
-            
-            deepSnap.forEach(doc => {
-                let orderData = doc.data();
-                // هنا السحر: بنفرم رقم الأوردر اللي متخزن جوة قاعدة البيانات نفسها ونوحده
-                let dbPhone1 = normalizePhone(orderData.customerPhone);
-                let dbPhone2 = normalizePhone(orderData.customerPhone2);
-                
-                // ونقارنه بالرقم النظيف اللي العميل بيبحث بيه دلوقتي
-                if (dbPhone1 === phone || dbPhone2 === phone) {
-                    ordersMap[doc.id] = {id: doc.id, ...orderData};
-                }
-            });
-        }
-
-        let orders = Object.values(ordersMap);
-        
-        pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
-        allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
-
-        if (allActiveOrders.length === 0) {
-            if (pastOrders.length > 0) {
-                allActiveOrders = [pastOrders[0]]; // عرض أحدث طلب مكتمل للتقييم
-            } else {
-                showError("لا توجد طلبات مسجلة بهذا الرقم حالياً.");
-                btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false; return;
+        function normalizePhone(phone) {
+            if (!phone) return '';
+            let normalized = phone.toString();
+            normalized = normalized.replace(/[٠١٢٣٤٥٦٧٨٩]/g, d => d.charCodeAt(0) - 1632)
+                                   .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, d => d.charCodeAt(0) - 1776);
+            normalized = normalized.replace(/\D/g, '');
+            if (normalized.length >= 10) {
+                if (normalized.startsWith('00201')) normalized = '0' + normalized.substring(4);
+                else if (normalized.startsWith('0201')) normalized = '0' + normalized.substring(3);
+                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
+                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
             }
+            return normalized;
         }
 
-        // ترتيب الطلبات الحية تصاعدياً (من الأقدم للأحدث: شهر 7 قبل شهر 8) كما طلبنا سابقاً
-        allActiveOrders.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-        
-        renderOrderTabs();
-        selectOrder(0); // اختيار الطلب الأول كافتراضي
+        async function trackOrder() {
+            let rawInput = document.getElementById('customer-phone').value.trim(); 
+            let phone = normalizePhone(rawInput); 
+            let btn = document.getElementById('btn-track');
+            
+            if (phone.length < 10) { 
+                showError("برجاء إدخال رقم هاتف صحيح ومكتمل."); return; 
+            }
 
-    } catch (error) { 
-        showError("حدث خطأ في الاتصال، برجاء المحاولة لاحقاً."); 
-        console.error(error); 
-    }
-    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; 
-    btn.disabled = false;
-}
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث...'; 
+            btn.disabled = true; 
+            document.getElementById('error-msg').classList.add('hidden');
 
+            try {
+                let ordersMap = {}; 
+                let snap1 = await db.collection('orders').where('customerPhone', '==', phone).get();
+                let snap2 = await db.collection('orders').where('customerPhone2', '==', phone).get();
+                let snap3 = await db.collection('orders').where('customerPhone', '==', rawInput).get();
+
+                snap1.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+                snap2.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+                snap3.forEach(doc => ordersMap[doc.id] = {id: doc.id, ...doc.data()});
+                
+                if (Object.keys(ordersMap).length === 0) {
+                    let deepSnap = await db.collection('orders').orderBy('createdAt', 'desc').limit(200).get();
+                    deepSnap.forEach(doc => {
+                        let orderData = doc.data();
+                        let dbPhone1 = normalizePhone(orderData.customerPhone);
+                        let dbPhone2 = normalizePhone(orderData.customerPhone2);
+                        if (dbPhone1 === phone || dbPhone2 === phone) {
+                            ordersMap[doc.id] = {id: doc.id, ...orderData};
+                        }
+                    });
+                }
+
+                let orders = Object.values(ordersMap);
+                
+                pastOrders = orders.filter(o => o.status === 'completed').sort((a,b) => (b.createdAt?.toMillis()||0) - (a.createdAt?.toMillis()||0));
+                allActiveOrders = orders.filter(o => o.status !== 'trash' && o.status !== 'canceled' && o.status !== 'completed');
+
+                if (allActiveOrders.length === 0) {
+                    if (pastOrders.length > 0) {
+                        allActiveOrders = [pastOrders[0]]; 
+                    } else {
+                        showError("لا توجد طلبات مسجلة بهذا الرقم حالياً.");
+                        btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; btn.disabled = false; return;
+                    }
+                }
+
+                allActiveOrders.sort((a, b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+                
+                renderOrderTabs();
+                selectOrder(0); 
+
+            } catch (error) { 
+                showError("حدث خطأ في الاتصال، برجاء المحاولة لاحقاً."); 
+                console.error(error); 
+            }
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i> متابعة الطلب'; 
+            btn.disabled = false;
+        }
 
         function showError(msg) {
             document.getElementById('error-msg').innerText = msg;
             document.getElementById('error-msg').classList.remove('hidden');
         }
 
-        // رسم أزرار التنقل لو العميل عنده أكتر من أوردر حي
         function renderOrderTabs() {
             let selectorContainer = document.getElementById('orders-selector');
             if(allActiveOrders.length > 1) {
@@ -367,41 +319,34 @@ async function trackOrder() {
             }
         }
 
-function selectOrder(index) {
-    currentOrder = allActiveOrders[index];
-    if(allActiveOrders.length > 1) renderOrderTabs(); // تحديث ألوان الأزرار
-    
-    // 🌟 لو في اتصال قديم مفتوح بأوردر تاني.. اقفله الأول
-    if (orderListener) orderListener();
-    
-    // 🌟 افتح اتصال لايف مع وثيقة الأوردر ده بالذات
-    orderListener = db.collection('orders').doc(currentOrder.id).onSnapshot(doc => {
-        if (doc.exists) {
-            // تحديث البيانات محلياً فوراً بمجرد تعديلها في الـ CRM
-            currentOrder = { id: doc.id, ...doc.data() };
-            displayResult(); // إعادة رسم الشاشة بالبيانات الجديدة لايف
+        function selectOrder(index) {
+            currentOrder = allActiveOrders[index];
+            if(allActiveOrders.length > 1) renderOrderTabs(); 
+            
+            if (orderListener) orderListener();
+            
+            orderListener = db.collection('orders').doc(currentOrder.id).onSnapshot(doc => {
+                if (doc.exists) {
+                    currentOrder = { id: doc.id, ...doc.data() };
+                    displayResult(); 
+                }
+            }, error => {
+                console.error("Live tracking error:", error);
+            });
         }
-    }, error => {
-        console.error("Live tracking error:", error);
-    });
-}
-
 
         function displayResult() {
             document.getElementById('login-section').classList.add('hidden');
             document.getElementById('result-section').classList.remove('hidden');
 
-            // عرض الاسم كاملاً كما هو محفوظ في قاعدة البيانات
             let fullName = currentOrder.customerName || 'عميلنا العزيز';
             document.getElementById('res-name').innerText = fullName;
             document.getElementById('res-total').innerText = currentOrder.total || 0;
 
-            // 👇👇 السحر الجديد بتاع تفاصيل الحساب بأسماء الأصناف 👇👇
             let itemsCost = currentOrder.subtotal || 0;
             let deliveryFee = currentOrder.deliveryFee || 0;
             let discountVal = currentOrder.discount || 0;
 
-            // هنا بنسحب أسماء الأصناف وكمياتها ونربطهم بحرف "و"
             let itemsString = currentOrder.items && currentOrder.items.length > 0 
                 ? currentOrder.items.map(i => `${i.quantity} ${i.name}`).join(' و ') 
                 : 'بدون تفاصيل';
@@ -413,12 +358,10 @@ function selectOrder(index) {
                 detailsHtml += `<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded border border-red-100 shadow-sm">خصم -${discountVal}ج</span>`;
             }
             
-            // 🌟 الإضافة الجديدة والمحسنة (بدون تضييع أي داتا قديمة) 🌟
             let orderDateVal = currentOrder.orderDate || '';
             let orderTimeVal = currentOrder.orderTime || '';
             let addressVal = currentOrder.customerAddress || 'لم يتم تسجيل عنوان تفصيلي';
 
-            // دمج الوقت والعنوان في حاوية مستقلة تأخذ العرض الكامل عشان شكل الـ Spans ما يبوظش
             detailsHtml += `
                 <div class="w-full text-right mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2 text-slate-600 font-medium">
                     <div class="flex items-center gap-1.5 text-xs">
@@ -440,15 +383,12 @@ function selectOrder(index) {
             if(detailsContainer) {
                 detailsContainer.innerHTML = detailsHtml;
             }
-            // 👆👆 خلصنا التفاصيل 👆👆
 
             renderItemsList();
             updateTimeline();
         }
 
-
         function renderItemsList() {
-            // عرض المحتويات للقراءة فقط بشكل دائم
             let itemsHtml = currentOrder.items ? currentOrder.items.map(i => `
                 <div class="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-2 rounded-lg">
                     <span class="text-sm font-bold text-slate-700">${i.name}</span>
@@ -457,7 +397,6 @@ function selectOrder(index) {
             `).join('') : '<p class="text-xs text-slate-500">لا توجد تفاصيل.</p>';
             document.getElementById('res-items').innerHTML = itemsHtml;
 
-            // إظهار أو إخفاء صندوق "تعديل الطلب" بناءً على حالة الطلب
             if(currentOrder.status === 'new') {
                 document.getElementById('edit-request-box').classList.remove('hidden');
             } else {
@@ -465,7 +404,6 @@ function selectOrder(index) {
             }
         }
 
-        // إرسال طلب التعديل للإدارة عبر صندوق الرسائل
         async function sendEditRequest() {
             let noteInput = document.getElementById('extra-notes-input');
             let noteText = noteInput.value.trim();
@@ -490,7 +428,7 @@ function selectOrder(index) {
                 
                 alert("تم إرسال طلب التعديل للإدارة بنجاح. سيتم مراجعة الطلب وتحديثه.");
                 currentOrder.adminNote = finalAdminNote;
-                noteInput.value = ""; // تفريغ المربع
+                noteInput.value = ""; 
                 
             } catch (e) {
                 console.error(e);
@@ -502,7 +440,7 @@ function selectOrder(index) {
 
         function calculateETA(zone) {
             let now = new Date();
-            let min = 30, max = 60; // الافتراضي
+            let min = 30, max = 60; 
             zone = zone || "";
 
             if (zone.includes('أبو كبير') || zone.includes('ابو كبير')) { min = 30; max = 60; }
@@ -533,7 +471,6 @@ function selectOrder(index) {
             document.getElementById('tracking-card').classList.remove('hidden');
 
             if (s === 'new') {
-                // حساب الوقت المنقضي من وقت إنشاء الطلب بالثواني
                 let orderTimeMillis = currentOrder.createdAt ? currentOrder.createdAt.toMillis() : Date.now();
                 let secondsPassed = (Date.now() - orderTimeMillis) / 1000;
 
@@ -541,7 +478,6 @@ function selectOrder(index) {
                     title = "استلمنا طلب حضرتك بنجاح";
                 } else {
                     title = "جاري مراجعة الطلب";
-                    // تايمر يغير الكلمة تلقائياً بعد الثواني المتبقية من الدقيقة الأولى
                     setTimeout(() => {
                         let statusEl = document.getElementById('res-status-title');
                         if (statusEl && currentOrder.status === 'new') {
@@ -551,7 +487,6 @@ function selectOrder(index) {
                 }
                 pWidth = "0%"; activeSteps = 1;
             }
-
             else if (s === 'deferred') {
                 document.getElementById('tracking-card').classList.add('hidden');
                 showAlert("تم تأجيل الطلب", "تم تأجيل تجهيز الطلب بناءً على رغبة حضرتك أو لعدم التمكن من التواصل. برجاء مراسلتنا لتأكيد موعد الاستلام.", "bg-slate-50", "border-slate-300", "text-slate-800", "fa-solid fa-calendar-days");
@@ -566,14 +501,10 @@ function selectOrder(index) {
                     document.getElementById('driver-info').classList.remove('hidden');
                     
                     let rawDriverData = currentOrder.driverName || "مندوب التوصيل";
-                    
-                    // استخراج الأرقام فقط للاتصال (حتى لو فيها + أو مسافات)
                     let extractedPhone = rawDriverData.replace(/[^\d+]/g, '');
                     
                     if(extractedPhone.length >= 10) {
-                        // تنظيف الاسم (شطب الرقم والأقواس) عشان يظهر بشياكة
                         let cleanName = rawDriverData.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').replace(/\s+/g, ' ').trim();
-                        
                         document.getElementById('driver-name').innerText = cleanName || "مندوب التوصيل";
                         document.getElementById('driver-call-btn').href = `tel:${extractedPhone}`;
                         document.getElementById('driver-call-btn').classList.remove('hidden');
@@ -594,7 +525,6 @@ function selectOrder(index) {
                 if(currentOrder.rating > 0) {
                     document.getElementById('complaint-box').classList.add('hidden');
                     document.getElementById('feedback-thanks').classList.remove('hidden');
-                    // تلوين النجوم المحفوظة
                     let starsElements = document.getElementById('stars-container').children;
                     for(let i=0; i<5; i++) {
                         if(i < currentOrder.rating) starsElements[4-i].classList.add('active', 'text-amber-500'); 
@@ -618,19 +548,14 @@ function selectOrder(index) {
                     }
                 }
             }, 100);
-            // ==========================================
-            // ==========================================
-            // منطق تشغيل صندوق الدفعة والعداد الذكي (مضاد لأخطاء الشهور وبيقرأ لايف من الإدارة)
-            // ==========================================
+
             let batchBox = document.getElementById('batch-info-box');
             if (batchBox) {
-                // لو الأوردر مربوط بدفعة، نروح نسحب إعداداتها من الداتابيز لايف
                 if (currentOrder.batchId) {
                     db.collection('inventory').doc('batches').get().then(doc => {
                         if (doc.exists && doc.data()[currentOrder.batchId]) {
                             let batchData = doc.data()[currentOrder.batchId];
                             
-                            // 1. الأول نتأكد إن فيه أي داتا اتكتبت أساساً عشان نظهر الصندوق الكبير
                             let hasDates = batchData.deliveryStart && batchData.deliveryEnd;
                             let hasAge = batchData.quailAge && batchData.quailAge.trim() !== "";
                             let hasSlaughter = batchData.daysLeft && batchData.daysLeft.trim() !== "";
@@ -640,7 +565,6 @@ function selectOrder(index) {
                                 batchBox.classList.remove('hidden');
                                 document.getElementById('batch-display-name').innerText = batchData.name || currentOrder.batchName;
                                 
-                                // 2. منطق التواريخ والعداد بتاعك (سليم 100% ومفيش فيه تغيير)
                                 if (hasDates) {
                                     document.getElementById('box-delivery-dates').classList.remove('hidden');
                                     document.getElementById('box-delivery-left').classList.remove('hidden');
@@ -669,12 +593,10 @@ function selectOrder(index) {
                                         document.getElementById('batch-days-text').innerText = "موعدك المحدد قريباً";
                                     }
                                 } else {
-                                    // لو التواريخ فاضية، نخفي مربعات التواريخ بس
                                     document.getElementById('box-delivery-dates').classList.add('hidden');
                                     document.getElementById('box-delivery-left').classList.add('hidden');
                                 }
 
-                                // 3. منطق إظهار عمر السمان
                                 if (hasAge) {
                                     document.getElementById('box-quail-age').classList.remove('hidden');
                                     document.getElementById('batch-quail-age').innerText = batchData.quailAge;
@@ -682,7 +604,6 @@ function selectOrder(index) {
                                     document.getElementById('box-quail-age').classList.add('hidden');
                                 }
 
-                                // 4. منطق إظهار المتبقي على الذبح
                                 if (hasSlaughter) {
                                     document.getElementById('box-slaughter-left').classList.remove('hidden');
                                     document.getElementById('batch-slaughter-left').innerText = batchData.daysLeft;
@@ -690,7 +611,6 @@ function selectOrder(index) {
                                     document.getElementById('box-slaughter-left').classList.add('hidden');
                                 }
 
-                                // 5. منطق إظهار رسالة الإدارة
                                 let msgBox = document.getElementById('batch-msg-container');
                                 if (hasMsg) {
                                     msgBox.classList.remove('hidden');
@@ -700,7 +620,6 @@ function selectOrder(index) {
                                 }
                                 
                             } else {
-                                // لو إنت مش كاتب ولا حرف في الـ CRM، الصندوق كله يختفي
                                 batchBox.classList.add('hidden');
                             }
                         } else {
@@ -711,14 +630,20 @@ function selectOrder(index) {
                         batchBox.classList.add('hidden');
                     });
                 } else {
-                    // لو الأوردر فوري مش مربوط بدفعة
                     batchBox.classList.add('hidden');
                 }
             }
 
-        } // <-- دي القفلة الأخيرة بتاعت دالة updateTimeline
-
-
+            // السحر هنا: إظهار وإخفاء زرار التأكيد حسب الحالة
+            let receiptBox = document.getElementById('confirm-receipt-box');
+            if (receiptBox) {
+                if (s === 'dispatched') {
+                    receiptBox.classList.remove('hidden');
+                } else {
+                    receiptBox.classList.add('hidden');
+                }
+            }
+        }
 
         function showAlert(title, desc, bgClass, borderClass, titleClass, iconClass) {
             let banner = document.getElementById('alert-banner');
@@ -806,14 +731,13 @@ function selectOrder(index) {
             const params = new URLSearchParams(window.location.search);
             const phoneParam = params.get('phone');
             if(phoneParam) { document.getElementById('customer-phone').value = phoneParam; trackOrder(); }
-
         };
+
         async function confirmReceipt() {
-            // رسالة تأكيد عشان لو داس بالغلط
             if(!confirm("هل تم استلام الطلب بالكامل من المندوب؟")) return;
             
             let btn = document.getElementById('btn-confirm-receipt');
-            if(!btn) return; // حماية إضافية سريعة
+            if(!btn) return;
             
             let originalText = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تأكيد الاستلام...';
@@ -824,25 +748,26 @@ function selectOrder(index) {
                 let docSnap = await db.collection('orders').doc(currentOrder.id).get();
                 let oldNotes = docSnap.data().adminNote || '';
                 
-                // رسالة واضحة ليك في الإدارة
                 let newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
                 let finalAdminNote = oldNotes ? oldNotes + '\n---\n' + newNote : newNote;
 
-                // تحديث حالة الأوردر لـ completed في الداتابيز + (الإضافات السحرية للربط مع الإدارة)
                 await db.collection('orders').doc(currentOrder.id).update({ 
                     status: 'completed',
                     adminNote: finalAdminNote,
-                    completedAtStr: new Date().toLocaleDateString('en-US'), // عشان يسمّع في درج الفلوس لإيرادات اليوم
-                    completedAt: firebase.firestore.FieldValue.serverTimestamp() // عشان يظبط السجل الزمني والترتيب
+                    completedAtStr: new Date().toLocaleDateString('en-US'),
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // تحديث الواجهة قدام العميل فوراً ليدخل على التقييم
+                // سحر الـ Confetti للمتعة البصرية 
+                if (typeof confetti !== 'undefined') {
+                    confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 } });
+                }
+
                 currentOrder.status = 'completed';
                 currentOrder.adminNote = finalAdminNote;
-                updateTimeline(); 
                 
-                // إخفاء الزرار بعد النجاح عشان العميل ما يعملش طلب متكرر
-                btn.style.display = 'none';
+                updateTimeline(); 
+                btn.classList.add('hidden');
                 
             } catch(e) {
                 console.error(e);
@@ -851,8 +776,6 @@ function selectOrder(index) {
                 btn.disabled = false;
             }
         }
-
-  
     </script>
 </body>
 </html>
