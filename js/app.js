@@ -637,8 +637,10 @@ window.renderProducts = function() {
     Object.keys(productsInfo).forEach(id => {
         const item = productsInfo[id]; 
         if(item.isVisible === false) return; 
+        if(item.isHidden === true) return; // 👈👈 السطر السحري اللي ضفناه عشان يخفي الصنف من المنيو
 
         const available = getAvailableStock(id); 
+
         const currentPrice = globalPrices[id] || item.basePrice; 
         const oldPrice = globalOldPrices[id]; 
         const isDiscountActive = globalDiscounts[id];
