@@ -210,22 +210,21 @@ function renderSlider() {
     }
 }
 
-function renderMarquee() {
-    const banner = document.getElementById('top-banner');
-    const textContainer = document.getElementById('top-banner-text');
-    if(!banner || !textContainer) return;
+function renderHeroAnnouncement() {
+    const card = document.getElementById('hero-announcement-card');
+    const textContainer = document.getElementById('hero-announcement-text');
+    if(!card || !textContainer) return;
 
-    if (globalSettings.bannerActive && globalSettings.marqueeMessages && globalSettings.marqueeMessages.length > 0) {
-        const fullMsg = globalSettings.marqueeMessages.join(' &nbsp; &nbsp; <i class="fa-solid fa-star text-[8px] text-orange-400 mx-2"></i> &nbsp; &nbsp; ');
-        textContainer.innerHTML = fullMsg;
-        banner.classList.remove('hidden');
-    } else if (globalSettings.bannerActive && globalSettings.bannerText) {
-        textContainer.innerHTML = globalSettings.bannerText;
-        banner.classList.remove('hidden');
+    // لو في رسالة متسجلة في الإدارة ومش فاضية، هيعرض الكارت
+    if (globalSettings.heroMessage && globalSettings.heroMessage.trim() !== '') {
+        textContainer.innerHTML = globalSettings.heroMessage;
+        card.classList.remove('hidden');
     } else {
-        banner.classList.add('hidden');
+        // لو مفيش رسالة، هيخفي الكارت خالص
+        card.classList.add('hidden');
     }
 }
+
 
 function startLiveNotifications() {
     const noti = document.getElementById('live-notification');
@@ -256,7 +255,7 @@ function applySettingsToUI() {
     const savedNavy = localStorage.getItem('theme_navy');
     if(savedNavy) document.documentElement.style.setProperty('--brand-navy', savedNavy);
 
-    renderMarquee();
+    renderHeroAnnouncement();
     renderSlider();
 
     document.getElementById('header-store-name').innerText = globalSettings.storeName || 'سمان ههيا'; 
