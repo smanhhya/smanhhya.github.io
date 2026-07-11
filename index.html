@@ -171,13 +171,6 @@
     </nav>
 
 
-    <div id="top-banner" class="bg-[#fef3c7] text-[#92400e] py-2.5 font-bold text-sm md:text-base z-40 relative shadow-sm border-b border-[#fde68a] hidden">
-        <div class="marquee-container w-full max-w-7xl mx-auto">
-            <div class="marquee-content" id="top-banner-text">
-            </div>
-        </div>
-    </div>
-
     <header class="bg-brand-navy text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
         <div class="max-w-7xl mx-auto px-4 flex flex-col items-center justify-center gap-3">
             <h1 class="text-4xl md:text-5xl font-black mb-1" id="header-store-name">سمان ههيا</h1>
@@ -198,6 +191,18 @@
         </div>
     </header>
 
+    <!-- الكارت المدمج الجديد (Hero Card) -->
+    <div class="max-w-3xl mx-auto px-4 relative z-20 -mt-8 mb-4 hidden" id="hero-announcement-card">
+        <div class="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-brand-yellow/40 p-4 flex items-center gap-4 transition-all hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)]">
+            <div class="w-12 h-12 bg-brand-light text-brand-navy rounded-full flex items-center justify-center text-xl shrink-0 border border-brand-navy/10 shadow-inner">
+                <i class="fa-solid fa-bullhorn animate-pulse text-brand-yellow"></i>
+            </div>
+            <div>
+                <h3 class="text-[10px] font-black text-gray-400 mb-0.5">إعلان هام</h3>
+                <p class="text-sm md:text-base font-black text-brand-navy leading-snug" id="hero-announcement-text"></p>
+            </div>
+        </div>
+    </div>
 
 
     <section class="max-w-3xl mx-auto px-4 mt-14 mb-8">
