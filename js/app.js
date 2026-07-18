@@ -13,6 +13,40 @@ window.updateNextBatch = function(id, delta) {
     }
     renderProducts(); updateUI();
 };
+// --- تشغيل نافذة الترحيب فور فتح الموقع ---
+document.addEventListener('DOMContentLoaded', () => {
+    let overlay = document.getElementById('smart-welcome-overlay');
+    if(overlay) {
+        overlay.classList.remove('hidden');
+        // تأخير بسيط عشان الأنيميشن يشتغل صح
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0');
+            document.getElementById('smart-welcome-box').classList.remove('scale-90');
+            document.getElementById('smart-welcome-box').classList.add('scale-100');
+        }, 50);
+        document.body.style.overflow = 'hidden'; // نمنع العميل يعمل سكرول لحد ما يدوس متابعة
+    }
+});
+
+// دالة قفل النافذة لما يدوس "متابعة"
+window.closeSmartWelcome = function() {
+    let overlay = document.getElementById('smart-welcome-overlay');
+    if(overlay) {
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0');
+        document.getElementById('smart-welcome-box').classList.remove('scale-100');
+        document.getElementById('smart-welcome-box').classList.add('scale-90');
+        
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            document.body.style.overflow = ''; // نرجع السكرول تاني
+            
+            // صياعة إضافية: ننزل العميل عند كروت الدفعات عشان يتأكد إنه مختارها
+            if(typeof scrollToBatch === 'function') scrollToBatch();
+            
+        }, 500); // نفس مدة الأنيميشن
+    }
+};
 
 function saveCart() { try { localStorage.setItem('sman_cart', JSON.stringify(cart)); } catch(e) {} }
 
@@ -554,6 +588,50 @@ function renderBatchesSelection() {
 
     if(batchesArray.length > 0) batchContainer.style.display = 'block'; 
     else batchContainer.style.display = 'none';
+
+    // --- 🌟 تحديث نافذة الترحيب (الصياعة) 🌟 ---
+    if (firstOpenBatch && globalBatches[firstOpenBatch]) {
+        let b = globalBatches[firstOpenBatch];
+        let interactiveTime = (typeof window.getFriendlyBatchDatePhrase === 'function') 
+            ? window.getFriendlyBatchDatePhrase(b.deliveryStart, b.deliveryEnd) 
+            : (b.deliveryStart ? `بداية من ${b.deliveryStart}` : 'قريباً فور التجهيز');
+
+        let wName = document.getElementById('welcome-batch-name');
+        let wDate = document.getElementById('welcome-batch-date');
+        let wDesc = document.getElementById('welcome-modal-desc');
+        
+        if(wName) wName.innerText = b.name;
+        if(wDate) wDate.innerHTML = `<i class="fa-regular fa-calendar-check text-brand-cyanDark"></i> التسليم: ${interactiveTime}`;
+        if(wDesc) wDesc.innerText = "تم تجهيز المتجر.. جاهز تطلب؟";
+        
+        let wSpinner = document.getElementById('welcome-spinner');
+        let infoBox = document.getElementById('welcome-batch-info');
+        if(wSpinner) wSpinner.classList.add('hidden');
+        if(infoBox) {
+            infoBox.classList.remove('hidden');
+            setTimeout(() => { infoBox.classList.remove('translate-y-4', 'opacity-0'); }, 100);
+        }
+
+        let wBtn = document.getElementById('btn-welcome-continue');
+        if(wBtn) {
+            wBtn.innerHTML = 'متابعة وطلب الأوردر <i class="fa-solid fa-arrow-left"></i>';
+            wBtn.className = 'w-full bg-brand-navy hover:bg-brand-cyanDark text-white font-black py-4 rounded-xl shadow-xl transition-all flex justify-center items-center gap-2 pulse-animation transform hover:-translate-y-1 cursor-pointer';
+            wBtn.disabled = false;
+        }
+    } else {
+        let wSpinner = document.getElementById('welcome-spinner');
+        let wDesc = document.getElementById('welcome-modal-desc');
+        let wBtn = document.getElementById('btn-welcome-continue');
+        
+        if(wSpinner) wSpinner.classList.add('hidden');
+        if(wDesc) wDesc.innerText = "عفواً، جميع الدفعات مغلقة حالياً. المتجر لا يستقبل طلبات جديدة.";
+        if(wBtn) {
+            wBtn.innerHTML = 'تصفح المتجر فقط';
+            wBtn.className = 'w-full bg-gray-800 text-white font-black py-4 rounded-xl transition-all cursor-pointer';
+            wBtn.disabled = false;
+        }
+    }
+    // --- 🌟 نهاية تحديث نافذة الترحيب 🌟 ---
 }
 
 
