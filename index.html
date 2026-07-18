@@ -169,21 +169,27 @@
         </div>
     </nav>
 <!-- 🌟 نافذة الترحيب الذكية (صياعة التحميل وإجبار الدفعة) 🌟 -->
+<!-- 🌟 نافذة الترحيب الذكية (النسخة المطمنة والشفافة) 🌟 -->
 <div id="smart-welcome-overlay" class="fixed inset-0 bg-brand-navy/95 z-[200] hidden flex items-center justify-center backdrop-blur-md px-4 transition-all duration-500 opacity-0">
     <div class="bg-white rounded-3xl p-6 md:p-8 max-w-sm w-full text-center shadow-[0_10px_40px_rgba(0,0,0,0.5)] transform scale-90 transition-transform duration-500" id="smart-welcome-box">
+        
         <div class="w-20 h-20 bg-brand-light rounded-full flex items-center justify-center mx-auto mb-4 border border-brand-cyan/30 shadow-inner relative">
             <i class="fa-solid fa-kiwi-bird text-4xl text-brand-navy relative z-10"></i>
             <div class="absolute inset-0 rounded-full border-4 border-brand-yellow border-t-transparent animate-spin opacity-50" id="welcome-spinner"></div>
         </div>
         
-        <h2 class="text-2xl font-black text-brand-navy mb-2">أهلاً بيك في سمان ههيا! 🌿</h2>
-        <p class="text-sm font-bold text-gray-500 mb-5 leading-relaxed" id="welcome-modal-desc">ثواني بنجهزلك أطازة سمان...</p>
+        <h2 class="text-2xl font-black text-brand-navy mb-2">نورت سمان ههيا! 🌿</h2>
+        <p class="text-xs font-bold text-gray-500 mb-5 leading-relaxed bg-gray-50 p-2 rounded-lg border border-gray-100" id="welcome-modal-desc">
+            عشان نضمنلك سمان طازة 100%، إحنا شغالين بنظام الحجز والدفعات. ثواني بنحمل حالة المتجر...
+        </p>
         
-        <!-- المربع اللي هيظهر فيه اسم الدفعة لما تحمل -->
-        <div class="bg-brand-light/40 border border-brand-navy/10 rounded-2xl p-4 mb-6 hidden transform transition-all duration-500 translate-y-4 opacity-0" id="welcome-batch-info">
-            <span class="block text-[11px] font-black text-brand-cyanDark mb-1.5"><i class="fa-solid fa-bullhorn animate-pulse"></i> متاح الآن التسجيل في:</span>
-            <span class="block text-xl font-black text-brand-navy mb-1" id="welcome-batch-name">...</span>
-            <span class="inline-block bg-white px-3 py-1 rounded-lg border border-gray-200 text-[11px] font-bold text-gray-600 shadow-sm" id="welcome-batch-date">...</span>
+        <!-- المربع اللي هيظهر فيه حالة الدفعات كلها -->
+        <div class="bg-white border border-gray-100 shadow-sm rounded-2xl p-4 mb-6 hidden transform transition-all duration-500 translate-y-4 opacity-0 text-right" id="welcome-batch-info">
+            <h3 class="text-[11px] font-black text-brand-navy mb-3 border-b border-gray-100 pb-2"><i class="fa-solid fa-bullhorn text-brand-yellow mr-1"></i> ملخص حركة المتجر الآن:</h3>
+            
+            <div id="welcome-batches-list" class="space-y-2">
+                <!-- الدفعات هتترسم هنا بالجافاسكريبت -->
+            </div>
         </div>
 
         <button onclick="closeSmartWelcome()" id="btn-welcome-continue" class="w-full bg-gray-200 text-gray-400 font-black py-4 rounded-xl transition-all flex justify-center items-center gap-2 cursor-not-allowed" disabled>
@@ -191,6 +197,7 @@
         </button>
     </div>
 </div>
+
 
 
     <header class="bg-brand-navy text-white pt-8 pb-16 relative text-center shadow-md pattern-bg">
