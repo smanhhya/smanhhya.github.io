@@ -589,50 +589,60 @@ function renderBatchesSelection() {
     if(batchesArray.length > 0) batchContainer.style.display = 'block'; 
     else batchContainer.style.display = 'none';
 
-    // --- 🌟 تحديث نافذة الترحيب (الصياعة) 🌟 ---
-    if (firstOpenBatch && globalBatches[firstOpenBatch]) {
-        let b = globalBatches[firstOpenBatch];
-        let interactiveTime = (typeof window.getFriendlyBatchDatePhrase === 'function') 
-            ? window.getFriendlyBatchDatePhrase(b.deliveryStart, b.deliveryEnd) 
-            : (b.deliveryStart ? `بداية من ${b.deliveryStart}` : 'قريباً فور التجهيز');
+    // --- 🌟 تحديث نافذة الترحيب المطمنة للعميل 🌟 ---
+    let wSpinner = document.getElementById('welcome-spinner');
+    let infoBox = document.getElementById('welcome-batch-info');
+    let batchesListDiv = document.getElementById('welcome-batches-list');
+    let wBtn = document.getElementById('btn-welcome-continue');
+    let wDesc = document.getElementById('welcome-modal-desc');
 
-        let wName = document.getElementById('welcome-batch-name');
-        let wDate = document.getElementById('welcome-batch-date');
-        let wDesc = document.getElementById('welcome-modal-desc');
+    if (wSpinner) wSpinner.classList.add('hidden');
+
+    // لو في دفعات أصلاً (سواء مفتوحة أو مقفولة)
+    if (finalBatchesToShow.length > 0) {
+        let listHtml = '';
         
-        if(wName) wName.innerText = b.name;
-        if(wDate) wDate.innerHTML = `<i class="fa-regular fa-calendar-check text-brand-cyanDark"></i> التسليم: ${interactiveTime}`;
-        if(wDesc) wDesc.innerText = "تم تجهيز المتجر.. جاهز تطلب؟";
+        // هنرسم الدفعات جوه الشاشة المنبثقة
+        finalBatchesToShow.forEach(batch => {
+            if (batch.isOpen) {
+                let totalStock = 0, totalBooked = 0;
+                if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
+                if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
+                let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
+
+                if (percent >= 80) {
+                    listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-orange-700 bg-orange-50 p-2 rounded-lg border border-orange-100"><i class="fa-solid fa-fire animate-pulse text-orange-500 text-sm"></i> <span><strong class="text-brand-navy">${batch.name}:</strong> العدد قرب يكتمل</span></div>`;
+                } else {
+                    listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-green-700 bg-green-50 p-2 rounded-lg border border-green-100"><i class="fa-solid fa-door-open text-green-500 text-sm"></i> <span><strong class="text-brand-navy">${batch.name}:</strong> متاح ومفتوح للحجز</span></div>`;
+                }
+            } else {
+                listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-200 opacity-80"><i class="fa-solid fa-check-double text-gray-400 text-sm"></i> <span><strong class="line-through">${batch.name}:</strong> اكتملت واتسلمت بنجاح</span></div>`;
+            }
+        });
+
+        if (batchesListDiv) batchesListDiv.innerHTML = listHtml;
         
-        let wSpinner = document.getElementById('welcome-spinner');
-        let infoBox = document.getElementById('welcome-batch-info');
-        if(wSpinner) wSpinner.classList.add('hidden');
-        if(infoBox) {
+        if (infoBox) {
             infoBox.classList.remove('hidden');
             setTimeout(() => { infoBox.classList.remove('translate-y-4', 'opacity-0'); }, 100);
         }
 
-        let wBtn = document.getElementById('btn-welcome-continue');
-        if(wBtn) {
-            wBtn.innerHTML = 'متابعة وطلب الأوردر <i class="fa-solid fa-arrow-left"></i>';
+        if (wBtn) {
+            wBtn.innerHTML = 'تصفح المنيو واختار براحتك <i class="fa-solid fa-cart-shopping"></i>';
             wBtn.className = 'w-full bg-brand-navy hover:bg-brand-cyanDark text-white font-black py-4 rounded-xl shadow-xl transition-all flex justify-center items-center gap-2 pulse-animation transform hover:-translate-y-1 cursor-pointer';
             wBtn.disabled = false;
         }
     } else {
-        let wSpinner = document.getElementById('welcome-spinner');
-        let wDesc = document.getElementById('welcome-modal-desc');
-        let wBtn = document.getElementById('btn-welcome-continue');
-        
-        if(wSpinner) wSpinner.classList.add('hidden');
-        if(wDesc) wDesc.innerText = "عفواً، جميع الدفعات مغلقة حالياً. المتجر لا يستقبل طلبات جديدة.";
-        if(wBtn) {
+        // لو مفيش أي شغل أو دفعات خالص
+        if (wDesc) wDesc.innerText = "عفواً، جميع الدفعات اكتملت ومغلقة حالياً. بنجهز لدورة جديدة، خليك متابعنا!";
+        if (wBtn) {
             wBtn.innerHTML = 'تصفح المتجر فقط';
             wBtn.className = 'w-full bg-gray-800 text-white font-black py-4 rounded-xl transition-all cursor-pointer';
             wBtn.disabled = false;
         }
     }
     // --- 🌟 نهاية تحديث نافذة الترحيب 🌟 ---
-}
+
 
 
 // ===== دالة التحديد والنزول السلس (خارج دالة listenToDatabase) =====
