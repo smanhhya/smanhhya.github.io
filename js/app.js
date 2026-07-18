@@ -493,7 +493,7 @@ async function listenToDatabase() {
     }
 }
 
-// 2. دالة رسم كروت الدفعات (فيها كل مجهودك وشغلك بدون أي نقص)
+// 2. دالة رسم كروت الدفعات (النسخة الودودة والمطمنة للعميل البسيط)
 function renderBatchesSelection() {
     let batchSelect = document.getElementById('user-batch-select');
     let batchContainer = document.getElementById('batch-selection-container');
@@ -501,26 +501,44 @@ function renderBatchesSelection() {
     
     if(!batchSelect || !batchContainer || !cardsContainer) return;
     
-    let currentVal = batchSelect.value;
     cardsContainer.innerHTML = ''; 
-    let firstOpenBatch = null;
     
-    // تحويل الدفعات لمصفوفة عشان نرتبها (المفتوح يظهر فوق، والمغلق ينزل تحت)
+    // 1. تجميع الدفعات وفصل المفتوح عن المغلق
     let batchesArray = Object.keys(globalBatches).map(id => ({id: id, ...globalBatches[id]}));
-    batchesArray.sort((a, b) => {
-        if (a.isOpen === b.isOpen) return b.id.localeCompare(a.id); 
-        return a.isOpen ? -1 : 1; 
-    });
+    let openBatches = batchesArray.filter(b => b.isOpen);
+    let closedBatches = batchesArray.filter(b => !b.isOpen);
 
-    batchesArray.forEach(batch => {
+    // 2. الترتيب: المفتوح (الأقدم أولاً عشان يخلص)، المغلق (الأحدث أولاً للاستعراض)
+    openBatches.sort((a, b) => a.id.localeCompare(b.id));
+    closedBatches.sort((a, b) => b.id.localeCompare(a.id));
+
+    // 3. دمج القائمة (كل المفتوح + أحدث دفعتين مقفولين بس)
+    let finalBatchesToShow = [...openBatches, ...closedBatches.slice(0, 2)];
+
+    let firstOpenBatch = openBatches.length > 0 ? openBatches[0].id : null;
+    let currentVal = batchSelect.value;
+    
+    // اختيار أول دفعة أوتوماتيك للعميل بدون ما يتدخل
+    if (!currentVal && firstOpenBatch) {
+        currentVal = firstOpenBatch;
+        batchSelect.value = currentVal;
+        batchSelect.dispatchEvent(new Event('change')); 
+    }
+
+    // 🌟 تغيير عنوان القسم ليكون أكثر ترحيباً وطمأنينة 🌟
+    let sectionHeader = batchContainer.querySelector('.flex.items-center');
+    if(sectionHeader) {
+        sectionHeader.innerHTML = `<i class="fa-solid fa-hand-holding-heart text-brand-yellow text-2xl"></i>
+                                   <h3 class="font-black text-brand-navy text-base">أهلاً بيك.. اختار ميعاد استلامك اللي يريحك</h3>`;
+    }
+
+    finalBatchesToShow.forEach(batch => {
         let bId = batch.id;
         let interactiveTime = (typeof window.getFriendlyBatchDatePhrase === 'function') 
             ? window.getFriendlyBatchDatePhrase(batch.deliveryStart, batch.deliveryEnd) 
             : (batch.deliveryStart ? `بداية من ${batch.deliveryStart}` : 'قريباً فور التجهيز');
 
         if(batch.isOpen) {
-            if(!firstOpenBatch) firstOpenBatch = bId;
-
             let totalStock = 0, totalBooked = 0;
             if(batch.stock) Object.values(batch.stock).forEach(s => totalStock += parseInt(s) || 0);
             if(batch.booked) Object.values(batch.booked).forEach(b => totalBooked += parseInt(b) || 0);
@@ -528,65 +546,59 @@ function renderBatchesSelection() {
             let percent = totalStock > 0 ? (totalBooked / totalStock) * 100 : 0;
             let isSelected = currentVal === bId;
 
-            // الحالات الذكية بتاعتك
+            // 🌟 رسائل شعبية بسيطة تطمن العميل 🌟
             let smartBadgeHtml = '';
             if (percent >= 80) {
-                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-red-50 border border-red-100 text-red-700 text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-hourglass-half"></i> <span>الحق مكانك! العدد قرب يكتمل</span></div>`;
+                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-orange-50 border border-orange-200 text-orange-700 text-xs font-bold p-2 rounded-xl shadow-sm"><i class="fa-solid fa-fire animate-pulse text-orange-500"></i> <span>العدد قرب يكتمل.. الحق مكانك!</span></div>`;
             } else if (percent >= 50) {
-                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-brand-light border border-brand-navy/10 text-brand-navy text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-chart-line"></i> <span>الدفعة قيد الاكتمال والتجهيز</span></div>`;
+                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-blue-50 border border-blue-200 text-blue-700 text-xs font-bold p-2 rounded-xl shadow-sm"><i class="fa-solid fa-spinner fa-spin text-blue-500"></i> <span>جاري التجهيز واستقبال الطلبات</span></div>`;
             } else {
-                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-emerald-50 border border-emerald-100 text-emerald-700 text-[10px] font-bold p-1.5 rounded-lg shadow-sm"><i class="fa-solid fa-leaf"></i> <span>متاح لتسجيل حجزك الآن</span></div>`;
+                smartBadgeHtml = `<div class="mt-2 flex items-center justify-center gap-1.5 bg-green-50 border border-green-200 text-green-700 text-xs font-bold p-2 rounded-xl shadow-sm"><i class="fa-solid fa-door-open text-green-500"></i> <span>باب الحجز مفتوح.. اطلب براحتك</span></div>`;
             }
 
             cardsContainer.innerHTML += `
                 <div id="card-${bId}" onclick="selectBatchAndScroll('${bId}')" 
-                     class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md' : 'border-gray-100 bg-white opacity-90 hover:opacity-100 hover:border-brand-navy/30'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between mb-4 min-h-[100px]">
+                     class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light scale-[1.02] shadow-md ring-2 ring-brand-navy/20' : 'border-gray-200 bg-white hover:border-brand-navy/50'} rounded-2xl p-4 transition-all duration-300 relative overflow-hidden flex flex-col justify-between mb-4 min-h-[110px]">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <h4 class="font-black text-brand-navy text-sm md:text-base mb-1">${batch.name}</h4>
-                            <p class="text-[10px] font-bold text-gray-500"><i class="fa-regular fa-calendar-check text-brand-cyanDark mr-1"></i> التسليم: <span class="text-slate-700">${interactiveTime}</span></p>
+                            <h4 class="font-black text-brand-navy text-base mb-1">${batch.name}</h4>
+                            <p class="text-[11px] font-bold text-gray-600"><i class="fa-regular fa-calendar-check text-brand-cyanDark mr-1"></i> هيوصلك: <span class="text-slate-800">${interactiveTime}</span></p>
                         </div>
                         <div class="check-icon-container shrink-0">
-                            ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl drop-shadow-sm"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
+                            ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-2xl drop-shadow-sm"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-2xl"></i>'}
                         </div>
                     </div>
                     
-                    ${batch.customerMsg ? `<div class="bg-white p-2 rounded-lg border border-gray-100 shadow-sm mt-1.5 mb-1"><p class="text-[10px] font-bold text-slate-600 leading-relaxed"><i class="fa-solid fa-quote-right text-brand-yellow mr-1 text-[8px]"></i> ${batch.customerMsg}</p></div>` : ''}
+                    ${batch.customerMsg ? `<div class="bg-gray-50 p-2 rounded-lg border border-gray-100 shadow-sm mt-1.5 mb-1"><p class="text-[11px] font-bold text-gray-700 leading-relaxed"><i class="fa-solid fa-quote-right text-brand-yellow mr-1 text-[10px]"></i> ${batch.customerMsg}</p></div>` : ''}
                     
                     ${smartBadgeHtml}
                 </div>
             `;
         } else {
-            // الدفعات المغلقة
+            // 🌟 الدفعات المغلقة (إثبات نجاح للمتجر بدون إزعاج) 🌟
             cardsContainer.innerHTML += `
-                <div class="border-2 border-gray-200 bg-gray-50 rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between mb-4 grayscale-[0.6] opacity-70 cursor-not-allowed">
+                <div class="border-2 border-gray-200 bg-gray-50 rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between mb-4 opacity-80 cursor-not-allowed">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div>
-                            <h4 class="font-black text-gray-500 text-sm md:text-base mb-1 line-through decoration-red-400 decoration-2">${batch.name}</h4>
-                            <p class="text-[10px] font-bold text-gray-400"><i class="fa-regular fa-calendar-check mr-1"></i> التسليم: ${interactiveTime}</p>
+                            <h4 class="font-black text-gray-600 text-base mb-1">${batch.name}</h4>
+                            <p class="text-[11px] font-bold text-gray-400 line-through decoration-gray-300"><i class="fa-regular fa-calendar-check mr-1"></i> التسليم كان: ${interactiveTime}</p>
                         </div>
                         <div class="shrink-0 mt-1">
-                            <i class="fa-solid fa-lock text-red-400 text-xl"></i>
+                            <i class="fa-solid fa-medal text-yellow-500 text-3xl drop-shadow-sm"></i>
                         </div>
                     </div>
                     
-                    <div class="mt-2 bg-white/80 p-2 rounded-lg border border-red-100">
-                        <p class="text-[10px] font-black text-red-500 text-center">اكتمل العدد ومغلقة للحجز ❤️</p>
+                    <div class="mt-2 bg-white shadow-sm p-2 rounded-xl border border-gray-200">
+                        <p class="text-xs font-black text-gray-600 text-center flex items-center justify-center gap-1.5"><i class="fa-solid fa-check-double text-green-500"></i> اكتمل العدد واتسلمت لأصحابها 🚀</p>
                     </div>
                 </div>
             `;
         }
     });
-    
-    // تحديد أول دفعة مفتوحة كخيار افتراضي
-    if (!currentVal && firstOpenBatch) {
-        batchSelect.value = firstOpenBatch;
-        batchSelect.dispatchEvent(new Event('change')); 
-    }
 
-    if(batchesArray.length > 0) batchContainer.style.display = 'block'; 
+    if(finalBatchesToShow.length > 0) batchContainer.style.display = 'block'; 
     else batchContainer.style.display = 'none';
 
     // --- 🌟 تحديث نافذة الترحيب المطمنة للعميل 🌟 ---
@@ -642,6 +654,7 @@ function renderBatchesSelection() {
         }
     }
     // --- 🌟 نهاية تحديث نافذة الترحيب 🌟 ---
+}
 
 
 
