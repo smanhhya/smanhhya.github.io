@@ -724,8 +724,16 @@ window.renderProducts = function() {
     extrasContainer.innerHTML = ''; 
     let mainProductsCount = 0;
 
-    Object.keys(productsInfo).forEach(id => {
+    // 🌟 الترتيب الذكي: من السعر الأعلى إلى الأقل 🌟
+    let sortedProductIds = Object.keys(productsInfo).sort((a, b) => {
+        let priceA = globalPrices[a] || productsInfo[a].basePrice;
+        let priceB = globalPrices[b] || productsInfo[b].basePrice;
+        return priceB - priceA; 
+    });
+
+    sortedProductIds.forEach(id => {
         const item = productsInfo[id]; 
+
         if(item.isVisible === false) return; 
         if(item.isHidden === true) return; // 👈👈 السطر السحري اللي ضفناه عشان يخفي الصنف من المنيو
 
@@ -812,12 +820,12 @@ window.scrollToBatch = function() {
     }
 };
 
+
 window.getCardActionHTML = function(id) {
     if (globalSettings.storeOpen === false) return `<div class="w-full bg-gray-100 text-gray-400 font-bold py-2 rounded-xl text-xs text-center">مغلق</div>`;
     const inCart = cart[id]?.quantity || 0; 
     const available = getAvailableStock(id);
     
-    // 👇 زرار العميل البسيط (مظبوط عشان ميبوظش مساحة الكارت)
     if (available === 0 && inCart === 0) {
         return `
         <div onclick="scrollToBatch()" class="w-full bg-red-50 flex flex-col justify-center items-center py-1 rounded-xl border border-red-300 cursor-pointer hover:bg-red-100 transition-colors shadow-sm">
@@ -832,36 +840,42 @@ window.getCardActionHTML = function(id) {
         return `
             <div class="flex items-center justify-between bg-brand-light border border-brand-navy/10 rounded-xl p-1 h-[36px]">
                 <div onclick="updateQuantity('${id}', 1)" class="w-8 h-full bg-white text-brand-navy rounded-lg shadow-sm font-black text-lg flex items-center justify-center cursor-pointer select-none">+</div>
-                <span class="font-black text-brand-navy text-sm min-w-[20px] text-center">${inCart}</span>
+                <span id="qty-num-${id}" class="font-black text-brand-navy text-sm min-w-[20px] text-center inline-block">${inCart}</span>
                 <div onclick="updateQuantity('${id}', -1)" class="w-8 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none">-</div>
             </div>`;
     }
     return `<div onclick="addToCart('${id}')" class="w-full bg-brand-navy text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-2 cursor-pointer shadow-sm hover:opacity-90"><i class="fa-solid fa-plus"></i> إضافة</div>`;
 }
 
-
-// --- الدالة الأصلية بعد إضافة حماية الدفعة ---
 window.addToCart = function(id) { 
     if (globalSettings.storeOpen === false) return; 
 
-    // 🛡️ [تعديل] التحقق من الدفعة قبل الإضافة
     const batchSelect = document.getElementById('user-batch-select');
     if (!batchSelect || batchSelect.value === "") {
         showAlert("تنبيه", "برجاء اختيار ميعاد الاستلام (الدفعة) أولاً.");
-        window.scrollToBatch(); // الدالة اللي بتوديه للدفعة اللي إنت عاملها
+        window.scrollToBatch(); 
         return;
     }
 
     if (getAvailableStock(id) <= 0) { showAlert("عذراً", "الكمية المتاحة لا تكفي حالياً."); return; } 
+    
+    // 🌟 تشغيل الاهتزاز في الموبايل عند الإضافة 🌟
+    if (navigator.vibrate) navigator.vibrate(50);
+    
     if (cart[id]) cart[id].quantity++; else cart[id] = { quantity: 1, price: globalPrices[id] || productsInfo[id].basePrice, name: productsInfo[id].name }; 
     saveCart(); updateUI(); renderProducts(); 
+    
+    // 🌟 تشغيل النبضة البصرية بعد رسم الكارت 🌟
+    let qtySpan = document.getElementById(`qty-num-${id}`);
+    if(qtySpan) {
+        qtySpan.classList.add('pop-anim');
+        setTimeout(() => qtySpan.classList.remove('pop-anim'), 300);
+    }
 };
 
-// --- الدالة الأصلية بعد إضافة حماية الدفعة ---
 window.updateQuantity = function(id, delta) { 
     if (!cart[id] || globalSettings.storeOpen === false) return; 
 
-    // 🛡️ [تعديل] التحقق من الدفعة عند محاولة زيادة الكمية
     const batchSelect = document.getElementById('user-batch-select');
     if (delta === 1 && (!batchSelect || batchSelect.value === "")) {
         showAlert("تنبيه", "برجاء اختيار ميعاد الاستلام (الدفعة) أولاً.");
@@ -870,46 +884,29 @@ window.updateQuantity = function(id, delta) {
     }
 
     if (delta === 1) { 
-        if (getAvailableStock(id) > 0) cart[id].quantity++; else showAlert("عذراً", "لا يوجد مخزون إضافي متاح."); 
+        if (getAvailableStock(id) > 0) {
+            cart[id].quantity++; 
+            if (navigator.vibrate) navigator.vibrate(50); // اهتزاز عند الزيادة
+        } else {
+            showAlert("عذراً", "لا يوجد مخزون إضافي متاح."); return;
+        }
     } else if (delta === -1) { 
-        cart[id].quantity--; if (cart[id].quantity <= 0) delete cart[id]; 
+        cart[id].quantity--; 
+        if (navigator.vibrate) navigator.vibrate(20); // اهتزاز خفيف جداً عند النقصان
+        if (cart[id].quantity <= 0) delete cart[id]; 
     } 
+    
     saveCart(); updateUI(); renderProducts(); 
-};
-
-
-window.goToCheckoutStep2 = function() {
-    // 👇 الحماية الجديدة: التأكد إن العميل مختار دفعة قبل ما يروح لصفحة الدفع
-    const batchSelect = document.getElementById('user-batch-select');
-    if (batchSelect && batchSelect.value === "") {
-        showAlert("تنبيه مهم", "برجاء تحديد ميعاد الاستلام (الدفعة) من القائمة قبل إتمام الطلب.");
-        toggleCart(); // بيقفل السلة عشان العميل يشوف الصفحة
-        setTimeout(() => { if(typeof scrollToBatch === 'function') scrollToBatch(); }, 300); // بينزله عند كروت الدفعات
-        return; // بيوقف الدالة هنا عشان الكود اللي تحت ميشتغلش
+    
+    // 🌟 تشغيل النبضة لو العميل بيزود الكمية 🌟
+    if (delta === 1) {
+        let qtySpan = document.getElementById(`qty-num-${id}`);
+        if(qtySpan) { qtySpan.classList.add('pop-anim'); setTimeout(() => qtySpan.classList.remove('pop-anim'), 300); }
+        
+        // نبضة لرقم السلة الجانبية كمان
+        let sidebarSpan = document.getElementById(`sidebar-qty-${id}`);
+        if(sidebarSpan) { sidebarSpan.classList.add('pop-anim'); setTimeout(() => sidebarSpan.classList.remove('pop-anim'), 300); }
     }
-    // 👆 نهاية الحماية
-
-    // كودك الأصلي زي ما هو بالمللي:
-    document.getElementById('checkout-step-1').classList.add('hidden');
-    document.getElementById('checkout-step-2').classList.remove('hidden');
-    document.getElementById('btn-back-step').classList.remove('hidden');
-    document.getElementById('lbl-checkout-title').innerText = "إتمام الطلب";
-    document.getElementById('step-1-indicator').classList.replace('step-active', 'step-completed');
-    document.getElementById('step-line-1').classList.add('active');
-    document.getElementById('step-2-indicator').classList.replace('opacity-50', 'step-active');
-    updateUI();
-};
-
-
-window.backToCart = function() {
-    document.getElementById('checkout-step-2').classList.add('hidden');
-    document.getElementById('checkout-step-1').classList.remove('hidden');
-    document.getElementById('btn-back-step').classList.add('hidden');
-    document.getElementById('lbl-checkout-title').innerText = "سلة المشتريات";
-    document.getElementById('step-2-indicator').classList.replace('step-active', 'opacity-50');
-    document.getElementById('step-line-1').classList.remove('active');
-    document.getElementById('step-1-indicator').classList.replace('step-completed', 'step-active');
-    updateUI();
 };
 
 window.updateUI = function() {
@@ -927,7 +924,7 @@ window.updateUI = function() {
                     <div class="flex-1"><h4 class="font-bold text-brand-navy text-xs mb-1">${item.name}</h4><div class="text-brand-cyanDark font-black text-sm">${item.price} ج.م</div></div>
                     <div class="flex items-center gap-2 bg-gray-50 rounded-lg p-1 border border-gray-200 h-[36px]">
                         <div onclick="updateQuantity('${id}', 1)" class="w-8 h-full bg-white text-brand-navy rounded shadow-sm font-black text-lg flex items-center justify-center cursor-pointer select-none">+</div>
-                        <span class="font-black text-brand-navy min-w-[24px] text-center text-sm">${item.quantity}</span>
+                        <span id="sidebar-qty-${id}" class="font-black text-brand-navy min-w-[24px] text-center text-sm inline-block">${item.quantity}</span>
                         <div onclick="updateQuantity('${id}', -1)" class="w-8 h-full bg-white text-red-500 rounded shadow-sm font-black text-xl flex items-center justify-center cursor-pointer select-none pb-1">-</div>
                     </div>
                 </div>`;
@@ -1028,6 +1025,45 @@ window.updateUI = function() {
         else checkoutHintStep2.classList.add('hidden');
     }
 };
+
+
+
+
+window.goToCheckoutStep2 = function() {
+    // 👇 الحماية الجديدة: التأكد إن العميل مختار دفعة قبل ما يروح لصفحة الدفع
+    const batchSelect = document.getElementById('user-batch-select');
+    if (batchSelect && batchSelect.value === "") {
+        showAlert("تنبيه مهم", "برجاء تحديد ميعاد الاستلام (الدفعة) من القائمة قبل إتمام الطلب.");
+        toggleCart(); // بيقفل السلة عشان العميل يشوف الصفحة
+        setTimeout(() => { if(typeof scrollToBatch === 'function') scrollToBatch(); }, 300); // بينزله عند كروت الدفعات
+        return; // بيوقف الدالة هنا عشان الكود اللي تحت ميشتغلش
+    }
+    // 👆 نهاية الحماية
+
+    // كودك الأصلي زي ما هو بالمللي:
+    document.getElementById('checkout-step-1').classList.add('hidden');
+    document.getElementById('checkout-step-2').classList.remove('hidden');
+    document.getElementById('btn-back-step').classList.remove('hidden');
+    document.getElementById('lbl-checkout-title').innerText = "إتمام الطلب";
+    document.getElementById('step-1-indicator').classList.replace('step-active', 'step-completed');
+    document.getElementById('step-line-1').classList.add('active');
+    document.getElementById('step-2-indicator').classList.replace('opacity-50', 'step-active');
+    updateUI();
+};
+
+
+window.backToCart = function() {
+    document.getElementById('checkout-step-2').classList.add('hidden');
+    document.getElementById('checkout-step-1').classList.remove('hidden');
+    document.getElementById('btn-back-step').classList.add('hidden');
+    document.getElementById('lbl-checkout-title').innerText = "سلة المشتريات";
+    document.getElementById('step-2-indicator').classList.replace('step-active', 'opacity-50');
+    document.getElementById('step-line-1').classList.remove('active');
+    document.getElementById('step-1-indicator').classList.replace('step-completed', 'step-active');
+    updateUI();
+};
+
+
 
 window.toggleCart = function() { 
     const sidebar = document.getElementById('cart-sidebar'); const overlay = document.getElementById('cart-overlay'); 
