@@ -713,7 +713,7 @@ window.applyPromoCode = function() {
     updateUI();
 };
 
-// --- محرك عرض المنتجات ---
+// --- محرك عرض المنتجات (النسخة الفاخرة 3D + إشعار المخزون + الترتيب الذكي) ---
 window.renderProducts = function() {
     if(!isStoreDataLoaded) return; 
     const container = document.getElementById('products-container'); 
@@ -733,60 +733,77 @@ window.renderProducts = function() {
 
     sortedProductIds.forEach(id => {
         const item = productsInfo[id]; 
-
         if(item.isVisible === false) return; 
-        if(item.isHidden === true) return; // 👈👈 السطر السحري اللي ضفناه عشان يخفي الصنف من المنيو
+        if(item.isHidden === true) return; 
 
         const available = getAvailableStock(id); 
-
         const currentPrice = globalPrices[id] || item.basePrice; 
         const oldPrice = globalOldPrices[id]; 
         const isDiscountActive = globalDiscounts[id];
         const isBestSeller = globalSettings.bestSellers && globalSettings.bestSellers.includes(id); 
-        const stockBadgeClass = available <= 10 ? (available === 0 ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600') : 'bg-green-50 text-green-700';
         
-        let priceHtml = ''; let saleBadgeHtml = '';
-        if (isDiscountActive) { 
-            saleBadgeHtml = `<div class="absolute top-4 left-4 bg-red-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-lg sale-badge z-10"><i class="fa-solid fa-tag"></i> عرض</div>`; 
-            priceHtml = `<div class="flex flex-col"><span class="text-[11px] text-gray-400 line-through decoration-red-500 font-bold">${oldPrice} ج.م</span><span class="font-black text-red-600 text-xl">${currentPrice} <span class="text-[10px] text-gray-500">ج.م</span></span></div>`; 
-        } else {
-            priceHtml = `<span class="font-black text-brand-cyanDark text-lg">${currentPrice} <span class="text-[10px] text-gray-400">ج.م</span></span>`;
+        // تصميم ذكي لحالة المخزون (ألوان مريحة للعين وتشد الانتباه لو بيخلص)
+        const stockBadgeClass = available <= 10 ? (available === 0 ? 'bg-red-50 text-red-600 border-red-100' : 'bg-orange-50 text-orange-700 border-orange-200') : 'bg-emerald-50 text-emerald-700 border-emerald-100';
+        
+        // 💡 الفكرة 3: توهج الكارت لو الكمية بتخلص (Scarcity Glow)
+        let cardGlowClass = 'border-gray-100';
+        if (available === 0) {
+            cardGlowClass = 'border-red-200 ring-1 ring-red-50 opacity-90 grayscale-[0.1]';
+        } else if (available <= 10) {
+            cardGlowClass = 'border-orange-300 ring-2 ring-orange-100 shadow-[0_0_15px_rgba(245,158,11,0.15)]';
+        } else if (isDiscountActive) {
+            cardGlowClass = 'border-red-200 ring-1 ring-red-50';
         }
 
-        let bestSellerHtml = isBestSeller ? `<div class="absolute bottom-2 right-2 bg-brand-navy text-brand-yellow text-[10px] font-black px-2 py-1 rounded shadow z-10 border border-brand-yellow/30">الأكثر طلباً 🔥</div>` : ''; 
+        // 💡 الفكرة 1: إبراز السعر في بوكس شيك جداً
+        let priceHtml = ''; let saleBadgeHtml = '';
+        if (isDiscountActive) { 
+            saleBadgeHtml = `<div class="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-md sale-badge z-20 animate-bounce"><i class="fa-solid fa-tag"></i> عرض</div>`; 
+            priceHtml = `<div class="flex items-center gap-1.5"><span class="text-[10px] text-gray-400 line-through decoration-red-500 font-bold">${oldPrice} ج</span><div class="bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg shadow-sm"><span class="font-black text-red-600 text-lg">${currentPrice} <span class="text-[9px] text-emerald-700">ج.م</span></span></div></div>`; 
+        } else {
+            priceHtml = `<div class="bg-brand-light border border-brand-cyan/20 px-2.5 py-0.5 rounded-lg shadow-sm"><span class="font-black text-brand-navy text-lg">${currentPrice} <span class="text-[9px] text-brand-navy/70">ج.م</span></span></div>`;
+        }
+
+        // الأكثر طلباً بينبض (Pulse Animation)
+        let bestSellerHtml = isBestSeller ? `<div class="absolute bottom-2 right-2 bg-gradient-to-r from-brand-navy to-[#112d21] text-brand-yellow text-[9px] font-black px-2.5 py-1 rounded-md shadow-lg z-10 border border-brand-yellow/30 animate-pulse"><i class="fa-solid fa-star text-[8px] mr-0.5"></i> الأكثر طلباً</div>` : ''; 
         const imgSrc = (item.images && item.images.length > 0) ? item.images[0] : '';
         
         let customTagHtml = '';
-        if(item.tag === 'new') customTagHtml = `<span class="bg-blue-100 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-blue-200">🆕 جديد</span>`;
-        else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-100 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-orange-200">🔥 قرب يخلص</span>`;
-        else if(item.tag === 'offer') customTagHtml = `<span class="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded border border-purple-200">⏱ عرض محدود</span>`;
+        if(item.tag === 'new') customTagHtml = `<span class="bg-blue-50 text-blue-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-blue-200 shadow-sm">🆕 جديد</span>`;
+        else if(item.tag === 'hot') customTagHtml = `<span class="bg-orange-50 text-orange-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-orange-200 shadow-sm">🔥 قرب يخلص</span>`;
+        else if(item.tag === 'offer') customTagHtml = `<span class="bg-purple-50 text-purple-700 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-purple-200 shadow-sm">⏱ عرض محدود</span>`;
 
+        // 💡 الفكرة 2: الكارت التفاعلي (3D Hover & Tap) + التدرج اللوني (Soft Gradient)
         const cardHTML = `
-            <div class="bg-white rounded-2xl shadow-sm border ${isDiscountActive ? 'border-red-200' : 'border-gray-200'} overflow-hidden flex flex-row h-[140px] relative transition-transform hover:shadow-md mb-3">
+            <div class="bg-gradient-to-l from-white to-gray-50/50 rounded-2xl shadow-sm border ${cardGlowClass} overflow-hidden flex flex-row h-[140px] relative transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgb(0,0,0,0.08)] active:scale-[0.98] mb-3 group cursor-default">
                 ${saleBadgeHtml}
                 
                 <!-- التفاصيل والسعر (يمين) -->
-                <div class="p-3 flex-1 flex flex-col justify-between bg-white min-w-0 z-10">
+                <div class="p-3 flex-1 flex flex-col justify-between min-w-0 z-10">
                     <div>
-                        <div class="flex gap-1 items-center mb-1">
-                            <h3 class="text-sm md:text-base font-black text-brand-navy truncate">${item.name}</h3>
+                        <div class="flex gap-1.5 items-center mb-1.5">
+                            <h3 class="text-sm md:text-base font-black text-brand-navy truncate group-hover:text-brand-cyanDark transition-colors">${item.name}</h3>
                             ${customTagHtml}
                         </div>
                         <div class="flex items-center justify-between gap-2 mb-1">
                             ${priceHtml}
-                            <span class="bg-gray-50 text-gray-500 text-[10px] px-1.5 py-0.5 rounded border border-gray-200 font-bold whitespace-nowrap"><i class="fa-solid fa-scale-balanced mr-1"></i> ${item.weight}</span>
+                            <span class="bg-white text-gray-500 text-[10px] px-2 py-1 rounded-lg border border-gray-100 font-bold whitespace-nowrap shadow-sm"><i class="fa-solid fa-scale-balanced mr-1 text-gray-400"></i> ${item.weight}</span>
                         </div>
                     </div>
                     <div class="flex items-center justify-between mt-auto">
-                        <div class="text-[10px] font-bold px-1.5 py-0.5 rounded border ${stockBadgeClass} shrink-0">المتاح: <span id="stock-display-${id}">${available}</span></div>
-                        <div class="w-28 shrink-0" id="card-action-${id}">${getCardActionHTML(id)}</div>
+                        <div class="text-[10px] font-bold px-2 py-1 rounded-lg border ${stockBadgeClass} shadow-inner shrink-0 flex items-center gap-1">
+                            ${available <= 10 && available > 0 ? '<i class="fa-solid fa-fire text-orange-500 animate-pulse"></i>' : ''} المتاح: <span id="stock-display-${id}">${available}</span>
+                        </div>
+                        <div class="w-28 shrink-0 relative z-20" id="card-action-${id}">${getCardActionHTML(id)}</div>
                     </div>
                 </div>
 
                 <!-- الصورة (شمال) -->
-                <div class="w-32 sm:w-36 shrink-0 relative border-r border-gray-100 overflow-hidden bg-gray-50 cursor-zoom-in" onclick="openImageModal('${imgSrc}')">
+                <div class="w-32 sm:w-36 shrink-0 relative border-r border-gray-100 overflow-hidden bg-white cursor-zoom-in" onclick="openImageModal('${imgSrc}')">
                     ${bestSellerHtml}
-                    <img loading="lazy" src="${imgSrc}" class="w-full h-full object-cover object-center transition-transform duration-300 hover:scale-110" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'">
+                    <!-- تأثير زووم احترافي عالصورة وقت التصفح -->
+                    <img loading="lazy" src="${imgSrc}" class="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-110" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\\'http://www.w3.org/2000/svg\\'><rect width=\\'100%\\' height=\\'100%\\' fill=\\'%23f1f5f9\\'/></svg>'">
+                    <div class="absolute inset-0 bg-gradient-to-r from-transparent to-black/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 </div>
 
             </div>`;
@@ -800,6 +817,9 @@ window.renderProducts = function() {
     
     if(mainProductsCount === 0) container.innerHTML = `<div class="text-center py-10 text-gray-400 font-bold">${globalSettings.uiTexts?.emptyMenuMsg || "لا توجد منتجات حالياً"}</div>`;
 };
+
+
+
 
 
 
