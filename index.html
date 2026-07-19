@@ -30,6 +30,15 @@
         .pulse-animation {
             animation: pulse-btn 2s infinite;
         }
+        /* تأثير النبض للكمية عند الإضافة للسلة */
+        @keyframes pop-scale {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.6); color: var(--brand-yellow); }
+            100% { transform: scale(1); }
+        }
+        .pop-anim {
+            animation: pop-scale 0.3s ease-out;
+        }
 
         /* شريط الأخبار المتحرك (تم تعديل الاتجاه للعربي) */
         .marquee-container {
