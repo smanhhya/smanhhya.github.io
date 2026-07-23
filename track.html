@@ -477,7 +477,9 @@ function selectOrder(index) {
             let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
             let finalAdminNote = currentOrder.adminNote || "";
             // التعديل: ضفنا إيموجي الطوارئ 🚨 عشان ينورلك في الإدارة، وكلام واضح
+            // التعديل: ضفنا إيموجي الطوارئ 🚨 عشان ينورلك في الإدارة، وكلام واضح
             finalAdminNote += `\n---\n[${dateStr}] 🚨 طلب تعديل من العميل:\n${noteText}`;
+
 
             try {
                 await db.collection('orders').doc(currentOrder.id).update({
@@ -617,8 +619,20 @@ function selectOrder(index) {
                     }
                 }
             }, 100);
+
+            // ==========================================
+            // منطق تشغيل صندوق الدفعة والعداد الذكي (قراءة لايف من الإدارة)
+            // ==========================================
+            let batchBox = document.getElementById('batch-info-box');
+            if (batchBox) {
+                if (currentOrder.batchId) {
+                    db.collection('inventory').doc('batches').get().then(doc => {
+                        if (doc.exists && doc.data()[currentOrder.batchId]) {
+                            let batchData = doc.data()[currentOrder.batchId];
+                            
                             batchBox.classList.remove('hidden');
                             document.getElementById('batch-display-name').innerText = batchData.name || currentOrder.batchName;
+
                             
                             // 1. عرض تواريخ التسليم (سليمة 100%)
                             if (batchData.deliveryStart && batchData.deliveryEnd) {
