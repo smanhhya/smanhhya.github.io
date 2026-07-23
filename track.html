@@ -196,6 +196,19 @@
                             <span><i class="fa-solid fa-cart-shopping text-brand-primary"></i> عدّل الأصناف براحتك:</span>
                             <span id="live-edit-total" class="text-brand-primary font-black text-sm">0 ج.م</span>
                         </p>
+
+                        <!-- 🎁 صندوق محفظة الولاء (مخفي افتراضياً لحد ما نتأكد إن العميل ليه نقط) 🎁 -->
+                        <div id="wallet-balance-box" class="hidden bg-gradient-to-r from-amber-50 to-white border border-amber-200 p-3 rounded-xl shadow-sm mb-3">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-[11px] font-black text-amber-800"><i class="fa-solid fa-coins text-amber-500 mr-1"></i> محفظة النقاط</span>
+                                <span class="text-[10px] font-bold bg-white text-amber-600 px-2 py-0.5 rounded border border-amber-100 shadow-sm" id="customer-points-display">0 نقطة</span>
+                            </div>
+                            <button onclick="applyWalletDiscount()" id="btn-apply-wallet" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 shadow-md">
+                                <i class="fa-solid fa-gift"></i> استخدم النقاط واخصم <span id="wallet-discount-amount">0</span> ج.م
+                            </button>
+                            <p id="wallet-applied-msg" class="hidden text-[10px] text-emerald-600 font-black text-center mt-2 bg-emerald-50 py-1 rounded border border-emerald-100">✅ تم تفعيل الخصم بنجاح!</p>
+                        </div>
+
                         
 
                          <!-- هنا هتترسم المنتجات وزراير الزيادة والنقصان -->
@@ -490,18 +503,41 @@ function selectOrder(index) {
             }
         }
 
-        // جلب المنتجات المتاحة ورسمها بـ زراير (+) و (-)
+        let customerWalletPoints = 0;
+        let pointValueInEGP = 0;
+        let isWalletApplied = false;
+
+        // جلب المنتجات المتاحة ورسمها بـ زراير (+) و (-) + جلب بيانات المحفظة
         async function loadProductsForEdit() {
             let itemsDiv = document.getElementById('interactive-edit-items');
-            itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحضير قائمة الأصناف...</div>';
+            itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400 col-span-2"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحضير قائمة الأصناف...</div>';
 
             try {
-                // سحب قائمة أصناف المتجر بأسعارها الحالية
+                // سحب الإعدادات (عشان نعرف قيمة النقطة) وقائمة الأصناف
                 let settingsSnap = await db.collection('inventory').doc('settings').get();
                 let pricesSnap = await db.collection('inventory').doc('prices').get();
                 
-                let productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : {};
-                let pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : {};
+                let settingsData = settingsSnap.exists ? settingsSnap.data() : {};
+                let productsData = settingsData.productsData || {};
+                let pricesData = pricesSnap.exists ? pricesSnap.data() : {};
+                
+                pointValueInEGP = parseFloat(settingsData.pointValueInEGP) || 0.40;
+
+                // 🎁 سحب رصيد محفظة العميل الحالي 🎁
+                let cleanPhone = window.normalizePhone(currentOrder.customerPhone);
+                if(cleanPhone.startsWith('0')) cleanPhone = cleanPhone; else cleanPhone = '0' + cleanPhone;
+                
+                let custSnap = await db.collection('customers').doc(cleanPhone).get();
+                if (custSnap.exists && custSnap.data().walletPoints > 0) {
+                    customerWalletPoints = parseInt(custSnap.data().walletPoints) || 0;
+                    let discountVal = Math.floor(customerWalletPoints * pointValueInEGP);
+                    
+                    if (discountVal > 0) {
+                        document.getElementById('wallet-balance-box').classList.remove('hidden');
+                        document.getElementById('customer-points-display').innerText = `${customerWalletPoints} نقطة`;
+                        document.getElementById('wallet-discount-amount').innerText = discountVal;
+                    }
+                }
 
                 // تفريغ الطلب الحالي جوه سلة التعديل
                 editCartMap = {};
@@ -534,14 +570,15 @@ function selectOrder(index) {
 
                 });
 
-                itemsDiv.innerHTML = html || '<p class="text-xs text-center text-slate-400">لا توجد أصناف متاحة للتعديل حالياً.</p>';
+                itemsDiv.innerHTML = html || '<p class="text-xs text-center text-slate-400 col-span-2">لا توجد أصناف متاحة للتعديل حالياً.</p>';
                 updateLiveEditTotal();
 
             } catch(e) {
                 console.error(e);
-                itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500">حدث خطأ أثناء تحميل الأصناف.</p>';
+                itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
             }
         }
+
 
         function changeEditItemQty(pId, name, price, delta) {
             if (!editCartMap[pId]) {
@@ -560,14 +597,26 @@ function selectOrder(index) {
             updateLiveEditTotal();
         }
 
+
+        function applyWalletDiscount() {
+            isWalletApplied = true;
+            document.getElementById('btn-apply-wallet').classList.add('hidden');
+            document.getElementById('wallet-applied-msg').classList.remove('hidden');
+            updateLiveEditTotal();
+        }
+
         function updateLiveEditTotal() {
             let itemsTotal = 0;
             Object.values(editCartMap).forEach(i => {
                 itemsTotal += (i.quantity * i.price);
             });
             let deliveryFee = Number(currentOrder.deliveryFee) || 0;
-            let discount = Number(currentOrder.discount) || 0;
-            let newFinalTotal = Math.max(0, itemsTotal + deliveryFee - discount);
+            // لو استخدم المحفظة هنزود خصمها على الخصم الأصلي بتاع الأوردر
+            let baseDiscount = Number(currentOrder.discount) || 0;
+            let walletDiscount = isWalletApplied ? Math.floor(customerWalletPoints * pointValueInEGP) : 0;
+            let totalDiscount = baseDiscount + walletDiscount;
+            
+            let newFinalTotal = Math.max(0, itemsTotal + deliveryFee - totalDiscount);
 
             document.getElementById('live-edit-total').innerText = `${newFinalTotal} ج.م`;
         }
@@ -599,28 +648,48 @@ function selectOrder(index) {
 
             try {
                 let deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                let discount = Number(currentOrder.discount) || 0;
-                let newTotal = Math.max(0, newSubtotal + deliveryFee - discount);
+                let baseDiscount = Number(currentOrder.discount) || 0;
+                let walletDiscount = isWalletApplied ? Math.floor(customerWalletPoints * pointValueInEGP) : 0;
+                let totalDiscount = baseDiscount + walletDiscount;
+                
+                let newTotal = Math.max(0, newSubtotal + deliveryFee - totalDiscount);
 
                 let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 
+                let walletNote = isWalletApplied ? `\n🎁 تم خصم (${walletDiscount} ج.م) باستخدام ${customerWalletPoints} نقطة ولاء.` : "";
+                
                 // 🌟 بناء الملاحظة الذكية التي ستنور بـ 🚨 في الـ CRM 🌟
                 let oldAdminNotes = currentOrder.adminNote || "";
-                let newEditNote = `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل عبر التتبع:\nالأصناف الجديدة: (${itemsSummaryText.join(' ، ')})\nالإجمالي الجديد: ${newTotal} ج.م`;
+                let newEditNote = `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل عبر التتبع:\nالأصناف الجديدة: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي الجديد: ${newTotal} ج.م`;
                 let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
 
-                // تحديث الوثيقة في فايربيس (تحديث الفاتورة والأصناف فعلياً)
-                await db.collection('orders').doc(currentOrder.id).update({
+                let atomicBatch = db.batch();
+                let orderRef = db.collection('orders').doc(currentOrder.id);
+                
+                atomicBatch.update(orderRef, {
                     items: updatedItems,
                     subtotal: newSubtotal,
                     total: newTotal,
+                    discount: totalDiscount,
                     adminNote: finalNotes
                 });
+
+                // لو العميل استخدم محفظته.. نصفر النقط من حسابه
+                if (isWalletApplied && customerWalletPoints > 0) {
+                    let cleanPhone = window.normalizePhone(currentOrder.customerPhone);
+                    if(cleanPhone.startsWith('0')) cleanPhone = cleanPhone; else cleanPhone = '0' + cleanPhone;
+                    atomicBatch.update(db.collection('customers').doc(cleanPhone), {
+                        walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
+                    });
+                }
+
+                await atomicBatch.commit();
 
                 // تحديث كائن الطلب في الصفحة ريل تايم
                 currentOrder.items = updatedItems;
                 currentOrder.subtotal = newSubtotal;
                 currentOrder.total = newTotal;
+                currentOrder.discount = totalDiscount;
                 currentOrder.adminNote = finalNotes;
 
                 // إغلاق الصندوق وعرض رسالة النجاح الخضراء
@@ -640,6 +709,7 @@ function selectOrder(index) {
                 btn.disabled = false;
             }
         }
+
 
         function calculateETA(zone) {
             let now = new Date();
