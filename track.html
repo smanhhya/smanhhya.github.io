@@ -698,7 +698,7 @@ function selectOrder(index) {
                                 }
 
                                 // دمج التنبيه الطارئ مع الرسالة الأوتوماتيكية لو موجود
-                                let urgentNote = batchData.urgentNote ? `<strong class="text-amber-600 block mb-1">📌 تنبيه: ${batchData.urgentNote}</strong>` : "";
+                                let urgentNote = batchData.urgentNote ? `<strong class="text-amber-600 block mb-1">📌 تنبيه: ${batchData.urgentNote}</strong><br>` : "";
                                 msgText.innerHTML = urgentNote + autoMsg;
                             } else {
                                 msgBox.classList.add('hidden');
@@ -715,13 +715,10 @@ function selectOrder(index) {
                     batchBox.classList.add('hidden');
                 }
             }
-
-        } // <-- دي القفلة الأخيرة بتاعت دالة updateTimeline
-
-
-
+        } // <-- دي القفلة الأخيرة المظبوطة بتاعت دالة updateTimeline
 
         function showAlert(title, desc, bgClass, borderClass, titleClass, iconClass) {
+
             let banner = document.getElementById('alert-banner');
             banner.className = `hidden rounded-2xl p-5 animate-slide shadow-sm border ${bgClass} ${borderClass}`;
             banner.classList.remove('hidden');
