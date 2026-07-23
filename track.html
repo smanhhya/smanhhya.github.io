@@ -524,7 +524,7 @@ function selectOrder(index) {
                 pointValueInEGP = parseFloat(settingsData.pointValueInEGP) || 0.40;
 
                 // 🎁 سحب رصيد محفظة العميل الحالي 🎁
-                let cleanPhone = window.normalizePhone(currentOrder.customerPhone);
+                let cleanPhone = normalizePhone(currentOrder.customerPhone);
                 if(cleanPhone.startsWith('0')) cleanPhone = cleanPhone; else cleanPhone = '0' + cleanPhone;
                 
                 let custSnap = await db.collection('customers').doc(cleanPhone).get();
@@ -676,7 +676,8 @@ function selectOrder(index) {
 
                 // لو العميل استخدم محفظته.. نصفر النقط من حسابه
                 if (isWalletApplied && customerWalletPoints > 0) {
-                    let cleanPhone = window.normalizePhone(currentOrder.customerPhone);
+                    let cleanPhone = normalizePhone(currentOrder.customerPhone);
+
                     if(cleanPhone.startsWith('0')) cleanPhone = cleanPhone; else cleanPhone = '0' + cleanPhone;
                     atomicBatch.update(db.collection('customers').doc(cleanPhone), {
                         walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
