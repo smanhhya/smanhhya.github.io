@@ -185,13 +185,28 @@
                 <h4 class="font-bold text-slate-800 text-sm mb-3">محتويات الطلب:</h4>
                 <div id="res-items" class="flex flex-col gap-2 mb-4"></div>
                 
-                <!-- صندوق التعديل (يظهر فقط إذا كان الطلب جديداً) -->
-                <div id="edit-request-box" class="hidden border-t border-slate-100 pt-4 mt-2">
-                    <label class="text-xs font-bold text-brand-primary block mb-2"><i class="fa-solid fa-pen-to-square"></i> هل تود تعديل أو إضافة شيء للطلب؟</label>
-                    <textarea id="extra-notes-input" rows="2" class="w-full border border-slate-300 rounded-xl p-3 text-sm outline-none focus:border-brand-primary bg-slate-50" placeholder="اكتب هنا التعديل المطلوب (مثال: أرجو إضافة صنف كذا، أو زيادة الكمية)..."></textarea>
-                    <button id="btn-save-edit" onclick="sendEditRequest()" class="w-full mt-3 bg-slate-800 hover:bg-black text-white font-bold py-2.5 rounded-xl text-sm transition-colors">إرسال طلب التعديل للإدارة</button>
+                <!-- نافذة تعديل الأصناف الذكية للعميل -->
+                <div id="edit-request-box" class="hidden border-t border-slate-200 pt-4 mt-2">
+                    <button onclick="toggleVisualEditMenu()" id="btn-open-edit-menu" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-pen-to-square"></i> تعديل أصناف الطلب / زيادة الكمية
+                    </button>
+                
+                    <div id="visual-edit-container" class="hidden mt-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                        <p class="text-xs font-black text-slate-700 mb-2 border-b border-slate-200 pb-2 flex justify-between items-center">
+                            <span><i class="fa-solid fa-cart-shopping text-brand-primary"></i> عدّل الأصناف براحتك:</span>
+                            <span id="live-edit-total" class="text-brand-primary font-black text-sm">0 ج.م</span>
+                        </p>
+                        
+                        <!-- هنا هتترسم المنتجات وزراير الزيادة والنقصان -->
+                        <div id="interactive-edit-items" class="space-y-2 max-h-60 overflow-y-auto custom-scroll pr-1"></div>
+                
+                        <button onclick="submitDirectOrderEdit()" id="btn-confirm-direct-edit" class="w-full bg-brand-primary hover:bg-green-800 text-white font-black py-3 rounded-xl text-sm transition-all shadow-lg mt-3 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i> حفظ التعديل وتحديث الفاتورة
+                        </button>
+                    </div>
                 </div>
             </div>
+
 
             <!-- قسم التقييم الراقي (يظهر عند الاكتمال) -->
             <div id="feedback-section" class="hidden bg-white border border-brand-primary rounded-2xl p-6 mb-5 text-center shadow-md animate-slide">
@@ -461,44 +476,167 @@ function selectOrder(index) {
         }
 
         // إرسال طلب التعديل للإدارة عبر صندوق الرسائل
-        async function sendEditRequest() {
-            let noteInput = document.getElementById('extra-notes-input');
-            let noteText = noteInput.value.trim();
+        let editCartMap = {}; // خزان التعديل المؤقت للعميل
+
+        function toggleVisualEditMenu() {
+            let container = document.getElementById('visual-edit-container');
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                loadProductsForEdit();
+            } else {
+                container.classList.add('hidden');
+            }
+        }
+
+        // جلب المنتجات المتاحة ورسمها بـ زراير (+) و (-)
+        async function loadProductsForEdit() {
+            let itemsDiv = document.getElementById('interactive-edit-items');
+            itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحضير قائمة الأصناف...</div>';
+
+            try {
+                // سحب قائمة أصناف المتجر بأسعارها الحالية
+                let settingsSnap = await db.collection('inventory').doc('settings').get();
+                let pricesSnap = await db.collection('inventory').doc('prices').get();
+                
+                let productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : {};
+                let pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : {};
+
+                // تفريغ الطلب الحالي جوه سلة التعديل
+                editCartMap = {};
+                if (currentOrder.items) {
+                    currentOrder.items.forEach(i => {
+                        editCartMap[i.id] = { name: i.name, quantity: i.quantity, price: i.price };
+                    });
+                }
+
+                // رسم الاصناف للعميل
+                let html = '';
+                Object.keys(productsData).forEach(pId => {
+                    let p = productsData[pId];
+                    if (p.isHidden) return; // إخفاء المنتجات المخفية
+
+                    let currentQty = editCartMap[pId] ? editCartMap[pId].quantity : 0;
+                    let price = pricesData[pId] || p.basePrice || 0;
+
+                    html += `
+                    <div class="flex justify-between items-center bg-white p-2.5 rounded-xl border border-slate-200 shadow-sm">
+                        <div>
+                            <span class="text-xs font-black text-slate-800 block">${p.name}</span>
+                            <span class="text-[10px] font-bold text-brand-primary">${price} ج.م</span>
+                        </div>
+                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-lg">
+                            <button onclick="changeEditItemQty('${pId}', '${p.name}', ${price}, -1)" class="w-7 h-7 bg-white text-red-500 rounded-lg font-black shadow-sm flex items-center justify-center hover:bg-red-50">-</button>
+                            <span id="edit-qty-${pId}" class="text-xs font-black text-slate-800 w-6 text-center">${currentQty}</span>
+                            <button onclick="changeEditItemQty('${pId}', '${p.name}', ${price}, 1)" class="w-7 h-7 bg-white text-emerald-600 rounded-lg font-black shadow-sm flex items-center justify-center hover:bg-emerald-50">+</button>
+                        </div>
+                    </div>`;
+                });
+
+                itemsDiv.innerHTML = html || '<p class="text-xs text-center text-slate-400">لا توجد أصناف متاحة للتعديل حالياً.</p>';
+                updateLiveEditTotal();
+
+            } catch(e) {
+                console.error(e);
+                itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500">حدث خطأ أثناء تحميل الأصناف.</p>';
+            }
+        }
+
+        function changeEditItemQty(pId, name, price, delta) {
+            if (!editCartMap[pId]) {
+                editCartMap[pId] = { name: name, quantity: 0, price: price };
+            }
             
-            if(!noteText) {
-                alert("برجاء كتابة التعديل أو الإضافة المطلوبة أولاً.");
+            // التعامل مع الأوزان (لو الصنف شغال بالنص كيلو) والأعداد الصحيحة
+            editCartMap[pId].quantity += delta;
+
+            if (editCartMap[pId].quantity <= 0) {
+                delete editCartMap[pId];
+                document.getElementById(`edit-qty-${pId}`).innerText = 0;
+            } else {
+                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
+            }
+            updateLiveEditTotal();
+        }
+
+        function updateLiveEditTotal() {
+            let itemsTotal = 0;
+            Object.values(editCartMap).forEach(i => {
+                itemsTotal += (i.quantity * i.price);
+            });
+            let deliveryFee = Number(currentOrder.deliveryFee) || 0;
+            let discount = Number(currentOrder.discount) || 0;
+            let newFinalTotal = Math.max(0, itemsTotal + deliveryFee - discount);
+
+            document.getElementById('live-edit-total').innerText = `${newFinalTotal} ج.م`;
+        }
+
+        // 🚀 حفظ التعديل المباشر في قاعدة البيانات + تسجيل الملاحظة في الـ CRM 🚀
+        async function submitDirectOrderEdit() {
+            let updatedItems = [];
+            let newSubtotal = 0;
+            let itemsSummaryText = [];
+
+            Object.keys(editCartMap).forEach(pId => {
+                let item = editCartMap[pId];
+                if (item.quantity > 0) {
+                    updatedItems.push({ id: pId, name: item.name, quantity: item.quantity, price: item.price });
+                    newSubtotal += (item.quantity * item.price);
+                    itemsSummaryText.push(`${item.quantity}x ${item.name}`);
+                }
+            });
+
+            if (updatedItems.length === 0) {
+                alert("لا يمكن حفظ طلب فارغ! اختر صنف واحد على الأقل.");
                 return;
             }
 
-            let btn = document.getElementById('btn-save-edit');
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...'; 
+            let btn = document.getElementById('btn-confirm-direct-edit');
+            let origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديث الطلب...';
             btn.disabled = true;
 
-            let dateStr = new Date().toLocaleString('ar-EG', {month: 'numeric', day: 'numeric', hour: '2-digit', minute:'2-digit'});
-            let finalAdminNote = currentOrder.adminNote || "";
-            // التعديل: ضفنا إيموجي الطوارئ 🚨 عشان ينورلك في الإدارة، وكلام واضح
-            // التعديل: ضفنا إيموجي الطوارئ 🚨 عشان ينورلك في الإدارة، وكلام واضح
-            finalAdminNote += `\n---\n[${dateStr}] 🚨 طلب تعديل من العميل:\n${noteText}`;
-
-
             try {
-                await db.collection('orders').doc(currentOrder.id).update({
-                    adminNote: finalAdminNote
-                });
-                
-                // طمأنة العميل وتغيير شكل الصندوق بعد الإرسال
-                let editBox = document.getElementById('edit-request-box');
-                editBox.innerHTML = `<div class="bg-green-50 border border-green-200 text-green-700 p-3 rounded-xl text-center text-sm font-bold shadow-sm"><i class="fa-solid fa-check-double mb-1 text-xl block"></i> تم إرسال طلب التعديل للإدارة بنجاح.<br>سيتم مراجعة طلبك وتحديث الفاتورة قريباً.</div>`;
-                
-                currentOrder.adminNote = finalAdminNote;
-                
-            } catch (e) {
+                let deliveryFee = Number(currentOrder.deliveryFee) || 0;
+                let discount = Number(currentOrder.discount) || 0;
+                let newTotal = Math.max(0, newSubtotal + deliveryFee - discount);
 
+                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                
+                // 🌟 بناء الملاحظة الذكية التي ستنور بـ 🚨 في الـ CRM 🌟
+                let oldAdminNotes = currentOrder.adminNote || "";
+                let newEditNote = `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل عبر التتبع:\nالأصناف الجديدة: (${itemsSummaryText.join(' ، ')})\nالإجمالي الجديد: ${newTotal} ج.م`;
+                let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
+
+                // تحديث الوثيقة في فايربيس (تحديث الفاتورة والأصناف فعلياً)
+                await db.collection('orders').doc(currentOrder.id).update({
+                    items: updatedItems,
+                    subtotal: newSubtotal,
+                    total: newTotal,
+                    adminNote: finalNotes
+                });
+
+                // تحديث كائن الطلب في الصفحة ريل تايم
+                currentOrder.items = updatedItems;
+                currentOrder.subtotal = newSubtotal;
+                currentOrder.total = newTotal;
+                currentOrder.adminNote = finalNotes;
+
+                // إغلاق الصندوق وعرض رسالة النجاح الخضراء
+                document.getElementById('edit-request-box').innerHTML = `
+                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3">
+                        <i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2 block"></i>
+                        تم تحديث أوردرك بنجاح! 🎉<br>تم تعديل الفاتورة وإخطار إدارة المزرعة.
+                    </div>`;
+
+                // إعادة رسم الشاشة بالبيانات الجديدة
+                displayResult();
+
+            } catch (e) {
                 console.error(e);
-                alert("حدث خطأ أثناء الإرسال، برجاء المحاولة لاحقاً.");
+                alert("حدث خطأ أثناء حفظ التعديل، حاول مرة أخرى.");
+                btn.innerHTML = origHtml;
+                btn.disabled = false;
             }
-            btn.innerHTML = 'إرسال طلب التعديل للإدارة'; 
-            btn.disabled = false;
         }
 
         function calculateETA(zone) {
