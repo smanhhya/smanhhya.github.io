@@ -785,14 +785,14 @@ function selectOrder(index) {
                     adminNote: finalNotes
                 });
 
-                // لو العميل استخدم محفظته.. نصفر النقط من حسابه
+                // لو العميل استخدم محفظته.. نصفر النقط من حسابه بطريقة آمنة
                 if (isWalletApplied && customerWalletPoints > 0) {
                     let cleanPhone = normalizePhone(currentOrder.customerPhone);
-
-                    if(cleanPhone.startsWith('0')) cleanPhone = cleanPhone; else cleanPhone = '0' + cleanPhone;
-                    atomicBatch.update(db.collection('customers').doc(cleanPhone), {
+                    if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                    
+                    atomicBatch.set(db.collection('customers').doc(cleanPhone), {
                         walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
-                    });
+                    }, { merge: true });
                 }
 
                 await atomicBatch.commit();
