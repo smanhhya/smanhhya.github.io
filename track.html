@@ -822,6 +822,48 @@ function selectOrder(index) {
                 btn.disabled = false;
             }
         }
+        // 🚀 الدالة الجديدة لزرار تفعيل المحفظة السريع من برة (آمنة 100%) 🚀
+        async function applyWalletToCurrentOrder() {
+            if (currentOrder.status !== 'new') return alert("لا يمكن تعديل الفاتورة إلا إذا كان الطلب (جديد).");
+            
+            let btn = document.getElementById('btn-quick-apply-wallet'); let origHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التفعيل...'; btn.disabled = true;
+
+            try {
+                let discountVal = window.currentWalletDiscount || 0;
+                let ptsUsed = window.currentWalletPoints || 0;
+                let currentTotal = Number(currentOrder.total) || 0;
+                let currentDiscount = Number(currentOrder.discount) || 0;
+
+                let newDiscount = currentDiscount + discountVal;
+                let newTotal = Math.max(0, currentTotal - discountVal);
+
+                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                let oldAdminNotes = currentOrder.adminNote || "";
+                let newEditNote = `\n---\n[${dateStr}] 🎁 العميل قام بتفعيل خصم المحفظة بقيمة (${discountVal} ج.م) باستخدام ${ptsUsed} نقطة.`;
+                let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
+
+                let atomicBatch = db.batch();
+                let orderRef = db.collection('orders').doc(currentOrder.id);
+                atomicBatch.update(orderRef, { total: newTotal, discount: newDiscount, adminNote: finalNotes });
+
+                let cleanPhone = normalizePhone(currentOrder.customerPhone);
+                if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                
+                // الحل السحري اللي بيمنع الـ Error: استخدام set مع merge بدل update
+                atomicBatch.set(db.collection('customers').doc(cleanPhone), {
+                    walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
+                }, { merge: true });
+
+                await atomicBatch.commit();
+                
+                document.getElementById('main-wallet-banner').classList.add('hidden');
+                alert("تم تفعيل الخصم بنجاح وتحديث الفاتورة! 🎉");
+            } catch(e) {
+                alert("حدث خطأ أثناء تفعيل الخصم. برجاء المحاولة لاحقاً.");
+                btn.innerHTML = origHtml; btn.disabled = false;
+            }
+        }
 
 
         function calculateETA(zone) {
