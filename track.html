@@ -536,7 +536,7 @@ function selectOrder(index) {
         }
 
         // إرسال طلب التعديل للإدارة عبر صندوق الرسائل
-        let editCartMap = {}; // خزان التعديل المؤقت للعميل
+        let editCartMap = {};
 
         function toggleVisualEditMenu() {
             let container = document.getElementById('visual-edit-container');
@@ -547,7 +547,6 @@ function selectOrder(index) {
                 container.classList.add('hidden');
             }
         }
-
 
         async function loadProductsForEdit() {
             let itemsDiv = document.getElementById('interactive-edit-items');
@@ -595,6 +594,7 @@ function selectOrder(index) {
         function changeEditItemQty(pId, name, price, delta) {
             if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
             editCartMap[pId].quantity += delta;
+            
             if (editCartMap[pId].quantity <= 0) {
                 delete editCartMap[pId];
                 document.getElementById(`edit-qty-${pId}`).innerText = 0;
@@ -623,58 +623,68 @@ function selectOrder(index) {
                     itemsSummaryText.push(`${item.quantity}x ${item.name}`);
                 }
             });
-            if (updatedItems.length === 0) return alert("لا يمكن حفظ طلب فارغ!");
+            if (updatedItems.length === 0) return alert("لا يمكن حفظ طلب فارغ! اختر صنف واحد على الأقل.");
 
             let btn = document.getElementById('btn-confirm-direct-edit'); let origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديث الطلب...'; btn.disabled = true;
 
             try {
                 let deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                let discount = Number(currentOrder.discount) || 0;
-                let newTotal = Math.max(0, newSubtotal + deliveryFee - discount);
+                let currentDiscount = Number(currentOrder.discount) || 0;
+                let newTotal = Math.max(0, newSubtotal + deliveryFee - currentDiscount);
+                
                 let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 let oldAdminNotes = currentOrder.adminNote || "";
-                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')}). الإجمالي: ${newTotal} ج` : `[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')}). الإجمالي: ${newTotal} ج`;
+                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل: (${itemsSummaryText.join(' ، ')}). الإجمالي الجديد: ${newTotal} ج.م` : `[${dateStr}] 🚨 تعديل مباشر من العميل: (${itemsSummaryText.join(' ، ')}). الإجمالي الجديد: ${newTotal} ج.م`;
 
-                await db.collection('orders').doc(currentOrder.id).update({ items: updatedItems, subtotal: newSubtotal, total: newTotal, adminNote: finalNotes });
+                // استخدام set للحفظ بأمان وتخطي خطأ فايربيس
+                await db.collection('orders').doc(currentOrder.id).set({ 
+                    items: updatedItems, subtotal: newSubtotal, total: newTotal, adminNote: finalNotes 
+                }, { merge: true });
 
                 currentOrder.items = updatedItems; currentOrder.subtotal = newSubtotal; currentOrder.total = newTotal; currentOrder.adminNote = finalNotes;
+                
                 document.getElementById('edit-request-box').innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3"><i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2 block"></i>تم تحديث أوردرك بنجاح! 🎉</div>`;
                 displayResult();
             } catch (e) {
-                alert("حدث خطأ أثناء حفظ التعديل، حاول مرة أخرى."); btn.innerHTML = origHtml; btn.disabled = false;
+                console.error(e); alert("حدث خطأ أثناء حفظ التعديل، حاول مرة أخرى."); btn.innerHTML = origHtml; btn.disabled = false;
             }
         }
 
-        // 🚀 الدالة الجديدة لزرار تفعيل المحفظة السريع من برة (آمنة 100%) 🚀
+        // 🚀 زرار تفعيل المحفظة السريع من البانر الخارجي 🚀
         async function applyWalletToCurrentOrder() {
-            if (currentOrder.status !== 'new') return alert("لا يمكن تعديل الفاتورة إلا إذا كان الطلب (جديد).");
+            if (currentOrder.status !== 'new') return alert("لا يمكن تفعيل الخصم إلا إذا كان الطلب في حالة (جديد).");
             
             let btn = document.getElementById('btn-quick-apply-wallet'); let origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التفعيل...'; btn.disabled = true;
 
             try {
-                let discountVal = window.currentWalletDiscount || 0;
-                let ptsUsed = window.currentWalletPoints || 0;
+                let discountVal = Number(window.currentWalletDiscount) || 0;
+                let ptsUsed = Number(window.currentWalletPoints) || 0;
                 let currentTotal = Number(currentOrder.total) || 0;
                 let currentDiscount = Number(currentOrder.discount) || 0;
+
+                if(ptsUsed <= 0) {
+                    alert("رصيد المحفظة غير كافٍ!"); btn.innerHTML = origHtml; btn.disabled = false; return;
+                }
 
                 let newDiscount = currentDiscount + discountVal;
                 let newTotal = Math.max(0, currentTotal - discountVal);
 
                 let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 let oldAdminNotes = currentOrder.adminNote || "";
-                let newEditNote = `\n---\n[${dateStr}] 🎁 العميل قام بتفعيل خصم المحفظة بقيمة (${discountVal} ج.م) باستخدام ${ptsUsed} نقطة.`;
-                let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
+                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.` : `[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.`;
 
+                // الحفظ الآمن في فايربيس (set + merge)
                 let atomicBatch = db.batch();
-                let orderRef = db.collection('orders').doc(currentOrder.id);
-                atomicBatch.update(orderRef, { total: newTotal, discount: newDiscount, adminNote: finalNotes });
+                atomicBatch.set(db.collection('orders').doc(currentOrder.id), { 
+                    total: newTotal, discount: newDiscount, adminNote: finalNotes 
+                }, { merge: true });
 
                 let cleanPhone = normalizePhone(currentOrder.customerPhone);
-                if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                if(!cleanPhone) cleanPhone = 'unknown'; else if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
                 
-                // الحل السحري اللي بيمنع الـ Error: استخدام set مع merge بدل update
+                // خصم النقاط من العميل بأمان تام
                 atomicBatch.set(db.collection('customers').doc(cleanPhone), {
                     walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
                 }, { merge: true });
@@ -682,187 +692,17 @@ function selectOrder(index) {
                 await atomicBatch.commit();
                 
                 document.getElementById('main-wallet-banner').classList.add('hidden');
+                
+                currentOrder.total = newTotal; currentOrder.discount = newDiscount; currentOrder.adminNote = finalNotes;
+                window.currentWalletDiscount = 0; window.currentWalletPoints = 0;
+                displayResult(); 
+                
                 alert("تم تفعيل الخصم بنجاح وتحديث الفاتورة! 🎉");
             } catch(e) {
-                alert("حدث خطأ أثناء تفعيل الخصم. برجاء المحاولة لاحقاً.");
-                btn.innerHTML = origHtml; btn.disabled = false;
+                console.error(e); alert("حدث خطأ أثناء تفعيل الخصم. برجاء المحاولة لاحقاً."); btn.innerHTML = origHtml; btn.disabled = false;
             }
         }
 
-
-
-        function changeEditItemQty(pId, name, price, delta) {
-            if (!editCartMap[pId]) {
-                editCartMap[pId] = { name: name, quantity: 0, price: price };
-            }
-            
-            // التعامل مع الأوزان (لو الصنف شغال بالنص كيلو) والأعداد الصحيحة
-            editCartMap[pId].quantity += delta;
-
-            if (editCartMap[pId].quantity <= 0) {
-                delete editCartMap[pId];
-                document.getElementById(`edit-qty-${pId}`).innerText = 0;
-            } else {
-                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
-            }
-            updateLiveEditTotal();
-        }
-
-
-        function applyWalletDiscount() {
-            isWalletApplied = true;
-            document.getElementById('btn-apply-wallet').classList.add('hidden');
-            document.getElementById('wallet-applied-msg').classList.remove('hidden');
-            updateLiveEditTotal();
-        }
-
-        function updateLiveEditTotal() {
-            let itemsTotal = 0;
-            Object.values(editCartMap).forEach(i => {
-                itemsTotal += (i.quantity * i.price);
-            });
-            let deliveryFee = Number(currentOrder.deliveryFee) || 0;
-            // لو استخدم المحفظة هنزود خصمها على الخصم الأصلي بتاع الأوردر
-            let baseDiscount = Number(currentOrder.discount) || 0;
-            let walletDiscount = isWalletApplied ? Math.floor(customerWalletPoints * pointValueInEGP) : 0;
-            let totalDiscount = baseDiscount + walletDiscount;
-            
-            let newFinalTotal = Math.max(0, itemsTotal + deliveryFee - totalDiscount);
-
-            document.getElementById('live-edit-total').innerText = `${newFinalTotal} ج.م`;
-        }
-
-        // 🚀 حفظ التعديل المباشر في قاعدة البيانات + تسجيل الملاحظة في الـ CRM 🚀
-        async function submitDirectOrderEdit() {
-            let updatedItems = [];
-            let newSubtotal = 0;
-            let itemsSummaryText = [];
-
-            Object.keys(editCartMap).forEach(pId => {
-                let item = editCartMap[pId];
-                if (item.quantity > 0) {
-                    updatedItems.push({ id: pId, name: item.name, quantity: item.quantity, price: item.price });
-                    newSubtotal += (item.quantity * item.price);
-                    itemsSummaryText.push(`${item.quantity}x ${item.name}`);
-                }
-            });
-
-            if (updatedItems.length === 0) {
-                alert("لا يمكن حفظ طلب فارغ! اختر صنف واحد على الأقل.");
-                return;
-            }
-
-            let btn = document.getElementById('btn-confirm-direct-edit');
-            let origHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديث الطلب...';
-            btn.disabled = true;
-
-            try {
-                let deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                let baseDiscount = Number(currentOrder.discount) || 0;
-                let walletDiscount = isWalletApplied ? Math.floor(customerWalletPoints * pointValueInEGP) : 0;
-                let totalDiscount = baseDiscount + walletDiscount;
-                
-                let newTotal = Math.max(0, newSubtotal + deliveryFee - totalDiscount);
-
-                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                
-                let walletNote = isWalletApplied ? `\n🎁 تم خصم (${walletDiscount} ج.م) باستخدام ${customerWalletPoints} نقطة ولاء.` : "";
-                
-                // 🌟 بناء الملاحظة الذكية التي ستنور بـ 🚨 في الـ CRM 🌟
-                let oldAdminNotes = currentOrder.adminNote || "";
-                let newEditNote = `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل عبر التتبع:\nالأصناف الجديدة: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي الجديد: ${newTotal} ج.م`;
-                let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
-
-                let atomicBatch = db.batch();
-                let orderRef = db.collection('orders').doc(currentOrder.id);
-                
-                atomicBatch.update(orderRef, {
-                    items: updatedItems,
-                    subtotal: newSubtotal,
-                    total: newTotal,
-                    discount: totalDiscount,
-                    adminNote: finalNotes
-                });
-
-                // لو العميل استخدم محفظته.. نصفر النقط من حسابه بطريقة آمنة
-                if (isWalletApplied && customerWalletPoints > 0) {
-                    let cleanPhone = normalizePhone(currentOrder.customerPhone);
-                    if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
-                    
-                    atomicBatch.set(db.collection('customers').doc(cleanPhone), {
-                        walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
-                    }, { merge: true });
-                }
-
-                await atomicBatch.commit();
-
-                // تحديث كائن الطلب في الصفحة ريل تايم
-                currentOrder.items = updatedItems;
-                currentOrder.subtotal = newSubtotal;
-                currentOrder.total = newTotal;
-                currentOrder.discount = totalDiscount;
-                currentOrder.adminNote = finalNotes;
-
-                // إغلاق الصندوق وعرض رسالة النجاح الخضراء
-                document.getElementById('edit-request-box').innerHTML = `
-                    <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3">
-                        <i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2 block"></i>
-                        تم تحديث أوردرك بنجاح! 🎉<br>تم تعديل الفاتورة وإخطار إدارة المزرعة.
-                    </div>`;
-
-                // إعادة رسم الشاشة بالبيانات الجديدة
-                displayResult();
-
-            } catch (e) {
-                console.error(e);
-                alert("حدث خطأ أثناء حفظ التعديل، حاول مرة أخرى.");
-                btn.innerHTML = origHtml;
-                btn.disabled = false;
-            }
-        }
-        // 🚀 الدالة الجديدة لزرار تفعيل المحفظة السريع من برة (آمنة 100%) 🚀
-        async function applyWalletToCurrentOrder() {
-            if (currentOrder.status !== 'new') return alert("لا يمكن تعديل الفاتورة إلا إذا كان الطلب (جديد).");
-            
-            let btn = document.getElementById('btn-quick-apply-wallet'); let origHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التفعيل...'; btn.disabled = true;
-
-            try {
-                let discountVal = window.currentWalletDiscount || 0;
-                let ptsUsed = window.currentWalletPoints || 0;
-                let currentTotal = Number(currentOrder.total) || 0;
-                let currentDiscount = Number(currentOrder.discount) || 0;
-
-                let newDiscount = currentDiscount + discountVal;
-                let newTotal = Math.max(0, currentTotal - discountVal);
-
-                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                let oldAdminNotes = currentOrder.adminNote || "";
-                let newEditNote = `\n---\n[${dateStr}] 🎁 العميل قام بتفعيل خصم المحفظة بقيمة (${discountVal} ج.م) باستخدام ${ptsUsed} نقطة.`;
-                let finalNotes = oldAdminNotes ? oldAdminNotes + newEditNote : newEditNote;
-
-                let atomicBatch = db.batch();
-                let orderRef = db.collection('orders').doc(currentOrder.id);
-                atomicBatch.update(orderRef, { total: newTotal, discount: newDiscount, adminNote: finalNotes });
-
-                let cleanPhone = normalizePhone(currentOrder.customerPhone);
-                if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
-                
-                // الحل السحري اللي بيمنع الـ Error: استخدام set مع merge بدل update
-                atomicBatch.set(db.collection('customers').doc(cleanPhone), {
-                    walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
-                }, { merge: true });
-
-                await atomicBatch.commit();
-                
-                document.getElementById('main-wallet-banner').classList.add('hidden');
-                alert("تم تفعيل الخصم بنجاح وتحديث الفاتورة! 🎉");
-            } catch(e) {
-                alert("حدث خطأ أثناء تفعيل الخصم. برجاء المحاولة لاحقاً.");
-                btn.innerHTML = origHtml; btn.disabled = false;
-            }
-        }
 
 
         function calculateETA(zone) {
