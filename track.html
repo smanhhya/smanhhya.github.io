@@ -536,8 +536,10 @@ function selectOrder(index) {
         }
 
         // إرسال طلب التعديل للإدارة عبر صندوق الرسائل
+        
         let editCartMap = {};
-
+        let isWalletApplied = false; let customerWalletPoints = 0; let pointValueInEGP = 0.40;
+        
         function toggleVisualEditMenu() {
             let container = document.getElementById('visual-edit-container');
             if (container.classList.contains('hidden')) {
