@@ -631,30 +631,43 @@ function selectOrder(index) {
             try {
                 let deliveryFee = Number(currentOrder.deliveryFee) || 0;
                 let currentDiscount = Number(currentOrder.discount) || 0;
-                let newTotal = Math.max(0, newSubtotal + deliveryFee - currentDiscount);
-                
-                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                let oldAdminNotes = currentOrder.adminNote || "";
-                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل مباشر من العميل: (${itemsSummaryText.join(' ، ')}). الإجمالي الجديد: ${newTotal} ج.م` : `[${dateStr}] 🚨 تعديل مباشر من العميل: (${itemsSummaryText.join(' ، ')}). الإجمالي الجديد: ${newTotal} ج.م`;
+                let walletDiscount = isWalletApplied ? (Number(window.currentWalletDiscount) || Math.floor(customerWalletPoints * pointValueInEGP)) : 0;
+                let totalDiscount = currentDiscount + walletDiscount;
+                let newTotal = Math.max(0, newSubtotal + deliveryFee - totalDiscount);
 
-                // استخدام set للحفظ بأمان وتخطي خطأ فايربيس
-                await db.collection('orders').doc(currentOrder.id).set({ 
-                    items: updatedItems, subtotal: newSubtotal, total: newTotal, adminNote: finalNotes 
+                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                let walletNote = isWalletApplied ? `\n🎁 تم خصم (${walletDiscount} ج.م) باستخدام النقاط.` : "";
+                let oldAdminNotes = currentOrder.adminNote || "";
+                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج` : `[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج`;
+
+                // 1. تحديث الفاتورة بأمان (بدون batch)
+                await db.collection('orders').doc(currentOrder.id).set({
+                    items: updatedItems, subtotal: newSubtotal, total: newTotal, discount: totalDiscount, adminNote: finalNotes
                 }, { merge: true });
 
-                currentOrder.items = updatedItems; currentOrder.subtotal = newSubtotal; currentOrder.total = newTotal; currentOrder.adminNote = finalNotes;
-                
+                // 2. خصم النقاط من المحفظة بأمان
+                if (isWalletApplied && customerWalletPoints > 0) {
+                    let cleanPhone = normalizePhone(currentOrder.customerPhone);
+                    if(!cleanPhone) cleanPhone = 'unknown'; else if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                    await db.collection('customers').doc(cleanPhone).set({
+                        walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
+                    }, { merge: true });
+                }
+
+                currentOrder.items = updatedItems; currentOrder.subtotal = newSubtotal; currentOrder.total = newTotal; currentOrder.discount = totalDiscount; currentOrder.adminNote = finalNotes;
+                isWalletApplied = false; customerWalletPoints = 0; window.currentWalletDiscount = 0; window.currentWalletPoints = 0;
+
                 document.getElementById('edit-request-box').innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3"><i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2 block"></i>تم تحديث أوردرك بنجاح! 🎉</div>`;
                 displayResult();
             } catch (e) {
-                console.error(e); alert("حدث خطأ أثناء حفظ التعديل، حاول مرة أخرى."); btn.innerHTML = origHtml; btn.disabled = false;
+                alert("حدث خطأ: " + e.message); btn.innerHTML = origHtml; btn.disabled = false;
             }
         }
 
-        // 🚀 زرار تفعيل المحفظة السريع من البانر الخارجي 🚀
+        // 🚀 زرار تفعيل المحفظة السريع من برة (آمن 100%) 🚀
         async function applyWalletToCurrentOrder() {
             if (currentOrder.status !== 'new') return alert("لا يمكن تفعيل الخصم إلا إذا كان الطلب في حالة (جديد).");
-            
+
             let btn = document.getElementById('btn-quick-apply-wallet'); let origHtml = btn.innerHTML;
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التفعيل...'; btn.disabled = true;
 
@@ -675,33 +688,31 @@ function selectOrder(index) {
                 let oldAdminNotes = currentOrder.adminNote || "";
                 let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.` : `[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.`;
 
-                // الحفظ الآمن في فايربيس (set + merge)
-                let atomicBatch = db.batch();
-                atomicBatch.set(db.collection('orders').doc(currentOrder.id), { 
-                    total: newTotal, discount: newDiscount, adminNote: finalNotes 
+                // 1. تحديث الأوردر المباشر
+                await db.collection('orders').doc(currentOrder.id).set({
+                    total: newTotal, discount: newDiscount, adminNote: finalNotes
                 }, { merge: true });
 
                 let cleanPhone = normalizePhone(currentOrder.customerPhone);
                 if(!cleanPhone) cleanPhone = 'unknown'; else if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
-                
-                // خصم النقاط من العميل بأمان تام
-                atomicBatch.set(db.collection('customers').doc(cleanPhone), {
+
+                // 2. تصفير النقط المباشر
+                await db.collection('customers').doc(cleanPhone).set({
                     walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
                 }, { merge: true });
 
-                await atomicBatch.commit();
-                
                 document.getElementById('main-wallet-banner').classList.add('hidden');
-                
+
                 currentOrder.total = newTotal; currentOrder.discount = newDiscount; currentOrder.adminNote = finalNotes;
                 window.currentWalletDiscount = 0; window.currentWalletPoints = 0;
-                displayResult(); 
-                
+                displayResult();
+
                 alert("تم تفعيل الخصم بنجاح وتحديث الفاتورة! 🎉");
             } catch(e) {
-                console.error(e); alert("حدث خطأ أثناء تفعيل الخصم. برجاء المحاولة لاحقاً."); btn.innerHTML = origHtml; btn.disabled = false;
+                alert("حدث خطأ: " + e.message); btn.innerHTML = origHtml; btn.disabled = false;
             }
         }
+
 
 
 
