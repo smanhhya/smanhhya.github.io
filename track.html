@@ -97,7 +97,7 @@
                         </div>
                         <div>
                             <p class="text-xs font-black text-amber-800 mb-0.5">رصيد الهدايا والنقاط</p>
-                            <p class="text-[10px] font-bold text-amber-600">معاك <span id="main-wallet-points" class="font-black text-amber-700">0</span> نقطة </p>
+                            <p class="text-[10px] font-bold text-amber-600">معاك <span id="main-wallet-points" class="font-black text-amber-700">0</span> نقطة ولاء</p>
                         </div>
                     </div>
                     <div class="text-left bg-white px-3 py-1.5 rounded-lg border border-amber-100 shadow-sm">
@@ -105,6 +105,10 @@
                         <p class="text-base font-black text-amber-600"><span id="main-wallet-val">0</span> <span class="text-[10px]">ج.م</span></p>
                     </div>
                 </div>
+
+                <!-- 🚀 شريط التقدم الذكي هيترسم هنا 🚀 -->
+                <div id="progress-bar-container" class="hidden"></div>
+
                 <!-- زرار تفعيل الخصم المباشر للأوردر الجديد -->
                 <div id="quick-apply-wallet-container" class="hidden mt-3 pt-3 border-t border-amber-200/50">
                     <button onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-2.5 rounded-xl text-sm transition-all shadow-md flex justify-center items-center gap-2">
@@ -112,6 +116,7 @@
                     </button>
                 </div>
             </div>
+
 
 
             <!-- صندوق موعد وتفاصيل الدفعة (يظهر للحجوزات المسبقة ويقرأ لايف من الـ CRM) -->
@@ -501,6 +506,8 @@ function selectOrder(index) {
                             window.currentWalletPoints = pts;
                             window.currentWalletDiscount = discountVal;
 
+                            updateProgressTarget(discountVal);
+
                             let quickBtn = document.getElementById('quick-apply-wallet-container');
                             if(currentOrder.status === 'new' && quickBtn) {
                                 quickBtn.classList.remove('hidden');
@@ -691,7 +698,7 @@ function selectOrder(index) {
             }
 
             // --- بداية خوارزمية البحث الذكية (0% إلى 7% خسارة) ---
-            let minOfferPrice = walletCash; 
+            let minOfferPrice = walletCash / 0.98; 
             let maxOfferPrice = walletCash / 0.93; 
 
             let bestCombo = null;
@@ -1173,6 +1180,47 @@ function selectOrder(index) {
                 alert("حدث خطأ أثناء التأكيد، برجاء التحقق من الاتصال بالإنترنت.");
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+            }
+        }
+        // 🚀 خوارزمية شريط التقدم (Gamification) 🚀
+        function updateProgressTarget(walletCash) {
+            let container = document.getElementById('progress-bar-container');
+            if (!container) return;
+
+            // ترتيب المنتجات من الأرخص للأغلى عشان نجيب أقرب هدف للعميل
+            let sortedProducts = [...baseProducts].sort((a, b) => a.price - b.price);
+            
+            // البحث عن أول منتج سعره أكبر من رصيد العميل الحالي
+            let targetProduct = sortedProducts.find(p => p.price > walletCash);
+
+            if (targetProduct) {
+                let remaining = targetProduct.price - walletCash;
+                let percentage = Math.floor((walletCash / targetProduct.price) * 100);
+
+                container.innerHTML = `
+                    <div class="mt-4 pt-3 border-t border-amber-200/50">
+                        <p class="text-xs font-bold text-amber-800 mb-2 flex justify-between">
+                            <span>هدف الـ VIP القادم: <span class="font-black">${targetProduct.name}</span></span>
+                            <span class="text-amber-600 font-black">${percentage}%</span>
+                        </p>
+                        <div class="w-full bg-amber-100 rounded-full h-2.5 mb-1 shadow-inner relative overflow-hidden flex justify-end" dir="ltr">
+                            <div class="bg-amber-500 h-2.5 rounded-full transition-all duration-1000" style="width: ${percentage}%"></div>
+                        </div>
+                        <p class="text-[10px] text-amber-700 text-center mt-1">
+                            فاضلك <span class="font-black text-amber-900">${remaining.toFixed(2)} ج.م</span> وتستلم الطبق مجاناً! 🚀
+                        </p>
+                    </div>
+                `;
+                container.classList.remove('hidden');
+            } else {
+                // لو العميل رصيده عدى أغلى منتج عندنا (حوت)
+                container.innerHTML = `
+                    <div class="mt-4 pt-3 border-t border-amber-200/50 text-center bg-emerald-50 rounded-lg p-2 border border-emerald-100">
+                        <p class="text-xs font-black text-emerald-700 mb-1"><i class="fa-solid fa-crown text-amber-500"></i> أنت عميل VIP!</p>
+                        <p class="text-[10px] text-emerald-600 font-bold">رصيدك يغطي باقات الهدايا المميزة.. فعّل الخصم لاكتشاف هديتك!</p>
+                    </div>
+                `;
+                container.classList.remove('hidden');
             }
         }
   
