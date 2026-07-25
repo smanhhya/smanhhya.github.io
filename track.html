@@ -666,52 +666,168 @@ function selectOrder(index) {
             }
         }
 
-        // 🚀 زرار تفعيل المحفظة السريع من برة (آمن 100%) 🚀
+        // قائمة المنتجات الأساسية للمقايضة الذكية
+        const baseProducts = [
+            { id: "item5", name: "طبق سوبر اسبيشال", price: 140 },
+            { id: "item4", name: "طبق اسبيشال", price: 130 },
+            { id: "item3", name: "طبق جامبو", price: 120 },
+            { id: "item2", name: "طبق سوبر", price: 110 },
+            { id: "item1", name: "طبق بيض سمان", price: 50 }
+        ];
+
+        // 🚀 زرار تفعيل المحفظة الذكي (نظام المقايضة 0% - 7%) 🚀
         async function applyWalletToCurrentOrder() {
             if (currentOrder.status !== 'new') return alert("لا يمكن تفعيل الخصم إلا إذا كان الطلب في حالة (جديد).");
 
-            let btn = document.getElementById('btn-quick-apply-wallet'); let origHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التفعيل...'; btn.disabled = true;
+            let btn = document.getElementById('btn-quick-apply-wallet'); 
+            let origHtml = btn.innerHTML;
+            
+            let walletCash = Number(window.currentWalletDiscount) || 0;
+            let ptsUsed = Number(window.currentWalletPoints) || 0;
 
-            try {
-                let discountVal = Number(window.currentWalletDiscount) || 0;
-                let ptsUsed = Number(window.currentWalletPoints) || 0;
-                let currentTotal = Number(currentOrder.total) || 0;
-                let currentDiscount = Number(currentOrder.discount) || 0;
+            if (walletCash <= 0 || ptsUsed <= 0) {
+                alert("رصيد المحفظة غير كافٍ!"); 
+                return;
+            }
 
-                if(ptsUsed <= 0) {
-                    alert("رصيد المحفظة غير كافٍ!"); btn.innerHTML = origHtml; btn.disabled = false; return;
+            // --- بداية خوارزمية البحث الذكية (0% إلى 7% خسارة) ---
+            let minOfferPrice = walletCash; 
+            let maxOfferPrice = walletCash / 0.93; 
+
+            let bestCombo = null;
+            let bestComboPrice = Infinity; 
+
+            function findBestMix(index, currentCombo, currentSum) {
+                if (currentSum >= minOfferPrice && currentSum <= maxOfferPrice) {
+                    if (currentSum < bestComboPrice) {
+                        bestComboPrice = currentSum;
+                        bestCombo = [...currentCombo];
+                    }
                 }
+                
+                if (currentSum > maxOfferPrice || index >= baseProducts.length) return;
 
-                let newDiscount = currentDiscount + discountVal;
-                let newTotal = Math.max(0, currentTotal - discountVal);
+                for (let qty = 0; qty <= 6; qty++) { 
+                    let addSum = qty * baseProducts[index].price;
+                    if (currentSum + addSum > maxOfferPrice) break; 
+                    
+                    let nextCombo = [...currentCombo];
+                    if (qty > 0) nextCombo.push({ ...baseProducts[index], qty: qty });
+                    
+                    findBestMix(index + 1, nextCombo, currentSum + addSum);
+                }
+            }
+            
+            findBestMix(0, [], 0);
+            // --- نهاية الخوارزمية ---
 
-                let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                let oldAdminNotes = currentOrder.adminNote || "";
-                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.` : `[${dateStr}] 🎁 العميل فعّل خصم المحفظة (${discountVal} ج.م) بـ ${ptsUsed} نقطة.`;
+            let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            let oldAdminNotes = currentOrder.adminNote || "";
+            let cleanPhone = normalizePhone(currentOrder.customerPhone) || 'unknown';
+            
+            if (!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
 
-                // 1. تحديث الأوردر المباشر
-                await db.collection('orders').doc(currentOrder.id).set({
-                    total: newTotal, discount: newDiscount, adminNote: finalNotes
-                }, { merge: true });
+            let acceptOffer = false;
 
-                let cleanPhone = normalizePhone(currentOrder.customerPhone);
-                if(!cleanPhone) cleanPhone = 'unknown'; else if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+            // لو لقينا تجميعة ممتازة، نعرضها للعميل
+            if (bestCombo && bestCombo.length > 0) {
+                let comboText = bestCombo.map(item => `${item.qty} ${item.name}`).join(" + ");
+                let offerMsg = `🎁 عرض حصري لك!\n\nبدلاً من خصم ${walletCash.toFixed(2)} ج.م من فاتورتك، ما رأيك أن تستبدل رصيدك بـ:\n( ${comboText} )\n\nوالتي تبلغ قيمتها الإجمالية ${bestComboPrice} ج.م مجاناً؟\n\nاضغط OK للموافقة وإضافة العرض، أو Cancel لتطبيق الخصم المالي العادي.`;
+                
+                acceptOffer = confirm(offerMsg);
 
-                // 2. تصفير النقط المباشر
-                await db.collection('customers').doc(cleanPhone).set({
-                    walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
-                }, { merge: true });
+                if (acceptOffer) {
+                    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إضافة العرض...'; 
+                    btn.disabled = true;
+                    
+                    try {
+                        let updatedItems = [...(currentOrder.items || [])];
+                        let giftSummary = [];
+                        
+                        for (let item of bestCombo) {
+                            updatedItems.push({
+                                id: item.id,
+                                name: item.name + " (هدية النقاط 🎁)",
+                                price: 0,
+                                quantity: item.qty,
+                                total: 0
+                            });
+                            giftSummary.push(`${item.qty}x ${item.name}`);
+                        }
 
-                document.getElementById('main-wallet-banner').classList.add('hidden');
+                        let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🎁 العميل استبدل نقاطه بـ (${giftSummary.join(' + ')}).` : `[${dateStr}] 🎁 العميل استبدل نقاطه بـ (${giftSummary.join(' + ')}).`;
 
-                currentOrder.total = newTotal; currentOrder.discount = newDiscount; currentOrder.adminNote = finalNotes;
-                window.currentWalletDiscount = 0; window.currentWalletPoints = 0;
-                displayResult();
+                        await db.collection('orders').doc(currentOrder.id).set({
+                            items: updatedItems, 
+                            adminNote: finalNotes
+                        }, { merge: true });
 
-                alert("تم تفعيل الخصم بنجاح وتحديث الفاتورة! 🎉");
-            } catch(e) {
-                alert("حدث خطأ: " + e.message); btn.innerHTML = origHtml; btn.disabled = false;
+                        await db.collection('customers').doc(cleanPhone).set({
+                            walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
+                        }, { merge: true });
+
+                        document.getElementById('main-wallet-banner').classList.add('hidden');
+                        currentOrder.items = updatedItems; 
+                        currentOrder.adminNote = finalNotes;
+                        window.currentWalletDiscount = 0; 
+                        window.currentWalletPoints = 0;
+                        
+                        displayResult();
+
+                        if (typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }});
+                        alert(`🎉 مبروك! تم إضافة العرض (${comboText}) لفاتورتك مجاناً.`);
+                        return;
+                        
+                    } catch(e) {
+                        alert("حدث خطأ أثناء إضافة العرض: " + e.message); 
+                        btn.innerHTML = origHtml; 
+                        btn.disabled = false; 
+                        return;
+                    }
+                }
+            }
+
+            // لو ملقاش عرض، أو العميل داس Cancel (تطبيق الخصم النقدي العادي)
+            if (!bestCombo || !acceptOffer) {
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تفعيل الخصم...'; 
+                btn.disabled = true;
+
+                try {
+                    let currentTotal = Number(currentOrder.total) || 0;
+                    let currentDiscount = Number(currentOrder.discount) || 0;
+
+                    let newDiscount = currentDiscount + walletCash;
+                    let newTotal = Math.max(0, currentTotal - walletCash);
+
+                    let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🎁 العميل فعّل خصم المحفظة المالي (${walletCash} ج.م) بـ ${ptsUsed} نقطة.` : `[${dateStr}] 🎁 العميل فعّل خصم المحفظة المالي (${walletCash} ج.م) بـ ${ptsUsed} نقطة.`;
+
+                    await db.collection('orders').doc(currentOrder.id).set({
+                        total: newTotal, 
+                        discount: newDiscount, 
+                        adminNote: finalNotes
+                    }, { merge: true });
+
+                    await db.collection('customers').doc(cleanPhone).set({
+                        walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
+                    }, { merge: true });
+
+                    document.getElementById('main-wallet-banner').classList.add('hidden');
+                    currentOrder.total = newTotal; 
+                    currentOrder.discount = newDiscount; 
+                    currentOrder.adminNote = finalNotes;
+                    window.currentWalletDiscount = 0; 
+                    window.currentWalletPoints = 0;
+                    
+                    displayResult();
+
+                    if (typeof confetti !== 'undefined') confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }});
+                    alert("تم تفعيل الخصم المالي بنجاح وتحديث الفاتورة! 🎉");
+                    
+                } catch(e) {
+                    alert("حدث خطأ أثناء الخصم: " + e.message); 
+                    btn.innerHTML = origHtml; 
+                    btn.disabled = false;
+                }
             }
         }
 
