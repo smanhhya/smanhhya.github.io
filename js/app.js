@@ -1195,7 +1195,9 @@ window.finalCheckoutStep = async function() {
     let customerNotesInput = document.getElementById('customer-notes') ? document.getElementById('customer-notes').value.trim() : '';
 
     // 1. فحص صحة الاسم
-    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z]+$/.test(customerName)) {
+    // 1. فحص صحة الاسم (معدل ليقبل النقط والأرقام مثل د.محمد)
+    if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z0-9\.\-\_]+$/.test(customerName)) {
+
         showAlert("تنبيه", "يرجى كتابة اسم صحيح وخالي من الأرقام والرموز.");
         checkoutBtn.innerHTML = originalBtnHtml;
         checkoutBtn.disabled = false;
@@ -1256,7 +1258,7 @@ window.finalCheckoutStep = async function() {
     let subTotal = 0; let itemsSummaryArray = []; let smartTagsArray = ["#طلب_مباشر"];
     if (globalSettings.batchHashtag) { let cleanHashtag = globalSettings.batchHashtag.trim(); if (!cleanHashtag.startsWith('#')) cleanHashtag = '#' + cleanHashtag; smartTagsArray.push(cleanHashtag.replace(/\s+/g, '_')); }
     
-    let customerDetailsStr = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress?`🏠 العنوان: ${customerAddress}\n`:''}🕒 الوقت: ${orderDate} - ${orderTime}`;
+    let template = globalSettings.whatsappTemplate || "السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)";
     let itemsStr = ""; 
     for (let id in cart) { 
         if(!productsInfo[id]) continue; 
