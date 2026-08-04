@@ -505,6 +505,10 @@ function renderBatchesSelection() {
     
     // 1. تجميع الدفعات وفصل المفتوح عن المغلق
     let batchesArray = Object.keys(globalBatches).map(id => ({id: id, ...globalBatches[id]}));
+    
+    // 🛑 السطر السحري: إعدام أي دفعة مخفية (isVisible: false) ومسحها من المتجر تماماً قبل العرض 🛑
+    batchesArray = batchesArray.filter(b => b.isVisible !== false);
+
     let openBatches = batchesArray.filter(b => b.isOpen);
     let closedBatches = batchesArray.filter(b => !b.isOpen);
 
@@ -1157,8 +1161,8 @@ window.finalCheckoutStep = async function() {
     
     // 🌟 التعديل الاحترافي: اختيار أول دفعة متاحة تلقائياً لو حصلت تهنيجة 🌟
     if (batchId === '') {
-        // البحث عن أول دفعة مفتوحة في السيستم
-        let firstAvailableBatchId = Object.keys(globalBatches).find(bId => globalBatches[bId].isOpen);
+        // البحث عن أول دفعة مفتوحة (وظاهرة للعملاء) في السيستم
+        let firstAvailableBatchId = Object.keys(globalBatches).find(bId => globalBatches[bId].isOpen && globalBatches[bId].isVisible !== false);
         
         if (firstAvailableBatchId) {
             // لو لقينا دفعة مفتوحة، هنحمل بياناتها ونكمل الطلب عادي جداً
