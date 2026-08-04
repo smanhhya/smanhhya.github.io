@@ -580,22 +580,35 @@ function renderBatchesSelection() {
                 </div>
             `;
         } else {
-            // 🌟 الدفعات المغلقة (إثبات نجاح للمتجر بدون إزعاج) 🌟
+            // 🌟 الدفعات المغلقة (ذكية: تفرق بين اللي لسه بيتجهز واللي اتسلم فعلاً) 🌟
+            let isPast = false;
+            if (batch.deliveryStart) {
+                // بنقارن تاريخ التوصيل بتاريخ النهارده
+                if (new Date(batch.deliveryStart).getTime() <= Date.now()) {
+                    isPast = true;
+                }
+            }
+
+            let closedMsg = isPast ? "اكتمل العدد وتم التسليم بنجاح 🚀" : "اكتفينا بالحجز وجاري التربية والتجهيز ⏳";
+            let closedIcon = isPast ? "fa-check-double text-green-500" : "fa-hourglass-half text-amber-500";
+            let dateLabel = isPast ? "التسليم كان:" : "التسليم في:";
+            let decorationClass = isPast ? "line-through decoration-gray-300" : "";
+
             cardsContainer.innerHTML += `
                 <div class="border-2 border-gray-200 bg-gray-50 rounded-2xl p-4 relative overflow-hidden flex flex-col justify-between mb-4 opacity-80 cursor-not-allowed">
                     
                     <div class="flex justify-between items-start mb-2">
                         <div>
                             <h4 class="font-black text-gray-600 text-base mb-1">${batch.name}</h4>
-                            <p class="text-[11px] font-bold text-gray-400 line-through decoration-gray-300"><i class="fa-regular fa-calendar-check mr-1"></i> التسليم كان: ${interactiveTime}</p>
+                            <p class="text-[11px] font-bold text-gray-400 ${decorationClass}"><i class="fa-regular fa-calendar-check mr-1"></i> ${dateLabel} ${interactiveTime}</p>
                         </div>
                         <div class="shrink-0 mt-1">
-                            <i class="fa-solid fa-medal text-yellow-500 text-3xl drop-shadow-sm"></i>
+                            <i class="fa-solid ${isPast ? 'fa-medal text-yellow-500' : 'fa-seedling text-green-600'} text-3xl drop-shadow-sm"></i>
                         </div>
                     </div>
                     
                     <div class="mt-2 bg-white shadow-sm p-2 rounded-xl border border-gray-200">
-                        <p class="text-xs font-black text-gray-600 text-center flex items-center justify-center gap-1.5"><i class="fa-solid fa-check-double text-green-500"></i> اكتمل العدد واتسلمت لأصحابها 🚀</p>
+                        <p class="text-xs font-black text-gray-600 text-center flex items-center justify-center gap-1.5"><i class="fa-solid ${closedIcon}"></i> ${closedMsg}</p>
                     </div>
                 </div>
             `;
@@ -632,7 +645,16 @@ function renderBatchesSelection() {
                     listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-green-700 bg-green-50 p-2 rounded-lg border border-green-100"><i class="fa-solid fa-door-open text-green-500 text-sm"></i> <span><strong class="text-brand-navy">${batch.name}:</strong> متاح ومفتوح للحجز</span></div>`;
                 }
             } else {
-                listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-200 opacity-80"><i class="fa-solid fa-check-double text-gray-400 text-sm"></i> <span><strong class="line-through">${batch.name}:</strong> اكتملت واتسلمت بنجاح</span></div>`;
+                let isPast = false;
+                if (batch.deliveryStart && new Date(batch.deliveryStart).getTime() <= Date.now()) {
+                    isPast = true;
+                }
+                
+                if (isPast) {
+                    listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-gray-500 bg-gray-50 p-2 rounded-lg border border-gray-200 opacity-80"><i class="fa-solid fa-check-double text-gray-400 text-sm"></i> <span><strong class="line-through">${batch.name}:</strong> اكتملت واتسلمت بنجاح</span></div>`;
+                } else {
+                    listHtml += `<div class="flex items-center gap-2 text-[11px] font-bold text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-200 opacity-90"><i class="fa-solid fa-hourglass-half text-amber-500 text-sm"></i> <span><strong class="text-brand-navy">${batch.name}:</strong> اكتفينا بالحجز وجاري التجهيز</span></div>`;
+                }
             }
         });
 
