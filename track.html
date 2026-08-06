@@ -565,12 +565,12 @@ function selectOrder(index) {
             try {
                 let settingsSnap = await db.collection('inventory').doc('settings').get();
                 let pricesSnap = await db.collection('inventory').doc('prices').get();
-                let batchesSnap = await db.collection('inventory').doc('batches').get(); // 🌟 سحب الدفعات لحساب الليميت
+                let batchesSnap = await db.collection('inventory').doc('batches').get(); 
                 
                 let productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : {};
                 let pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : {};
                 
-                // 🌟 حساب الحد الأقصى للعميل بناءً على المتاح للجمهور في الدفعة
+                // حساب الحد الأقصى للعميل بناءً على المتاح للجمهور في الدفعة
                 window.maxAllowedItemsInThisOrder = 30; // حد أقصى للحماية لو الأوردر مش تبع دفعة
                 if (currentOrder.batchId && batchesSnap.exists) {
                     let bData = batchesSnap.data()[currentOrder.batchId];
@@ -620,7 +620,7 @@ function selectOrder(index) {
         }
 
         function changeEditItemQty(pId, name, price, delta) {
-            // 🌟 الكنترول الذكي: منع التخطي
+            // الكنترول الذكي: منع التخطي للحد الأقصى للدفعة
             if (delta > 0) {
                 let currentTotalInCart = 0;
                 Object.values(editCartMap).forEach(i => currentTotalInCart += i.quantity);
@@ -631,7 +631,17 @@ function selectOrder(index) {
             }
 
             if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
-            editCartMap[pId].quantit
+            editCartMap[pId].quantity += delta;
+            
+            if (editCartMap[pId].quantity <= 0) {
+                delete editCartMap[pId];
+                document.getElementById(`edit-qty-${pId}`).innerText = 0;
+            } else {
+                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
+            }
+            updateLiveEditTotal();
+        }
+
         function updateLiveEditTotal() {
             let itemsTotal = 0;
             Object.values(editCartMap).forEach(i => { itemsTotal += (i.quantity * i.price); });
@@ -666,26 +676,75 @@ function selectOrder(index) {
                 let dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
                 let walletNote = isWalletApplied ? `\n🎁 تم خصم (${walletDiscount} ج.م) باستخدام النقاط.` : "";
                 let oldAdminNotes = currentOrder.adminNote || "";
-                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج` : `[${dateStr}] 🚨 تعديل مباشر: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج`;
+                let finalNotes = oldAdminNotes ? oldAdminNotes + `\n---\n[${dateStr}] 🚨 تعديل العميل من التتبع: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج` : `[${dateStr}] 🚨 تعديل العميل من التتبع: (${itemsSummaryText.join(' ، ')})${walletNote}\nالإجمالي: ${newTotal} ج`;
 
-                // 1. تحديث الفاتورة بأمان (بدون batch)
-                await db.collection('orders').doc(currentOrder.id).set({
+                // السحر الجديد: حساب الفروقات وتحديث المخزون والمحجوز في الـ CRM أوتوماتيك
+                let oldItems = currentOrder.items || [];
+                let stockDeltas = {};
+                let bookedDeltas = {};
+                
+                oldItems.forEach(i => {
+                    stockDeltas[i.id] = (stockDeltas[i.id] || 0) + i.quantity; // إرجاع القديم للمخزن
+                    bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) - i.quantity; // مسحه من المحجوز
+                });
+                updatedItems.forEach(i => {
+                    stockDeltas[i.id] = (stockDeltas[i.id] || 0) - i.quantity; // سحب الجديد من المخزن
+                    bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) + i.quantity; // إضافته للمحجوز
+                });
+
+                let atomicBatch = db.batch();
+                
+                // 1. تحديث الأوردر نفسه
+                let orderRef = db.collection('orders').doc(currentOrder.id);
+                atomicBatch.set(orderRef, {
                     items: updatedItems, subtotal: newSubtotal, total: newTotal, discount: totalDiscount, adminNote: finalNotes
                 }, { merge: true });
 
-                // 2. خصم النقاط من المحفظة بأمان
+                // 2. تحديث المخزن (Stock)
+                let finalStockUpdates = {};
+                Object.keys(stockDeltas).forEach(id => {
+                    if(stockDeltas[id] !== 0) finalStockUpdates[id] = firebase.firestore.FieldValue.increment(stockDeltas[id]);
+                });
+                if (Object.keys(finalStockUpdates).length > 0) {
+                    atomicBatch.set(db.collection('inventory').doc('stock'), finalStockUpdates, { merge: true });
+                }
+
+                // 3. تحديث محجوزات الدفعة (Booked)
+                if (currentOrder.batchId) {
+                    let finalBookedUpdates = {};
+                    Object.keys(bookedDeltas).forEach(id => {
+                        if(bookedDeltas[id] !== 0) finalBookedUpdates[`${currentOrder.batchId}.booked.${id}`] = firebase.firestore.FieldValue.increment(bookedDeltas[id]);
+                    });
+                    if (Object.keys(finalBookedUpdates).length > 0) {
+                        atomicBatch.update(db.collection('inventory').doc('batches'), finalBookedUpdates);
+                    }
+                }
+
+                // 4. تحديث إنفاق العميل والإحصائيات
+                let priceDiff = newTotal - (Number(currentOrder.total) || 0);
+                if (priceDiff !== 0) {
+                    atomicBatch.set(db.collection('inventory').doc('stats'), { sales: firebase.firestore.FieldValue.increment(priceDiff) }, { merge: true });
+                    let cleanPhone = normalizePhone(currentOrder.customerPhone);
+                    if (!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                    atomicBatch.set(db.collection('customers').doc(cleanPhone), { totalSpent: firebase.firestore.FieldValue.increment(priceDiff) }, { merge: true });
+                }
+
+                // 5. خصم نقاط المحفظة لو العميل استخدمها
                 if (isWalletApplied && customerWalletPoints > 0) {
                     let cleanPhone = normalizePhone(currentOrder.customerPhone);
-                    if(!cleanPhone) cleanPhone = 'unknown'; else if(!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
-                    await db.collection('customers').doc(cleanPhone).set({
+                    if (!cleanPhone.startsWith('0')) cleanPhone = '0' + cleanPhone;
+                    atomicBatch.set(db.collection('customers').doc(cleanPhone), {
                         walletPoints: firebase.firestore.FieldValue.increment(-customerWalletPoints)
                     }, { merge: true });
                 }
 
+                // تنفيذ كل الأوامر دفعة واحدة للتأكد من المزامنة
+                await atomicBatch.commit();
+
                 currentOrder.items = updatedItems; currentOrder.subtotal = newSubtotal; currentOrder.total = newTotal; currentOrder.discount = totalDiscount; currentOrder.adminNote = finalNotes;
                 isWalletApplied = false; customerWalletPoints = 0; window.currentWalletDiscount = 0; window.currentWalletPoints = 0;
 
-                document.getElementById('edit-request-box').innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3"><i class="fa-solid fa-circle-check text-3xl text-emerald-500 mb-2 block"></i>تم تحديث أوردرك بنجاح! 🎉</div>`;
+                document.getElementById('edit-request-box').innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-2xl text-center text-xs font-black shadow-sm mt-3"><i class="fa-solid fa-circle-check text-3xl text-emerald-50 mb-2 block"></i>تم تحديث طلبك بنجاح! 🎉</div>`;
                 displayResult();
             } catch (e) {
                 alert("حدث خطأ: " + e.message); btn.innerHTML = origHtml; btn.disabled = false;
