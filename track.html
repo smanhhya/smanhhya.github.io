@@ -557,6 +557,8 @@ function selectOrder(index) {
             }
         }
 
+        window.maxAllowedItemsInThisOrder = 50; // افتراضي كحماية
+
         async function loadProductsForEdit() {
             let itemsDiv = document.getElementById('interactive-edit-items');
             itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400 col-span-2"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحضير قائمة الأصناف...</div>';
@@ -564,8 +566,26 @@ function selectOrder(index) {
             try {
                 let settingsSnap = await db.collection('inventory').doc('settings').get();
                 let pricesSnap = await db.collection('inventory').doc('prices').get();
+                let batchesSnap = await db.collection('inventory').doc('batches').get(); // 🌟 سحب الدفعات لحساب الليميت
+                
                 let productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : {};
                 let pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : {};
+                
+                // 🌟 حساب الحد الأقصى للعميل بناءً على المتاح للجمهور في الدفعة
+                window.maxAllowedItemsInThisOrder = 30; // حد أقصى للحماية لو الأوردر مش تبع دفعة
+                if (currentOrder.batchId && batchesSnap.exists) {
+                    let bData = batchesSnap.data()[currentOrder.batchId];
+                    if (bData && bData.publicPairs > 0) {
+                        let totalBooked = 0;
+                        if (bData.booked) Object.values(bData.booked).forEach(q => totalBooked += q);
+                        
+                        let currentOrderTotal = 0;
+                        if (currentOrder.items) currentOrder.items.forEach(i => currentOrderTotal += i.quantity);
+                        
+                        let remaining = bData.publicPairs - totalBooked;
+                        window.maxAllowedItemsInThisOrder = currentOrderTotal + Math.max(0, remaining);
+                    }
+                }
 
                 editCartMap = {};
                 if (currentOrder.items) {
@@ -601,18 +621,18 @@ function selectOrder(index) {
         }
 
         function changeEditItemQty(pId, name, price, delta) {
-            if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
-            editCartMap[pId].quantity += delta;
-            
-            if (editCartMap[pId].quantity <= 0) {
-                delete editCartMap[pId];
-                document.getElementById(`edit-qty-${pId}`).innerText = 0;
-            } else {
-                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
+            // 🌟 الكنترول الذكي: منع التخطي
+            if (delta > 0) {
+                let currentTotalInCart = 0;
+                Object.values(editCartMap).forEach(i => currentTotalInCart += i.quantity);
+                if ((currentTotalInCart + delta) > window.maxAllowedItemsInThisOrder) {
+                    alert("عفواً، لقد وصلت للحد الأقصى المتاح للجمهور في هذه الدفعة! الكمية الباقية لا تكفي للزيادة.");
+                    return;
+                }
             }
-            updateLiveEditTotal();
-        }
 
+            if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
+            editCartMap[pId].quantit
         function updateLiveEditTotal() {
             let itemsTotal = 0;
             Object.values(editCartMap).forEach(i => { itemsTotal += (i.quantity * i.price); });
