@@ -642,32 +642,6 @@ function selectOrder(index) {
                 document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
             }
             updateLiveEditTotal();
-        }catch(e) {
-                itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
-            }
-        }
-
-        function changeEditItemQty(pId, name, price, delta) {
-            // الكنترول الذكي: منع التخطي للحد الأقصى للدفعة
-            if (delta > 0) {
-                let currentTotalInCart = 0;
-                Object.values(editCartMap).forEach(i => currentTotalInCart += i.quantity);
-                if ((currentTotalInCart + delta) > window.maxAllowedItemsInThisOrder) {
-                    alert("عفواً، لقد وصلت للحد الأقصى المتاح للجمهور في هذه الدفعة! الكمية الباقية لا تكفي للزيادة.");
-                    return;
-                }
-            }
-
-            if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
-            editCartMap[pId].quantity += delta;
-            
-            if (editCartMap[pId].quantity <= 0) {
-                delete editCartMap[pId];
-                document.getElementById(`edit-qty-${pId}`).innerText = 0;
-            } else {
-                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
-            }
-            updateLiveEditTotal();
         }
 
         function updateLiveEditTotal() {
@@ -678,6 +652,7 @@ function selectOrder(index) {
             let newFinalTotal = Math.max(0, itemsTotal + deliveryFee - currentDiscount);
             document.getElementById('live-edit-total').innerText = `${newFinalTotal} ج.م`;
         }
+
 
         async function submitDirectOrderEdit() {
             let updatedItems = []; let newSubtotal = 0; let itemsSummaryText = [];
