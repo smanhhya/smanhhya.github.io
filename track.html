@@ -642,8 +642,7 @@ function selectOrder(index) {
                 document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
             }
             updateLiveEditTotal();
-        }
-catch(e) {
+        }catch(e) {
                 itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
             }
         }
