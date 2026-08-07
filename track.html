@@ -571,7 +571,7 @@ function selectOrder(index) {
                 let productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : {};
                 let pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : {};
                 
-                // حساب الحد الأقصى للعميل بناءً على المتاح للجمهور في الدفعة
+                // 🌟 حساب الحد الأقصى للعميل بناءً على إجمالي المتاح للجمهور في الدفعة
                 window.maxAllowedItemsInThisOrder = 30; // حد أقصى للحماية لو الأوردر مش تبع دفعة
                 if (currentOrder.batchId && batchesSnap.exists) {
                     let bData = batchesSnap.data()[currentOrder.batchId];
@@ -599,6 +599,7 @@ function selectOrder(index) {
 
                     let currentQty = editCartMap[pId] ? editCartMap[pId].quantity : 0;
                     let price = pricesData[pId] || p.basePrice || 0;
+                    
                     html += `
                     <div class="bg-white border border-slate-200 p-3 rounded-2xl shadow-sm flex flex-col justify-between text-center relative overflow-hidden transition-all hover:border-brand-primary/50">
                         <div class="mb-3 mt-1">
@@ -616,6 +617,33 @@ function selectOrder(index) {
                 itemsDiv.innerHTML = html || '<p class="text-xs text-center text-slate-400 col-span-2">لا توجد أصناف متاحة للتعديل حالياً.</p>';
                 updateLiveEditTotal();
             } catch(e) {
+                itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
+            }
+        }
+
+        function changeEditItemQty(pId, name, price, delta) {
+            // 🌟 الكنترول الذكي: منع التخطي لإجمالي عدد الدفعة فقط (كما طلبت الإدارة)
+            if (delta > 0) {
+                let currentTotalInCart = 0;
+                Object.values(editCartMap).forEach(i => currentTotalInCart += i.quantity);
+                if ((currentTotalInCart + delta) > window.maxAllowedItemsInThisOrder) {
+                    alert("عفواً، لقد وصلت للحد الأقصى المتاح للجمهور في هذه الدفعة! الكمية الباقية لا تكفي للزيادة.");
+                    return;
+                }
+            }
+
+            if (!editCartMap[pId]) editCartMap[pId] = { name: name, quantity: 0, price: price };
+            editCartMap[pId].quantity += delta;
+            
+            if (editCartMap[pId].quantity <= 0) {
+                delete editCartMap[pId];
+                document.getElementById(`edit-qty-${pId}`).innerText = 0;
+            } else {
+                document.getElementById(`edit-qty-${pId}`).innerText = editCartMap[pId].quantity;
+            }
+            updateLiveEditTotal();
+        }
+catch(e) {
                 itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
             }
         }
