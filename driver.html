@@ -150,17 +150,14 @@
                 <button onclick="addQuickProblemNote('العنوان غير واضح')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">العنوان غير واضح</button>
             </div>
 
-            <!-- مربع النص مع زر التسجيل الصوتي -->
-            <div class="relative mb-2">
-                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة أو اضغط المايك للتحدث..."></textarea>
+            <!-- مربع النص مع زر الإملاء الصوتي السريع -->
+            <div class="relative mb-4">
+                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة، أو تحدث لتُكتب تلقائياً..."></textarea>
                 
-                <button id="mic-btn" onclick="toggleVoiceRecording()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm" title="اضغط لبدء / إيقاف التسجيل">
+                <button id="mic-btn" onclick="startVoiceRecognition()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm" title="تحدث ليكتب النظام عنك">
                     <i class="fa-solid fa-microphone text-sm"></i>
                 </button>
             </div>
-
-            <!-- حاوية معاينة الملف الصوتي قبل الإرسال -->
-            <div id="audio-preview-container" class="mb-4 empty:hidden"></div>
             
             <input type="hidden" id="problem-order-id">
             
@@ -442,146 +439,93 @@
         };
 
         // ==========================================
-        // 10. نظام الدمج (تسجيل صوتي فعلي + تحويل لنص)
+        // 10. نظام الملاحظات والإملاء الصوتي المباشر (Voice to Text)
         // ==========================================
         window.openProblemModal = (orderId) => { 
             document.getElementById('problem-order-id').value = orderId; 
             document.getElementById('problem-input').value = ''; 
-            clearAudio();
             document.getElementById('problem-modal').classList.remove('hidden'); 
         };
+        
         window.closeProblemModal = () => { 
-            if(isRecording) toggleVoiceRecording(); // إيقاف التسجيل لو المندوب قفل النافذة
             document.getElementById('problem-modal').classList.add('hidden'); 
         };
+        
         window.addQuickProblemNote = (txt) => { 
-            let input = document.getElementById('problem-input'); input.value += (input.value ? ' - ' : '') + txt; 
+            let input = document.getElementById('problem-input'); 
+            input.value += (input.value ? ' - ' : '') + txt; 
         };
-        window.clearAudio = () => {
-            currentAudioBlob = null;
-            document.getElementById('audio-preview-container').innerHTML = '';
-        };
-
-        window.toggleVoiceRecording = async () => {
-            if (isRecording) {
-                stopRecording();
-            } else {
-                await startRecording();
-            }
-        };
-
-        async function startRecording() {
+        
+        window.startVoiceRecognition = () => {
             const micBtn = document.getElementById('mic-btn');
             const inputArea = document.getElementById('problem-input');
-            clearAudio();
+            
+            // التحقق من دعم المتصفح لتقنية تحويل الصوت لنص
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                return alert("عفواً، متصفحك الحالي لا يدعم ميزة الإملاء الصوتي. يرجى استخدام الكتابة اليدوية.");
+            }
+            
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'ar-EG'; // اللغة العربية بلهجة مصرية لدقة أعلى
+            recognition.interimResults = true; // كتابة الكلمات فوراً أثناء التحدث
+            recognition.continuous = false; // التوقف عند السكوت
+            
+            recognition.onstart = function() { 
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone text-red-500 fa-beat text-sm"></i>';
+                micBtn.classList.add('bg-red-50', 'border-red-200');
+                inputArea.placeholder = "تحدث الآن، جاري الاستماع وكتابة كلامك...";
+            };
+            
+            let finalTranscript = inputArea.value; // الاحتفاظ بأي كلام مكتوب مسبقاً
 
-            try {
-                // فتح المايكروفون لالتقاط الصوت الفعلي
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                
-                mediaRecorder.ondataavailable = event => {
-                    if (event.data.size > 0) audioChunks.push(event.data);
-                };
-
-                mediaRecorder.onstop = () => {
-                    // تكوين الملف الصوتي عند الإيقاف
-                    currentAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                    const audioUrl = URL.createObjectURL(currentAudioBlob);
-                    
-                    document.getElementById('audio-preview-container').innerHTML = `
-                        <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-center">
-                            <span class="text-[10px] font-black text-indigo-600 block mb-2"><i class="fa-solid fa-file-audio"></i> تم التقاط الملف الصوتي بنجاح (جاهز للإرسال)</span>
-                            <audio controls src="${audioUrl}" class="w-full h-8 mb-2"></audio>
-                            <button onclick="clearAudio()" class="text-xs font-black text-red-500 hover:text-red-700 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm"><i class="fa-solid fa-trash"></i> حذف التسجيل</button>
-                        </div>`;
-                    
-                    stream.getTracks().forEach(track => track.stop());
-                };
-
-                mediaRecorder.start();
-                isRecording = true;
-                
-                // تغيير شكل الزر ليدل على التسجيل
-                micBtn.innerHTML = '<i class="fa-solid fa-stop text-red-600"></i>';
-                micBtn.classList.add('recording-active');
-                inputArea.placeholder = "جاري التسجيل... يتم تحويل كلامك لنص وحفظ صوتك أيضاً.";
-
-                // تشغيل تحويل الكلام لنص في نفس الوقت (للتسهيل)
-                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    speechRecognition = new SpeechRecognition();
-                    speechRecognition.lang = 'ar-EG';
-                    speechRecognition.interimResults = false;
-                    
-                    speechRecognition.onresult = function(event) {
-                        const speechResult = event.results[event.results.length - 1][0].transcript;
-                        inputArea.value += (inputArea.value ? ' ' : '') + speechResult;
-                    };
-                    
-                    speechRecognition.onend = function() {
-                        if(isRecording) { try { speechRecognition.start(); } catch(e){} }
-                    };
-                    speechRecognition.start();
+            recognition.onresult = function(event) { 
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        finalTranscript += (finalTranscript ? ' ' : '') + event.results[i][0].transcript;
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
                 }
-
-            } catch(e) {
-                alert('يرجى السماح للمتصفح باستخدام المايكروفون لتسجيل الصوت.');
-            }
-        }
-
-        function stopRecording() {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); }
-            isRecording = false;
+                // عرض الكلام المكتمل + الكلام الجاري تحليله في المربع فوراً
+                inputArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
+            };
             
-            if(speechRecognition) {
-                speechRecognition.onend = null;
-                try { speechRecognition.stop(); } catch(e){}
-            }
+            recognition.onerror = function(event) {
+                if(event.error !== 'no-speech') {
+                    alert("تعذر التقاط الصوت، تأكد من إعطاء الصلاحية للميكروفون من متصفحك.");
+                }
+            };
+
+            recognition.onend = function() { 
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>'; 
+                micBtn.classList.remove('bg-red-50', 'border-red-200');
+                inputArea.placeholder = "اكتب الملاحظة، أو تحدث لتُكتب تلقائياً...";
+            };
             
-            const micBtn = document.getElementById('mic-btn');
-            const inputArea = document.getElementById('problem-input');
-            micBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>';
-            micBtn.classList.remove('recording-active');
-            inputArea.placeholder = "اكتب الملاحظة أو اضغط المايك للتحدث...";
-        }
+            recognition.start();
+        };
 
         // ==========================================
-        // 11. إرسال الملاحظة (نص + رفع الملف الصوتي)
+        // 11. إرسال الملاحظة النصية السريعة
         // ==========================================
         window.submitProblemNote = async () => {
-            if(isRecording) stopRecording(); // ضمان إيقاف التسجيل لو ضغط إرسال وهو بيسجل
-
             const orderId = document.getElementById('problem-order-id').value;
             const noteText = document.getElementById('problem-input').value.trim();
             const submitBtn = document.getElementById('submit-note-btn');
             
-            if(!noteText && !currentAudioBlob) return alert('يرجى كتابة الملاحظة أو تسجيل ملف صوتي!');
+            if(!noteText) return alert('يرجى كتابة الملاحظة أو التحدث بالمايك أولاً!');
             
-            // تغيير حالة الزر أثناء الرفع
+            // تغيير حالة الزر أثناء الإرسال
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري رفع البيانات...';
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
+            
+            const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
+            const formattedNote = `[المندوب ${nowTimeStr}] ${noteText}`;
             
             try {
-                let uploadedAudioUrl = '';
-                
-                // إذا كان هناك ملف صوتي، نرفعه لـ Firebase Storage أولاً
-                if(currentAudioBlob) {
-                    const storageRef = firebase.storage().ref();
-                    const audioFileRef = storageRef.child(`driver_voice_notes/order_${orderId}_${Date.now()}.webm`);
-                    await audioFileRef.put(currentAudioBlob);
-                    uploadedAudioUrl = await audioFileRef.getDownloadURL();
-                }
-
-                // تجهيز النص النهائي لحفظه في الداتا بيز
-                const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
-                let formattedNote = `[المندوب ${nowTimeStr}] ${noteText || 'أرسل ملاحظة صوتية'}`;
-                
-                // دمج رابط الصوت في الداتا لكي نقرأه لاحقاً
-                if (uploadedAudioUrl) {
-                    formattedNote += `|AUDIO:${uploadedAudioUrl}`;
-                }
-                
                 const doc = await db.collection('orders').doc(orderId).get();
                 if(doc.exists) {
                     let oldNotes = doc.data().driverNote || '';
@@ -589,16 +533,17 @@
                         driverNote: oldNotes ? oldNotes + '\n---\n' + formattedNote : formattedNote 
                     });
                     closeProblemModal(); 
-                    alert('تم إرسال الملاحظة (والصوت) للإدارة بنجاح! 🚀');
+                    alert('تم إرسال الملاحظة للإدارة في ثانية واحدة بنجاح! 🚀');
                 }
             } catch(e) {
                 alert('خطأ في حفظ الملاحظة! تأكد من اتصالك بالإنترنت.');
-                console.error(e);
             }
             
+            // إعادة الزر لشكله الطبيعي
             submitBtn.disabled = false;
             submitBtn.innerHTML = 'إرسال للإدارة';
         };
+
     </script>
 </body>
 </html>
