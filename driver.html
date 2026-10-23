@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>سمان ههيا | تطبيق المندوب</title>
+    <meta name="theme-color" content="#166534">
+    
+    <!-- Tailwind CSS & FontAwesome -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Firebase Compat SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { 
+                        brand: { 
+                            dark: '#064e3b', 
+                            primary: '#166534', 
+                            accent: '#f59e0b', 
+                            bg: '#f8fafc'
+                        } 
+                    },
+                    fontFamily: { cairo: ['Cairo', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            background-color: #f1f5f9; 
+            -webkit-font-smoothing: antialiased;
+            touch-action: manipulation;
+        }
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    </style>
+</head>
+<body class="text-slate-800 bg-slate-100 min-h-screen flex flex-col justify-between selection:bg-brand-primary selection:text-white">
+
+    <!-- 1. شاشة دخول المندوب -->
+    <div id="login-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-brand-primary"></div>
+            
+            <div class="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-5 shadow-inner border border-emerald-100">
+                <i class="fa-solid fa-motorcycle text-4xl text-brand-primary"></i>
+            </div>
+            
+            <h1 class="text-2xl font-black mb-1 text-slate-800 tracking-tight">تطبيق المندوب</h1>
+            <p class="text-xs text-slate-500 font-bold mb-6 uppercase tracking-wider">سمان ههيا - خطوط السير</p>
+            
+            <div class="space-y-4 mb-6">
+                <div>
+                    <label class="block text-right text-xs font-black text-slate-600 mb-1">رقم الموبايل المسجل</label>
+                    <input type="tel" id="driver-phone-input" dir="ltr" placeholder="010..." class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3.5 text-center outline-none focus:ring-2 focus:ring-brand-primary font-black text-base transition-all">
+                </div>
+                <div>
+                    <label class="block text-right text-xs font-black text-slate-600 mb-1">الرقم السري (PIN)</label>
+                    <input type="password" id="driver-pin-input" dir="ltr" placeholder="••••" maxlength="6" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3.5 text-center outline-none focus:ring-2 focus:ring-brand-primary font-black text-lg tracking-widest transition-all">
+                </div>
+            </div>
+            
+            <button onclick="loginDriver()" id="btn-driver-login" class="w-full bg-brand-primary hover:bg-emerald-800 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-brand-primary/30 flex justify-center items-center gap-2 active:scale-95 text-base">
+                <i class="fa-solid fa-right-to-bracket"></i> دخول لخط السير
+            </button>
+            
+            <p id="login-error" class="hidden text-red-500 text-xs font-bold mt-4 bg-red-50 p-3 rounded-xl border border-red-100"></p>
+        </div>
+    </div>
+
+    <!-- 2. الهيدر العلوي للتطبيق -->
+    <header class="bg-brand-dark text-white sticky top-0 z-40 shadow-md">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 flex items-center justify-center font-black">
+                    <i class="fa-solid fa-user-ninja text-lg"></i>
+                </div>
+                <div>
+                    <h2 id="driver-name-display" class="font-black text-sm text-white">المندوب</h2>
+                    <p class="text-[10px] font-bold text-emerald-300/80">طلبات التوصيل الحية</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button onclick="fetchDriverOrders()" class="w-9 h-9 bg-white/10 hover:bg-white/20 rounded-xl flex items-center justify-center text-white transition-colors" title="تحديث">
+                    <i class="fa-solid fa-rotate text-xs"></i>
+                </button>
+                <button onclick="logoutDriver()" class="w-9 h-9 bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500 hover:text-white rounded-xl flex items-center justify-center transition-colors" title="خروج">
+                    <i class="fa-solid fa-power-off text-xs"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 3. المحتوى الرئيسي وقائمة الطلبات -->
+    <main class="flex-1 max-w-md w-full mx-auto p-4 pb-24 space-y-4">
+        
+        <!-- ملخص الكاش والأوردرات -->
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
+                <span class="block text-[10px] font-bold text-slate-400 mb-0.5">الطلبات المتبقية</span>
+                <span id="stat-active-count" class="text-2xl font-black text-blue-600">0</span>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm text-center">
+                <span class="block text-[10px] font-bold text-slate-400 mb-0.5">الكاش المطلوب تحصيله</span>
+                <span id="stat-cash-to-collect" class="text-2xl font-black text-emerald-600">0 <span class="text-xs">ج</span></span>
+            </div>
+        </div>
+
+        <!-- قائمة كروت الطلبات -->
+        <div id="orders-container" class="space-y-4">
+            <!-- سيتم رص الطلبات هنا تلقائياً -->
+            <div class="text-center py-16 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">
+                جاري تحميل خط السير...
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة -->
+    <div id="problem-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden flex flex-col p-5">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-black text-slate-800 text-sm"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> إبلاغ عن مشكلة/تأجيل</h3>
+                <button onclick="closeProblemModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            
+            <p class="text-[11px] font-bold text-slate-500 mb-3">اختر ملاحظة سريعة أو اكتب توضيحك:</p>
+            
+            <div class="flex flex-wrap gap-1.5 mb-3">
+                <button onclick="addQuickProblemNote('العميل طلب التأجيل لغد')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">تأجيل لغد</button>
+                <button onclick="addQuickProblemNote('العميل مغلق / لا يرد')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">مغلق / لا يرد</button>
+                <button onclick="addQuickProblemNote('العنوان غير واضح')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">العنوان غير واضح</button>
+            </div>
+
+            <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 mb-4 resize-none" placeholder="اكتب الملاحظة هنا..."></textarea>
+            
+            <input type="hidden" id="problem-order-id">
+            
+            <button onclick="submitProblemNote()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs">
+                إرسال الملاحظة للإدارة
+            </button>
+        </div>
+    </div>
+
+    <!-- Script البرمجة والربط -->
+    <script>
+        // تهيئة قواعد البيانات
+        const firebaseConfig = { 
+            apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
+            authDomain: "sman-ca8f8.firebaseapp.com", 
+            projectId: "sman-ca8f8", 
+            storageBucket: "sman-ca8f8.firebasestorage.app", 
+            messagingSenderId: "538778803310", 
+            appId: "1:538778803310:web:5eeff42bae534375a21a7f" 
+        };
+        if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
+        const db = firebase.firestore();
+
+        let currentDriverPhone = '';
+        let currentDriverName = '';
+        let currentOrdersList = [];
+
+        // توحيد تنظيف رقم الموبايل
+        window.normalizePhone = (phone) => {
+            if (!phone) return '';
+            let normalized = phone.toString()
+                .replace(/[\u0660-\u0669]/g, c => c.charCodeAt(0) - 0x0660)
+                .replace(/[\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x06F0)
+                .replace(/\D/g, '');
+            if (normalized.length >= 10) {
+                if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
+                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
+                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
+            }
+            return normalized;
+        };
+
+        // عند فتح الصفحة، التحقق من تسجيل الدخول السابق
+        window.addEventListener('DOMContentLoaded', () => {
+            const savedPhone = localStorage.getItem('sman_driver_phone');
+            const savedName = localStorage.getItem('sman_driver_name');
+            if(savedPhone && savedName) {
+                currentDriverPhone = savedPhone;
+                currentDriverName = savedName;
+                document.getElementById('driver-name-display').innerText = currentDriverName;
+                document.getElementById('login-screen').classList.add('hidden');
+                fetchDriverOrders();
+            }
+        });
+
+        // تسجيل دخول المندوب
+        window.loginDriver = async () => {
+            const phoneInput = document.getElementById('driver-phone-input').value;
+            const pinInput = document.getElementById('driver-pin-input').value.trim();
+            const errEl = document.getElementById('login-error');
+            const btn = document.getElementById('btn-driver-login');
+
+            errEl.classList.add('hidden');
+            let cleanPhone = window.normalizePhone(phoneInput);
+
+            if(!cleanPhone || !pinInput) {
+                errEl.innerText = 'يرجى إدخال رقم الموبايل والرقم السري كاملاً!';
+                errEl.classList.remove('hidden');
+                return;
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
+            btn.disabled = true;
+
+            try {
+                const settingsDoc = await db.collection('inventory').doc('settings').get();
+                if(settingsDoc.exists) {
+                    const drivers = settingsDoc.data().drivers || [];
+                    const matchedDriver = drivers.find(d => window.normalizePhone(d.phone) === cleanPhone);
+
+                    if(!matchedDriver) {
+                        errEl.innerText = 'رقم الموبايل هذا غير مسجل كـ مندوب لدى المتجر!';
+                        errEl.classList.remove('hidden');
+                    } else if(matchedDriver.pin !== pinInput) {
+                        errEl.innerText = 'الرقم السري غير صحيح!';
+                        errEl.classList.remove('hidden');
+                    } else {
+                        // نجاح الدخول
+                        currentDriverPhone = cleanPhone;
+                        currentDriverName = matchedDriver.name || 'المندوب';
+                        
+                        localStorage.setItem('sman_driver_phone', currentDriverPhone);
+                        localStorage.setItem('sman_driver_name', currentDriverName);
+
+                        document.getElementById('driver-name-display').innerText = currentDriverName;
+                        document.getElementById('login-screen').classList.add('hidden');
+                        fetchDriverOrders();
+                    }
+                } else {
+                    errEl.innerText = 'خطأ في الاتصال بالنظام الرئيسي!';
+                    errEl.classList.remove('hidden');
+                }
+            } catch(e) {
+                errEl.innerText = 'حدث خطأ بالاتصال، التأكد من الإنترنت!';
+                errEl.classList.remove('hidden');
+            }
+
+            btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> دخول لخط السير';
+            btn.disabled = false;
+        };
+
+        // تسجيل الخروج
+        window.logoutDriver = () => {
+            if(confirm('هل تريد تسجيل الخروج من التطبيق؟')) {
+                localStorage.removeItem('sman_driver_phone');
+                localStorage.removeItem('sman_driver_name');
+                location.reload();
+            }
+        };
+
+        // جلب الأوردرات الموجهة للمندوب الحالي
+        window.fetchDriverOrders = () => {
+            const container = document.getElementById('orders-container');
+            container.innerHTML = '<div class="text-center py-12"><i class="fa-solid fa-spinner fa-spin text-3xl text-brand-primary"></i><p class="text-xs font-bold text-slate-400 mt-2">جاري مزامنة الطلبات الحية...</p></div>';
+
+            db.collection('orders')
+                .where('status', 'in', ['dispatched', 'no_answer'])
+                .onSnapshot(snap => {
+                    currentOrdersList = [];
+                    let cashTotal = 0;
+
+                    snap.forEach(doc => {
+                        let data = doc.data();
+                        let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
+                        
+                        // الفلترة للتأكد أن الطلب يخص المندوب الحالي (بالرقم أو الاسم كاحتياطي)
+                        if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
+                            currentOrdersList.push({ id: doc.id, ...data });
+                            if(data.paymentMethod !== 'online' && data.status === 'dispatched') {
+                                cashTotal += Number(data.total) || 0;
+                            }
+                        }
+                    });
+
+                    document.getElementById('stat-active-count').innerText = currentOrdersList.filter(o => o.status === 'dispatched').length;
+                    document.getElementById('stat-cash-to-collect').innerText = cashTotal.toLocaleString();
+
+                    renderDriverOrdersUI();
+                }, err => {
+                    container.innerHTML = '<div class="text-center py-8 text-red-500 font-bold text-xs">حدث خطأ أثناء تحميل الطلبات!</div>';
+                });
+        };
+
+        // رسم كروت الطلبات
+        window.renderDriverOrdersUI = () => {
+            const container = document.getElementById('orders-container');
+            if(currentOrdersList.length === 0) {
+                container.innerHTML = `
+                <div class="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+                    <i class="fa-solid fa-circle-check text-5xl text-emerald-500 mb-3"></i>
+                    <h3 class="font-black text-slate-800 text-base">لا توجد طلبات معلقة بعهدتِك الآن!</h3>
+                    <p class="text-xs font-bold text-slate-400 mt-1">عند توجيه أوردرات جديدة لك من الإدارة ستظهر هنا فوراً.</p>
+                </div>`;
+                return;
+            }
+
+            container.innerHTML = currentOrdersList.map((o, idx) => {
+                let itemsStr = (o.items && Array.isArray(o.items)) ? o.items.map(i => 
+                    `<span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-[11px] font-black border border-slate-200">${i.quantity}x ${i.name}</span>`
+                ).join(' ') : 'بدون تفاصيل';
+
+                let isOnline = (o.paymentMethod === 'online');
+                let paymentBadge = isOnline ? 
+                    `<span class="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm"><i class="fa-solid fa-check-double mr-1"></i> خالص أونلاين (سلم فقط)</span>` :
+                    `<span class="bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shadow-sm"><i class="fa-solid fa-hand-holding-dollar mr-1"></i> كاش عند الاستلام</span>`;
+
+                let isNoAnswer = (o.status === 'no_answer');
+
+                return `
+                <div class="bg-white rounded-3xl p-5 border ${isNoAnswer ? 'border-purple-300 bg-purple-50/30' : 'border-slate-200/80'} shadow-sm relative overflow-hidden transition-all">
+                    
+                    <!-- الهيدر والكارت -->
+                    <div class="flex justify-between items-start mb-3 pb-3 border-b border-slate-100">
+                        <div>
+                            <span class="text-[10px] font-black text-slate-400 block mb-0.5">طلب #${idx + 1}</span>
+                            <h3 class="font-black text-slate-800 text-base">${o.customerName || 'عميل'}</h3>
+                        </div>
+                        <div class="text-left">
+                            ${paymentBadge}
+                            <div class="font-black text-brand-primary text-xl mt-1">${isOnline ? '0' : o.total} <span class="text-xs">ج</span></div>
+                        </div>
+                    </div>
+
+                    <!-- العنوان والتواصل -->
+                    <div class="space-y-2 mb-4">
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                            <span class="text-[10px] font-black text-indigo-500 block mb-0.5"><i class="fa-solid fa-location-dot"></i> منطقة: ${o.zone || 'عام'}</span>
+                            <p class="text-xs font-bold text-slate-700 leading-relaxed">${o.customerAddress || 'عنوان غير تفصيلي'}</p>
+                        </div>
+
+                        <!-- أزرار الاتصال والواتساب -->
+                        <div class="grid grid-cols-2 gap-2 pt-1">
+                            <a href="tel:${o.customerPhone}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                <i class="fa-solid fa-phone text-sm"></i> اتصال بالعميل
+                            </a>
+                            <a href="https://wa.me/${(o.customerPhone||'').startsWith('0')?'2'+o.customerPhone:o.customerPhone}" target="_blank" class="bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                <i class="fa-brands fa-whatsapp text-sm"></i> واتساب
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- محتويات الأوردر -->
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4">
+                        <span class="text-[10px] font-black text-slate-400 block mb-1">العلب والمحتويات:</span>
+                        <div class="flex flex-wrap gap-1.5">${itemsStr}</div>
+                    </div>
+
+                    <!-- ملاحظات للمندوب -->
+                    ${o.driverNote ? `
+                    <div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl mb-4 text-xs font-bold text-blue-800 leading-relaxed">
+                        <i class="fa-solid fa-motorcycle text-blue-500 mr-1"></i> <strong>ملاحظة لك:</strong> ${o.driverNote.split('\n---\n').pop()}
+                    </div>` : ''}
+
+                    <!-- الأزرار الثلاثية التنفيذية للمندوب -->
+                    <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                        <button onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-brand-primary/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <i class="fa-solid fa-circle-check text-sm"></i> تم التسليم
+                        </button>
+
+                        <button onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-purple-600/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <i class="fa-solid fa-phone-slash text-sm"></i> لم يرد
+                        </button>
+
+                        <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-amber-500/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <i class="fa-solid fa-triangle-exclamation text-sm"></i> مشكلة/تأجيل
+                        </button>
+                    </div>
+
+                </div>`;
+            }).join('');
+        };
+
+        // 1. إجراء تم التسليم
+        window.markOrderCompleted = async (orderId) => {
+            if(!confirm('تأكيد تسليم الطلب واستلام النقدية بنجاح؟')) return;
+
+            const nowStr = new Date().toLocaleDateString('en-US');
+            const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
+
+            try {
+                await db.collection('orders').doc(orderId).update({
+                    status: 'completed',
+                    completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    completedAtStr: nowStr,
+                    completedTimeDisplay: nowTimeStr
+                });
+            } catch(e) {
+                alert('حدث خطأ أثناء تحديث التسليم!');
+            }
+        };
+
+        // 2. إجراء لم يرد
+        window.markOrderNoAnswer = async (orderId) => {
+            if(!confirm('تأكيد تحويل الحالة إلى (لم يرد)؟')) return;
+
+            try {
+                await db.collection('orders').doc(orderId).update({
+                    status: 'no_answer'
+                });
+            } catch(e) {
+                alert('حدث خطأ أثناء التحديث!');
+            }
+        };
+
+        // 3. إجراء الإبلاغ عن مشكلة
+        window.openProblemModal = (orderId) => {
+            document.getElementById('problem-order-id').value = orderId;
+            document.getElementById('problem-input').value = '';
+            document.getElementById('problem-modal').classList.remove('hidden');
+        };
+
+        window.closeProblemModal = () => {
+            document.getElementById('problem-modal').classList.add('hidden');
+        };
+
+        window.addQuickProblemNote = (txt) => {
+            document.getElementById('problem-input').value = txt;
+        };
+
+        window.submitProblemNote = async () => {
+            const orderId = document.getElementById('problem-order-id').value;
+            const noteText = document.getElementById('problem-input').value.trim();
+
+            if(!noteText) return alert('يرجى كتابة الملاحظة أو المشكلة أولاً!');
+
+            const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
+            const formattedNote = `[المندوب ${nowTimeStr}] ${noteText}`;
+
+            try {
+                const orderDoc = await db.collection('orders').doc(orderId).get();
+                if(orderDoc.exists) {
+                    let oldDriverNote = orderDoc.data().driverNote || '';
+                    let updatedNotes = oldDriverNote ? oldDriverNote + '\n---\n' + formattedNote : formattedNote;
+
+                    await db.collection('orders').doc(orderId).update({
+                        driverNote: updatedNotes
+                    });
+
+                    closeProblemModal();
+                    alert('تم إرسال الملاحظة لوحة التحكم بنجاح! 🚀');
+                }
+            } catch(e) {
+                alert('خطأ في حفظ الملاحظة!');
+            }
+        };
+    </script>
+</body>
+</html>
