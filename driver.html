@@ -11,10 +11,9 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase Compat SDKs (متضمنة مكتبة التخزين للصوتيات) -->
+    <!-- Firebase Compat SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> <!-- مكتبة الصوتيات -->
 
     <script>
         tailwind.config = {
@@ -35,18 +34,17 @@
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
         
-        /* تأثير النبض لزر المايك أثناء التسجيل */
-        @keyframes pulse-red {
-            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        /* حركة النافذة الترحيبية */
+        @keyframes popIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
         }
-        .recording-active { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; background-color: #fef2f2 !important; }
+        .modal-pop { animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-100 min-h-screen flex flex-col justify-between selection:bg-brand-primary selection:text-white">
 
-    <!-- 1. شاشة دخول المندوب الآمنة -->
+    <!-- 1. شاشة دخول المندوب -->
     <div id="login-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
             <div class="absolute top-0 right-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-brand-primary"></div>
@@ -72,7 +70,7 @@
         </div>
     </div>
 
-    <!-- 2. الهيدر العلوي للتطبيق -->
+    <!-- 2. الهيدر العلوي -->
     <header class="bg-brand-dark text-white sticky top-0 z-40 shadow-md">
         <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -95,10 +93,9 @@
         </div>
     </header>
 
-    <!-- 3. المحتوى الرئيسي (المحفظة وقائمة الطلبات) -->
+    <!-- 3. المحتوى الرئيسي وقائمة الطلبات -->
     <main class="flex-1 max-w-md w-full mx-auto p-4 pb-24 space-y-4">
-        
-        <!-- المحفظة المالية الذكية للمندوب -->
+        <!-- المحفظة الذكية -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="bg-slate-800 text-white p-3 text-center flex justify-between items-center">
                 <h3 class="font-black text-xs"><i class="fa-solid fa-wallet text-emerald-400 mr-1"></i> محفظة الشيفت الحالي</h3>
@@ -125,7 +122,6 @@
             </div>
         </div>
 
-        <!-- حاوية كروت الطلبات -->
         <div id="orders-container" class="space-y-4">
             <div class="text-center py-16 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">
                 جاري تحميل خط السير...
@@ -133,43 +129,65 @@
         </div>
     </main>
 
-    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة (المطورة بالصوت والتسجيل الفعلي) -->
+    <!-- 4. نافذة الإبلاغ عن مشكلة (المطورة بالصوت) -->
     <div id="problem-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden flex flex-col p-5 relative">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden flex flex-col p-5">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-black text-slate-800 text-sm"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> إبلاغ عن مشكلة / رسالة للإدارة</h3>
+                <h3 class="font-black text-slate-800 text-sm"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> إبلاغ عن مشكلة</h3>
                 <button onclick="closeProblemModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
-            
-            <p class="text-[11px] font-bold text-slate-500 mb-3">اضغط على المايكروفون لتسجيل صوتك وكتابة النص تلقائياً:</p>
-            
-            <!-- أزرار الملاحظات السريعة -->
+            <p class="text-[11px] font-bold text-slate-500 mb-3">اختر ملاحظة، أو تحدث لتُكتب تلقائياً:</p>
             <div class="flex flex-wrap gap-1.5 mb-3">
                 <button onclick="addQuickProblemNote('العميل طلب التأجيل لغد')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">تأجيل لغد</button>
                 <button onclick="addQuickProblemNote('العميل مغلق / لا يرد')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">مغلق / لا يرد</button>
                 <button onclick="addQuickProblemNote('العنوان غير واضح')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">العنوان غير واضح</button>
             </div>
-
-            <!-- مربع النص مع زر الإملاء الصوتي السريع -->
+            
             <div class="relative mb-4">
-                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة، أو تحدث لتُكتب تلقائياً..."></textarea>
-                
+                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة، أو تحدث لتُكتب..."></textarea>
                 <button id="mic-btn" onclick="startVoiceRecognition()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm" title="تحدث ليكتب النظام عنك">
                     <i class="fa-solid fa-microphone text-sm"></i>
                 </button>
             </div>
             
             <input type="hidden" id="problem-order-id">
-            
-            <button id="submit-note-btn" onclick="submitProblemNote()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs flex justify-center items-center gap-2">
-                إرسال للإدارة
+            <button id="submit-note-btn" onclick="submitProblemNote()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs">
+                إرسال الملاحظة للإدارة
             </button>
         </div>
     </div>
 
-    <!-- Script البرمجة والربط مع Firebase -->
+    <!-- 5. النافذة الترحيبية التفاعلية المبهجة 🚀 -->
+    <div id="welcome-modal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm overflow-hidden text-center relative modal-pop">
+            <div class="absolute top-0 right-0 w-full h-3 bg-gradient-to-r from-amber-400 to-emerald-500"></div>
+            
+            <div class="pt-8 pb-4">
+                <div id="welcome-icon-container" class="mb-4">
+                    <!-- سيتم حقن الأيقونة هنا برمجياً (شمس/قمر) -->
+                </div>
+                
+                <h2 id="welcome-greeting" class="text-2xl font-black text-slate-800 mb-1">مرحباً يا بطل</h2>
+                <p id="welcome-day" class="text-xs font-bold text-emerald-600 mb-4 bg-emerald-50 inline-block px-3 py-1 rounded-full border border-emerald-100">النهاردة ...</p>
+                
+                <div class="px-6 py-4 bg-slate-50 border-y border-slate-100 mb-6">
+                    <p id="welcome-quote" class="text-sm font-bold text-slate-700 leading-relaxed">
+                        رسالة تشجيعية...
+                    </p>
+                </div>
+                
+                <div class="px-6 pb-6">
+                    <button onclick="closeWelcomeModal()" class="w-full bg-brand-primary hover:bg-emerald-800 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-brand-primary/30 active:scale-95 text-base flex justify-center items-center gap-2">
+                        توكلنا على الله <i class="fa-solid fa-motorcycle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script البرمجة والربط -->
     <script>
-        // 1. تهيئة قاعدة البيانات والتخزين Firebase
+        // 1. التهيئة
         const firebaseConfig = { 
             apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
             authDomain: "sman-ca8f8.firebaseapp.com", 
@@ -180,21 +198,11 @@
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
-        const storage = firebase.storage();
 
-        // 2. المتغيرات العامة
         let currentDriverPhone = '';
         let currentDriverName = '';
         let currentOrdersList = [];
-        
-        // متغيرات تسجيل الصوت
-        let mediaRecorder = null;
-        let audioChunks = [];
-        let currentAudioBlob = null;
-        let isRecording = false;
-        let speechRecognition = null;
 
-        // 3. دالة تنظيف رقم الموبايل
         window.normalizePhone = (phone) => {
             if (!phone) return '';
             let normalized = phone.toString().replace(/[\u0660-\u0669]/g, c => c.charCodeAt(0) - 0x0660).replace(/[\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x06F0).replace(/\D/g, '');
@@ -206,7 +214,62 @@
             return normalized;
         };
 
-        // 4. التحقق من تسجيل الدخول
+        // ==========================================
+        // خوارزمية الترحيب الذكية
+        // ==========================================
+        window.showWelcomeModal = (driverName) => {
+            // التأكد من عدم إزعاج المندوب وعرضها مرة واحدة فقط كل جلسة
+            if (sessionStorage.getItem('welcomed_today')) return;
+            sessionStorage.setItem('welcomed_today', 'true');
+
+            const now = new Date();
+            const hour = now.getHours();
+            const days = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+            const dayName = days[now.getDay()];
+
+            let timeGreeting = 'مرحباً';
+            let iconHtml = '';
+            
+            // تحديد الوقت وتغيير الأيقونة والتحية
+            if (hour >= 5 && hour < 12) {
+                timeGreeting = 'صباح الرزق والنشاط';
+                iconHtml = '<i class="fa-solid fa-sun text-amber-500 text-6xl fa-spin-pulse"></i>';
+            } else if (hour >= 12 && hour < 18) {
+                timeGreeting = 'مساء الفل والروقان';
+                iconHtml = '<i class="fa-solid fa-cloud-sun text-amber-500 text-6xl fa-bounce"></i>';
+            } else {
+                timeGreeting = 'مساء الخير والبركة';
+                iconHtml = '<i class="fa-solid fa-moon text-indigo-400 text-6xl fa-beat-fade"></i>';
+            }
+
+            // بنك الرسائل التحفيزية
+            const quotes = [
+                "عاش يا بطل، توكل على الله وربنا يوسع رزقك وتخلص شيفتك على خير.",
+                "ابتسم يا صديقي، الأوردرات بتستناك والعملاء بيثقوا فيك.",
+                "مجهودك مقدر جداً، أنت دراع سمان ههيا اليمين!",
+                "سوق على مهلك وفي التأني السلامة، سلامتك عندنا أهم من أي أوردر.",
+                "ربنا يجعله شيفت خفيف ومكسب حلال صافي لك ولأهل بيتك.",
+                "أنت الواجهة المشرفة لمتجرنا، بالتوفيق في شغلك النهاردة يا وحش 🚀",
+                "ابدأ يومك بنية طيبة، وربنا هيسهلك كل الصعب في الطريق.",
+                "مفيش نجاح من غير تعب، وتعبك ده هو سر نجاحنا كلنا."
+            ];
+            const randomQuote = quotes[Math.floor(Math.random() * quotes.length)];
+
+            // دمج المتغيرات في النافذة
+            document.getElementById('welcome-greeting').innerText = `${timeGreeting} يا ${driverName}!`;
+            document.getElementById('welcome-day').innerText = `النهاردة ${dayName}، يوم جديد برزق جديد 🌹`;
+            document.getElementById('welcome-quote').innerText = randomQuote;
+            document.getElementById('welcome-icon-container').innerHTML = iconHtml;
+
+            // إظهار النافذة
+            document.getElementById('welcome-modal').classList.remove('hidden');
+        };
+
+        window.closeWelcomeModal = () => {
+            document.getElementById('welcome-modal').classList.add('hidden');
+        };
+
+        // 2. التحقق من الدخول وإظهار الترحيب
         window.addEventListener('DOMContentLoaded', () => {
             const savedPhone = localStorage.getItem('sman_driver_phone');
             const savedName = localStorage.getItem('sman_driver_name');
@@ -215,11 +278,13 @@
                 currentDriverName = savedName;
                 document.getElementById('driver-name-display').innerText = currentDriverName;
                 document.getElementById('login-screen').classList.add('hidden');
+                
+                // استدعاء الترحيب
+                showWelcomeModal(currentDriverName);
                 fetchDriverOrders();
             }
         });
 
-        // 5. تسجيل دخول المندوب
         window.loginDriver = async () => {
             const phoneInput = document.getElementById('driver-phone-input').value;
             const pinInput = document.getElementById('driver-pin-input').value.trim();
@@ -228,9 +293,7 @@
 
             errEl.classList.add('hidden');
             let cleanPhone = window.normalizePhone(phoneInput);
-            if(!cleanPhone || !pinInput) { 
-                errEl.innerText = 'يرجى إدخال رقم الموبايل والرقم السري كاملاً!'; errEl.classList.remove('hidden'); return; 
-            }
+            if(!cleanPhone || !pinInput) { errEl.innerText = 'يرجى الإدخال كاملاً!'; errEl.classList.remove('hidden'); return; }
 
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
             btn.disabled = true;
@@ -241,107 +304,74 @@
                     const drivers = settingsDoc.data().drivers || [];
                     const matchedDriver = drivers.find(d => window.normalizePhone(d.phone) === cleanPhone);
 
-                    if(!matchedDriver) { 
-                        errEl.innerText = 'رقم الموبايل هذا غير مسجل كمندوب!'; errEl.classList.remove('hidden'); 
-                    } else if(matchedDriver.pin !== pinInput) { 
-                        errEl.innerText = 'الرقم السري غير صحيح!'; errEl.classList.remove('hidden'); 
-                    } else {
-                        // نجاح الدخول - الكود الأساسي
+                    if(!matchedDriver) { errEl.innerText = 'رقم غير مسجل كمندوب!'; errEl.classList.remove('hidden'); } 
+                    else if(matchedDriver.pin !== pinInput) { errEl.innerText = 'الرقم السري غير صحيح!'; errEl.classList.remove('hidden'); } 
+                    else {
                         currentDriverPhone = cleanPhone;
                         currentDriverName = matchedDriver.name || 'المندوب';
                         localStorage.setItem('sman_driver_phone', currentDriverPhone);
                         localStorage.setItem('sman_driver_name', currentDriverName);
                         document.getElementById('driver-name-display').innerText = currentDriverName;
                         document.getElementById('login-screen').classList.add('hidden');
+                        
+                        // استدعاء الترحيب بعد الدخول بنجاح
+                        showWelcomeModal(currentDriverName);
                         fetchDriverOrders();
-
-                        // إضافة نظام الرسائل الترحيبية التشجيعية (تختفي بعد 5 ثواني)
-                        const welcomeMessages = [
-                            `صباح الرزق يا بطل 💪، ربنا يعينك ويوسع رزقك وتخلص شيفتك على خير!`,
-                            `أهلاً بيك يا ${currentDriverName}، دراع سمان ههيا اليمين، يومك جميل إن شاء الله 🌹`,
-                            `توكلنا على الله 🛵، ربنا يكتبلك السلامة في كل خطوة يا وحش.`,
-                            `عاش يا ${currentDriverName}! شكراً لمجهودك وتعبك معانا، شد حيلك 🚀`,
-                            `يوم جديد ورزق جديد يا بطل، ربنا يحفظك في الطريق ويوفقك 🌟`
-                        ];
-                        // اختيار رسالة عشوائية
-                        const randomMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
-                        
-                        // إنشاء مربع الرسالة
-                        const toast = document.createElement('div');
-                        toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm bg-gradient-to-r from-emerald-600 to-brand-primary text-white p-4 rounded-2xl shadow-xl border border-emerald-400 flex items-center gap-3 transform transition-all duration-500 translate-y-[-150%] opacity-0';
-                        toast.innerHTML = `<div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0"><i class="fa-solid fa-heart text-red-300 fa-beat"></i></div><div><h4 class="font-black text-sm mb-0.5">أهلاً يا بطل!</h4><p class="text-xs font-bold text-emerald-50 leading-relaxed">${randomMsg}</p></div>`;
-                        
-                        document.body.appendChild(toast);
-                        
-                        // حركة الظهور
-                        setTimeout(() => {
-                            toast.classList.remove('translate-y-[-150%]', 'opacity-0');
-                            toast.classList.add('translate-y-0', 'opacity-100');
-                        }, 100);
-                        
-                        // الإخفاء التلقائي
-                        setTimeout(() => {
-                            toast.classList.remove('translate-y-0', 'opacity-100');
-                            toast.classList.add('translate-y-[-150%]', 'opacity-0');
-                            setTimeout(() => toast.remove(), 500);
-                        }, 5000);
                     }
                 }
-            } catch(e) { errEl.innerText = 'حدث خطأ بالاتصال!'; errEl.classList.remove('hidden'); }
+            } catch(e) { errEl.innerText = 'خطأ بالاتصال!'; errEl.classList.remove('hidden'); }
             btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> دخول لخط السير';
             btn.disabled = false;
         };
 
         window.logoutDriver = () => {
-            if(confirm('هل تريد تسجيل الخروج؟')) { localStorage.removeItem('sman_driver_phone'); localStorage.removeItem('sman_driver_name'); location.reload(); }
+            if(confirm('هل تريد تسجيل الخروج؟')) { 
+                localStorage.removeItem('sman_driver_phone'); 
+                localStorage.removeItem('sman_driver_name'); 
+                sessionStorage.removeItem('welcomed_today'); // لمسح الجلسة
+                location.reload(); 
+            }
         };
 
-        // 6. جلب الأوردرات وحساب المحفظة
+        // 3. جلب الأوردرات ورسمها (بدون تغيير)
         window.fetchDriverOrders = () => {
             const container = document.getElementById('orders-container');
             container.innerHTML = '<div class="text-center py-12"><i class="fa-solid fa-spinner fa-spin text-3xl text-brand-primary"></i></div>';
 
-            db.collection('orders')
-                .where('status', 'in', ['dispatched', 'no_answer', 'completed'])
-                .onSnapshot(snap => {
-                    currentOrdersList = [];
-                    let collectedCash = 0; let driverEarnings = 0; let activeCount = 0;
+            db.collection('orders').where('status', 'in', ['dispatched', 'no_answer', 'completed']).onSnapshot(snap => {
+                currentOrdersList = [];
+                let collectedCash = 0; let driverEarnings = 0; let activeCount = 0;
 
-                    snap.forEach(doc => {
-                        let data = doc.data();
-                        if (data.isSupplied === true) return; // تم توريدها للإدارة مسبقاً
-                        
-                        let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
-                        if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
-                            currentOrdersList.push({ id: doc.id, ...data });
-                            let orderTotal = Number(data.total) || 0;
-                            let fee = Number(data.deliveryFee) || 0;
+                snap.forEach(doc => {
+                    let data = doc.data();
+                    if (data.isSupplied === true) return; 
+                    let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
+                    if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
+                        currentOrdersList.push({ id: doc.id, ...data });
+                        let orderTotal = Number(data.total) || 0;
+                        let fee = Number(data.deliveryFee) || 0;
 
-                            if (data.status === 'dispatched' || data.status === 'no_answer') { activeCount++; } 
-                            else if (data.status === 'completed') {
-                                if(data.paymentMethod !== 'online') collectedCash += orderTotal;
-                                driverEarnings += fee;
-                            }
+                        if (data.status === 'dispatched' || data.status === 'no_answer') { activeCount++; } 
+                        else if (data.status === 'completed') {
+                            if(data.paymentMethod !== 'online') collectedCash += orderTotal;
+                            driverEarnings += fee;
                         }
-                    });
-
-                    currentOrdersList.sort((a,b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
-
-                    let netRemit = collectedCash - driverEarnings;
-                    if(netRemit < 0) netRemit = 0;
-
-                    document.getElementById('stat-active-count').innerText = `${activeCount} طلب جاري`;
-                    document.getElementById('stat-collected-cash').innerHTML = `${collectedCash.toLocaleString()} <span class="text-xs">ج</span>`;
-                    document.getElementById('stat-driver-earnings').innerHTML = `${driverEarnings.toLocaleString()} <span class="text-xs">ج</span>`;
-                    document.getElementById('stat-net-remit').innerHTML = `${netRemit.toLocaleString()} <span class="text-sm">ج</span>`;
-
-                    renderDriverOrdersUI();
-                }, err => {
-                    container.innerHTML = '<div class="text-center py-8 text-red-500 font-bold text-xs">خطأ أثناء تحميل الطلبات!</div>';
+                    }
                 });
+
+                currentOrdersList.sort((a,b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+                let netRemit = collectedCash - driverEarnings;
+                if(netRemit < 0) netRemit = 0;
+
+                document.getElementById('stat-active-count').innerText = `${activeCount} طلب جاري`;
+                document.getElementById('stat-collected-cash').innerHTML = `${collectedCash.toLocaleString()} <span class="text-xs">ج</span>`;
+                document.getElementById('stat-driver-earnings').innerHTML = `${driverEarnings.toLocaleString()} <span class="text-xs">ج</span>`;
+                document.getElementById('stat-net-remit').innerHTML = `${netRemit.toLocaleString()} <span class="text-sm">ج</span>`;
+
+                renderDriverOrdersUI();
+            }, err => { container.innerHTML = '<div class="text-center text-red-500 font-bold">خطأ بالتحميل!</div>'; });
         };
 
-        // 7. أدوات مساعدة
         window.openMaps = (zone, address) => { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((zone||'')+' '+(address||''))}`, '_blank'); };
         window.sendImOnMyWay = (phone) => {
             let msg = `أهلاً بك 🛵\nمندوب "سمان ههيا" في الطريق إليك الآن.\nيرجى الاستعداد للاستلام وشكراً لتعاونكم! 🌹`;
@@ -349,7 +379,6 @@
             window.open(`https://wa.me/${cleanPhone.startsWith('0')?'2'+cleanPhone:cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
-        // 8. رسم كروت الطلبات ودمج عرض المشغل الصوتي بداخلها
         window.renderDriverOrdersUI = () => {
             const container = document.getElementById('orders-container');
             if(currentOrdersList.length === 0) {
@@ -364,28 +393,6 @@
                 let isNoAnswer = (o.status === 'no_answer');
                 let orderFee = Number(o.deliveryFee) || 0;
                 let itemsStr = (o.items && Array.isArray(o.items)) ? o.items.map(i => `<span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-[11px] font-black border border-slate-200">${i.quantity}x ${i.name}</span>`).join(' ') : 'بدون تفاصيل';
-
-                // معالجة الملاحظات لاكتشاف إذا كان يوجد تسجيل صوتي محفوظ
-                let driverNoteHtml = '';
-                if (o.driverNote) {
-                    let notesArray = o.driverNote.split('\n---\n');
-                    let lastNote = notesArray.pop(); // نأخذ آخر ملاحظة
-                    let noteTextDisplay = lastNote;
-                    let audioPlayerHtml = '';
-
-                    // إذا وجدنا الكود الخاص بالصوت، نفصله عن النص ونعرض المشغل
-                    if (lastNote.includes('|AUDIO:')) {
-                        let parts = lastNote.split('|AUDIO:');
-                        noteTextDisplay = parts[0];
-                        audioPlayerHtml = `<audio controls src="${parts[1]}" class="w-full h-8 mt-2 rounded-lg bg-white opacity-90"></audio>`;
-                    }
-
-                    driverNoteHtml = `
-                    <div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl mb-4 text-xs font-bold text-blue-800 leading-relaxed">
-                        <i class="fa-solid fa-motorcycle text-blue-500 mr-1"></i> <strong>ملاحظة لك:</strong> ${noteTextDisplay}
-                        ${audioPlayerHtml}
-                    </div>`;
-                }
 
                 if(isCompleted) {
                     htmlStr += `
@@ -430,12 +437,12 @@
                         </div>
 
                         <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex flex-wrap gap-1.5">${itemsStr}</div>
-                        ${driverNoteHtml}
+                        ${o.driverNote ? `<div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl mb-4 text-xs font-bold text-blue-800 leading-relaxed"><i class="fa-solid fa-motorcycle text-blue-500 mr-1"></i> ${o.driverNote.split('\n---\n').pop()}</div>` : ''}
 
                         <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
                             <button onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-circle-check text-sm"></i> تم التسليم</button>
                             <button onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-phone-slash text-sm"></i> لم يرد</button>
-                            <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-microphone text-sm"></i> ملاحظة/صوت</button>
+                            <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-microphone text-sm"></i> ملاحظة</button>
                         </div>
                     </div>`;
                 }
@@ -443,92 +450,58 @@
             container.innerHTML = htmlStr;
         };
 
-        // 9. الأزرار التنفيذية للأوردر والتوريد
         window.markOrderCompleted = async (orderId) => {
-            if(!confirm('تأكيد تسليم الطلب واستلام النقدية بنجاح؟')) return;
+            if(!confirm('تأكيد تسليم الطلب بنجاح؟')) return;
             const nowStr = new Date().toLocaleDateString('en-US');
             const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
             try { await db.collection('orders').doc(orderId).update({ status: 'completed', completedAt: firebase.firestore.FieldValue.serverTimestamp(), completedAtStr: nowStr, completedTimeDisplay: nowTimeStr }); } 
-            catch(e) { alert('حدث خطأ أثناء تحديث التسليم!'); }
+            catch(e) {}
         };
 
         window.markOrderNoAnswer = async (orderId) => {
             if(!confirm('تأكيد تحويل الحالة إلى (لم يرد)؟')) return;
-            try { await db.collection('orders').doc(orderId).update({ status: 'no_answer' }); } 
-            catch(e) { alert('حدث خطأ أثناء التحديث!'); }
+            try { await db.collection('orders').doc(orderId).update({ status: 'no_answer' }); } catch(e) {}
         };
 
         window.remitCash = async () => {
             let completedOrders = currentOrdersList.filter(o => o.status === 'completed');
-            if(completedOrders.length === 0) return alert('عفواً، لا يوجد أي طلبات مسلمة لتوريد نقديتها!');
-            if(!confirm('هل قمت بتسليم الكاش للإدارة؟\nبالضغط على موافق سيتم تصفير عهدتك وإخفاء الطلبات الموردة لبدء شيفت جديد.')) return;
+            if(completedOrders.length === 0) return alert('عفواً، لا يوجد طلبات لتوريد نقديتها!');
+            if(!confirm('تأكيد تسليم الكاش للإدارة وتصفير محفظتك؟')) return;
             try {
                 for(let order of completedOrders) {
                     await db.collection('orders').doc(order.id).update({ isSupplied: true, suppliedAt: firebase.firestore.FieldValue.serverTimestamp() });
                 }
-                alert('✅ تم توريد النقدية وتصفير محفظتك بنجاح!');
-            } catch(e) { alert('حدث خطأ أثناء التوريد، تأكد من الإنترنت.'); }
+                alert('✅ تم توريد النقدية بنجاح!');
+            } catch(e) {}
         };
 
-        // ==========================================
-        // 10. نظام الملاحظات والإملاء الصوتي المباشر (Voice to Text)
-        // ==========================================
-        window.openProblemModal = (orderId) => { 
-            document.getElementById('problem-order-id').value = orderId; 
-            document.getElementById('problem-input').value = ''; 
-            document.getElementById('problem-modal').classList.remove('hidden'); 
-        };
-        
-        window.closeProblemModal = () => { 
-            document.getElementById('problem-modal').classList.add('hidden'); 
-        };
-        
-        window.addQuickProblemNote = (txt) => { 
-            let input = document.getElementById('problem-input'); 
-            input.value += (input.value ? ' - ' : '') + txt; 
-        };
+        // الإملاء الصوتي الحي
+        window.openProblemModal = (orderId) => { document.getElementById('problem-order-id').value = orderId; document.getElementById('problem-input').value = ''; document.getElementById('problem-modal').classList.remove('hidden'); };
+        window.closeProblemModal = () => { document.getElementById('problem-modal').classList.add('hidden'); };
+        window.addQuickProblemNote = (txt) => { let input = document.getElementById('problem-input'); input.value += (input.value ? ' - ' : '') + txt; };
         
         window.startVoiceRecognition = () => {
             const micBtn = document.getElementById('mic-btn');
             const inputArea = document.getElementById('problem-input');
-            
-            // التحقق من دعم المتصفح لتقنية تحويل الصوت لنص
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                return alert("عفواً، متصفحك الحالي لا يدعم ميزة الإملاء الصوتي. يرجى استخدام الكتابة اليدوية.");
-            }
-            
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) { return alert("المتصفح لا يدعم الإملاء الصوتي."); }
             const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
             const recognition = new SpeechRecognition();
-            
-            recognition.lang = 'ar-EG'; // اللغة العربية بلهجة مصرية لدقة أعلى
-            recognition.interimResults = true; // كتابة الكلمات فوراً أثناء التحدث
-            recognition.continuous = false; // التوقف عند السكوت
+            recognition.lang = 'ar-EG'; recognition.interimResults = true; recognition.continuous = false;
             
             recognition.onstart = function() { 
                 micBtn.innerHTML = '<i class="fa-solid fa-microphone text-red-500 fa-beat text-sm"></i>';
                 micBtn.classList.add('bg-red-50', 'border-red-200');
-                inputArea.placeholder = "تحدث الآن، جاري الاستماع وكتابة كلامك...";
+                inputArea.placeholder = "تحدث الآن، جاري الكتابة...";
             };
             
-            let finalTranscript = inputArea.value; // الاحتفاظ بأي كلام مكتوب مسبقاً
-
+            let finalTranscript = inputArea.value;
             recognition.onresult = function(event) { 
                 let interimTranscript = '';
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        finalTranscript += (finalTranscript ? ' ' : '') + event.results[i][0].transcript;
-                    } else {
-                        interimTranscript += event.results[i][0].transcript;
-                    }
+                    if (event.results[i].isFinal) finalTranscript += (finalTranscript ? ' ' : '') + event.results[i][0].transcript;
+                    else interimTranscript += event.results[i][0].transcript;
                 }
-                // عرض الكلام المكتمل + الكلام الجاري تحليله في المربع فوراً
                 inputArea.value = finalTranscript + (interimTranscript ? ' ' + interimTranscript : '');
-            };
-            
-            recognition.onerror = function(event) {
-                if(event.error !== 'no-speech') {
-                    alert("تعذر التقاط الصوت، تأكد من إعطاء الصلاحية للميكروفون من متصفحك.");
-                }
             };
 
             recognition.onend = function() { 
@@ -536,46 +509,28 @@
                 micBtn.classList.remove('bg-red-50', 'border-red-200');
                 inputArea.placeholder = "اكتب الملاحظة، أو تحدث لتُكتب تلقائياً...";
             };
-            
             recognition.start();
         };
 
-        // ==========================================
-        // 11. إرسال الملاحظة النصية السريعة
-        // ==========================================
         window.submitProblemNote = async () => {
             const orderId = document.getElementById('problem-order-id').value;
             const noteText = document.getElementById('problem-input').value.trim();
             const submitBtn = document.getElementById('submit-note-btn');
+            if(!noteText) return alert('اكتب الملاحظة أو تحدث بالمايك أولاً!');
             
-            if(!noteText) return alert('يرجى كتابة الملاحظة أو التحدث بالمايك أولاً!');
-            
-            // تغيير حالة الزر أثناء الإرسال
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
-            
+            submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الإرسال...';
             const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
             const formattedNote = `[المندوب ${nowTimeStr}] ${noteText}`;
-            
             try {
                 const doc = await db.collection('orders').doc(orderId).get();
                 if(doc.exists) {
                     let oldNotes = doc.data().driverNote || '';
-                    await db.collection('orders').doc(orderId).update({ 
-                        driverNote: oldNotes ? oldNotes + '\n---\n' + formattedNote : formattedNote 
-                    });
-                    closeProblemModal(); 
-                    alert('تم إرسال الملاحظة للإدارة في ثانية واحدة بنجاح! 🚀');
+                    await db.collection('orders').doc(orderId).update({ driverNote: oldNotes ? oldNotes + '\n---\n' + formattedNote : formattedNote });
+                    closeProblemModal(); alert('تم الإرسال بنجاح! 🚀');
                 }
-            } catch(e) {
-                alert('خطأ في حفظ الملاحظة! تأكد من اتصالك بالإنترنت.');
-            }
-            
-            // إعادة الزر لشكله الطبيعي
-            submitBtn.disabled = false;
-            submitBtn.innerHTML = 'إرسال للإدارة';
+            } catch(e) {}
+            submitBtn.disabled = false; submitBtn.innerHTML = 'إرسال الملاحظة للإدارة';
         };
-
     </script>
 </body>
 </html>
