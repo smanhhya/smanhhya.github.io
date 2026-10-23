@@ -246,6 +246,7 @@
                     } else if(matchedDriver.pin !== pinInput) { 
                         errEl.innerText = 'الرقم السري غير صحيح!'; errEl.classList.remove('hidden'); 
                     } else {
+                        // نجاح الدخول - الكود الأساسي
                         currentDriverPhone = cleanPhone;
                         currentDriverName = matchedDriver.name || 'المندوب';
                         localStorage.setItem('sman_driver_phone', currentDriverPhone);
@@ -253,6 +254,37 @@
                         document.getElementById('driver-name-display').innerText = currentDriverName;
                         document.getElementById('login-screen').classList.add('hidden');
                         fetchDriverOrders();
+
+                        // إضافة نظام الرسائل الترحيبية التشجيعية (تختفي بعد 5 ثواني)
+                        const welcomeMessages = [
+                            `صباح الرزق يا بطل 💪، ربنا يعينك ويوسع رزقك وتخلص شيفتك على خير!`,
+                            `أهلاً بيك يا ${currentDriverName}، دراع سمان ههيا اليمين، يومك جميل إن شاء الله 🌹`,
+                            `توكلنا على الله 🛵، ربنا يكتبلك السلامة في كل خطوة يا وحش.`,
+                            `عاش يا ${currentDriverName}! شكراً لمجهودك وتعبك معانا، شد حيلك 🚀`,
+                            `يوم جديد ورزق جديد يا بطل، ربنا يحفظك في الطريق ويوفقك 🌟`
+                        ];
+                        // اختيار رسالة عشوائية
+                        const randomMsg = welcomeMessages[Math.floor(Math.random() * welcomeMessages.length)];
+                        
+                        // إنشاء مربع الرسالة
+                        const toast = document.createElement('div');
+                        toast.className = 'fixed top-4 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm bg-gradient-to-r from-emerald-600 to-brand-primary text-white p-4 rounded-2xl shadow-xl border border-emerald-400 flex items-center gap-3 transform transition-all duration-500 translate-y-[-150%] opacity-0';
+                        toast.innerHTML = `<div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0"><i class="fa-solid fa-heart text-red-300 fa-beat"></i></div><div><h4 class="font-black text-sm mb-0.5">أهلاً يا بطل!</h4><p class="text-xs font-bold text-emerald-50 leading-relaxed">${randomMsg}</p></div>`;
+                        
+                        document.body.appendChild(toast);
+                        
+                        // حركة الظهور
+                        setTimeout(() => {
+                            toast.classList.remove('translate-y-[-150%]', 'opacity-0');
+                            toast.classList.add('translate-y-0', 'opacity-100');
+                        }, 100);
+                        
+                        // الإخفاء التلقائي
+                        setTimeout(() => {
+                            toast.classList.remove('translate-y-0', 'opacity-100');
+                            toast.classList.add('translate-y-[-150%]', 'opacity-0');
+                            setTimeout(() => toast.remove(), 500);
+                        }, 5000);
                     }
                 }
             } catch(e) { errEl.innerText = 'حدث خطأ بالاتصال!'; errEl.classList.remove('hidden'); }
