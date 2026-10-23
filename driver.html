@@ -127,7 +127,7 @@
 
     </main>
 
-    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة -->
+    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة (المطورة بالصوت) -->
     <div id="problem-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden flex flex-col p-5">
             <div class="flex justify-between items-center mb-3">
@@ -135,7 +135,7 @@
                 <button onclick="closeProblemModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <p class="text-[11px] font-bold text-slate-500 mb-3">اختر ملاحظة سريعة أو اكتب توضيحك:</p>
+            <p class="text-[11px] font-bold text-slate-500 mb-3">اختر ملاحظة سريعة، أو تحدث بالميكروفون:</p>
             
             <div class="flex flex-wrap gap-1.5 mb-3">
                 <button onclick="addQuickProblemNote('العميل طلب التأجيل لغد')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">تأجيل لغد</button>
@@ -143,7 +143,14 @@
                 <button onclick="addQuickProblemNote('العنوان غير واضح')" class="bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-800 text-[10px] font-bold px-2 py-1 rounded-lg">العنوان غير واضح</button>
             </div>
 
-            <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 mb-4 resize-none" placeholder="اكتب الملاحظة هنا..."></textarea>
+            <!-- مربع النص مع زر التسجيل الصوتي -->
+            <div class="relative mb-4">
+                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة أو تحدث..."></textarea>
+                
+                <button id="mic-btn" onclick="startVoiceRecognition()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-all shadow-sm" title="تحدث ليكتب النظام عنك">
+                    <i class="fa-solid fa-microphone text-sm"></i>
+                </button>
+            </div>
             
             <input type="hidden" id="problem-order-id">
             
@@ -231,13 +238,10 @@
                         errEl.innerText = 'الرقم السري غير صحيح!';
                         errEl.classList.remove('hidden');
                     } else {
-                        // نجاح الدخول
                         currentDriverPhone = cleanPhone;
                         currentDriverName = matchedDriver.name || 'المندوب';
-                        
                         localStorage.setItem('sman_driver_phone', currentDriverPhone);
                         localStorage.setItem('sman_driver_name', currentDriverName);
-
                         document.getElementById('driver-name-display').innerText = currentDriverName;
                         document.getElementById('login-screen').classList.add('hidden');
                         fetchDriverOrders();
@@ -279,7 +283,6 @@
                         let data = doc.data();
                         let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
                         
-                        // الفلترة للتأكد أن الطلب يخص المندوب الحالي (بالرقم أو الاسم كاحتياطي)
                         if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
                             currentOrdersList.push({ id: doc.id, ...data });
                             if(data.paymentMethod !== 'online' && data.status === 'dispatched') {
@@ -288,6 +291,9 @@
                         }
                     });
 
+                    // ترتيب الأوردرات الأقدم فالأحدث
+                    currentOrdersList.sort((a,b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
+
                     document.getElementById('stat-active-count').innerText = currentOrdersList.filter(o => o.status === 'dispatched').length;
                     document.getElementById('stat-cash-to-collect').innerText = cashTotal.toLocaleString();
 
@@ -295,6 +301,20 @@
                 }, err => {
                     container.innerHTML = '<div class="text-center py-8 text-red-500 font-bold text-xs">حدث خطأ أثناء تحميل الطلبات!</div>';
                 });
+        };
+
+        // فتح جوجل ماب
+        window.openMaps = (zone, address) => {
+            let fullAddress = (zone || '') + ' ' + (address || '');
+            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fullAddress)}`, '_blank');
+        };
+
+        // إرسال واتساب "أنا في الطريق"
+        window.sendImOnMyWay = (phone) => {
+            let msg = `أهلاً بك 🛵\nمندوب "سمان ههيا" في الطريق إليك الآن.\nيرجى الاستعداد لاستلام الطلب وتجهيز المبلغ لتسهيل التسليم، وشكراً لتعاونكم! 🌹`;
+            let cleanPhone = (phone || '').toString().trim();
+            let waNumber = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
+            window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
         // رسم كروت الطلبات
@@ -322,6 +342,12 @@
 
                 let isNoAnswer = (o.status === 'no_answer');
 
+                // عرض الرقم البديل إذا وُجد
+                let phone2Html = o.customerPhone2 ? `
+                <a href="tel:${o.customerPhone2}" class="flex items-center justify-center gap-1 bg-purple-50 text-purple-700 font-black py-2 rounded-xl text-xs border border-purple-100 active:scale-95 transition-all">
+                    <i class="fa-solid fa-phone"></i> رقم بديل
+                </a>` : '';
+
                 return `
                 <div class="bg-white rounded-3xl p-5 border ${isNoAnswer ? 'border-purple-300 bg-purple-50/30' : 'border-slate-200/80'} shadow-sm relative overflow-hidden transition-all">
                     
@@ -339,19 +365,24 @@
 
                     <!-- العنوان والتواصل -->
                     <div class="space-y-2 mb-4">
-                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 relative">
                             <span class="text-[10px] font-black text-indigo-500 block mb-0.5"><i class="fa-solid fa-location-dot"></i> منطقة: ${o.zone || 'عام'}</span>
-                            <p class="text-xs font-bold text-slate-700 leading-relaxed">${o.customerAddress || 'عنوان غير تفصيلي'}</p>
+                            <p class="text-xs font-bold text-slate-700 leading-relaxed pr-8">${o.customerAddress || 'عنوان غير تفصيلي'}</p>
+                            <!-- زر الخريطة الجديد -->
+                            <button onclick="openMaps('${o.zone}', '${o.customerAddress}')" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors shadow-sm" title="فتح خرائط جوجل">
+                                <i class="fa-solid fa-map-location-dot text-sm"></i>
+                            </button>
                         </div>
 
                         <!-- أزرار الاتصال والواتساب -->
-                        <div class="grid grid-cols-2 gap-2 pt-1">
-                            <a href="tel:${o.customerPhone}" class="bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
-                                <i class="fa-solid fa-phone text-sm"></i> اتصال بالعميل
+                        <div class="grid grid-cols-3 gap-2 pt-1">
+                            <a href="tel:${o.customerPhone}" class="col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                <i class="fa-solid fa-phone"></i> اتصال
                             </a>
-                            <a href="https://wa.me/${(o.customerPhone||'').startsWith('0')?'2'+o.customerPhone:o.customerPhone}" target="_blank" class="bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
-                                <i class="fa-brands fa-whatsapp text-sm"></i> واتساب
-                            </a>
+                            <button onclick="sendImOnMyWay('${o.customerPhone}')" class="col-span-1 bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                <i class="fa-brands fa-whatsapp"></i> بالطريق
+                            </button>
+                            ${phone2Html || '<div class="col-span-1"></div>'}
                         </div>
                     </div>
 
@@ -430,7 +461,56 @@
         };
 
         window.addQuickProblemNote = (txt) => {
-            document.getElementById('problem-input').value = txt;
+            let inputArea = document.getElementById('problem-input');
+            inputArea.value += (inputArea.value ? ' - ' : '') + txt;
+        };
+
+        // ==========================================
+        // 🎙️ ميزة التسجيل الصوتي وتحويله لكتابة 🎙️
+        // ==========================================
+        window.startVoiceRecognition = () => {
+            const micBtn = document.getElementById('mic-btn');
+            const inputArea = document.getElementById('problem-input');
+            
+            // التحقق من دعم المتصفح
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("عفواً، متصفحك الحالي لا يدعم تسجيل الصوت. يرجى استخدام الكتابة اليدوية.");
+                return;
+            }
+
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            recognition.lang = 'ar-EG'; // اللغة العربية المصرية
+            recognition.interimResults = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = function() {
+                // تغيير شكل الزر ليعرف المندوب أن التسجيل بدأ
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone text-red-500 fa-beat text-sm"></i>';
+                micBtn.classList.add('border-red-500', 'bg-red-50');
+                inputArea.placeholder = "تحدث الآن، أنا أسمعك...";
+            };
+
+            recognition.onresult = function(event) {
+                // التقاط الكلام وتحويله لنص
+                const speechResult = event.results[0][0].transcript;
+                inputArea.value += (inputArea.value ? ' ' : '') + speechResult;
+            };
+
+            recognition.onerror = function(event) {
+                alert("حدث خطأ في التقاط الصوت. حاول مرة أخرى.");
+            };
+
+            recognition.onend = function() {
+                // إرجاع الزر لشكله الطبيعي
+                micBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>';
+                micBtn.classList.remove('border-red-500', 'bg-red-50');
+                inputArea.placeholder = "اكتب الملاحظة أو تحدث...";
+            };
+
+            // بدء التسجيل
+            recognition.start();
         };
 
         window.submitProblemNote = async () => {
@@ -453,7 +533,7 @@
                     });
 
                     closeProblemModal();
-                    alert('تم إرسال الملاحظة لوحة التحكم بنجاح! 🚀');
+                    alert('تم إرسال الملاحظة للإدارة بنجاح! 🚀');
                 }
             } catch(e) {
                 alert('خطأ في حفظ الملاحظة!');
