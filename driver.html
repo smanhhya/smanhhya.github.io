@@ -11,9 +11,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <!-- Firebase Compat SDKs -->
+    <!-- Firebase Compat SDKs (متضمنة مكتبة التخزين للصوتيات) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js"></script> <!-- مكتبة الصوتيات -->
 
     <script>
         tailwind.config = {
@@ -33,13 +34,19 @@
         .custom-scroll::-webkit-scrollbar { width: 4px; }
         .custom-scroll::-webkit-scrollbar-track { background: transparent; }
         .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+        
+        /* تأثير النبض لزر المايك أثناء التسجيل */
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .recording-active { animation: pulse-red 1.5s infinite; border-color: #ef4444 !important; background-color: #fef2f2 !important; }
     </style>
 </head>
 <body class="text-slate-800 bg-slate-100 min-h-screen flex flex-col justify-between selection:bg-brand-primary selection:text-white">
 
-    <!-- ========================================== -->
     <!-- 1. شاشة دخول المندوب الآمنة -->
-    <!-- ========================================== -->
     <div id="login-screen" class="fixed inset-0 bg-slate-900 z-50 flex items-center justify-center p-4">
         <div class="bg-white p-8 rounded-[2rem] shadow-2xl w-full max-w-sm text-center relative overflow-hidden">
             <div class="absolute top-0 right-0 w-full h-2 bg-gradient-to-r from-emerald-400 to-brand-primary"></div>
@@ -65,9 +72,7 @@
         </div>
     </div>
 
-    <!-- ========================================== -->
     <!-- 2. الهيدر العلوي للتطبيق -->
-    <!-- ========================================== -->
     <header class="bg-brand-dark text-white sticky top-0 z-40 shadow-md">
         <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
             <div class="flex items-center gap-3">
@@ -90,9 +95,7 @@
         </div>
     </header>
 
-    <!-- ========================================== -->
     <!-- 3. المحتوى الرئيسي (المحفظة وقائمة الطلبات) -->
-    <!-- ========================================== -->
     <main class="flex-1 max-w-md w-full mx-auto p-4 pb-24 space-y-4">
         
         <!-- المحفظة المالية الذكية للمندوب -->
@@ -116,7 +119,6 @@
                     <span class="text-xs font-black text-blue-800">الصافي لتوريده للإدارة:</span>
                     <span id="stat-net-remit" class="text-2xl font-black text-blue-700">0 <span class="text-sm">ج</span></span>
                 </div>
-                <!-- زر توريد النقدية وتقفيل الشيفت -->
                 <button onclick="remitCash()" class="w-full bg-slate-800 hover:bg-black text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs flex justify-center items-center gap-2">
                     <i class="fa-solid fa-hand-holding-dollar"></i> توريد النقدية وتقفيل الشيفت
                 </button>
@@ -131,17 +133,15 @@
         </div>
     </main>
 
-    <!-- ========================================== -->
-    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة (المطورة بالصوت) -->
-    <!-- ========================================== -->
+    <!-- 4. نافذة الإبلاغ عن مشكلة / ملاحظة (المطورة بالصوت والتسجيل الفعلي) -->
     <div id="problem-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl shadow-2xl w-full max-w-xs overflow-hidden flex flex-col p-5 relative">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="font-black text-slate-800 text-sm"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> إبلاغ عن مشكلة</h3>
+                <h3 class="font-black text-slate-800 text-sm"><i class="fa-solid fa-triangle-exclamation text-amber-500 mr-1"></i> إبلاغ عن مشكلة / رسالة للإدارة</h3>
                 <button onclick="closeProblemModal()" class="text-slate-400 hover:text-red-500"><i class="fa-solid fa-xmark"></i></button>
             </div>
             
-            <p class="text-[11px] font-bold text-slate-500 mb-3">اختر ملاحظة سريعة، أو تحدث بالميكروفون:</p>
+            <p class="text-[11px] font-bold text-slate-500 mb-3">اضغط على المايكروفون لتسجيل صوتك وكتابة النص تلقائياً:</p>
             
             <!-- أزرار الملاحظات السريعة -->
             <div class="flex flex-wrap gap-1.5 mb-3">
@@ -151,26 +151,28 @@
             </div>
 
             <!-- مربع النص مع زر التسجيل الصوتي -->
-            <div class="relative mb-4">
-                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة أو تحدث..."></textarea>
-                <button id="mic-btn" onclick="startVoiceRecognition()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 hover:border-red-200 transition-all shadow-sm" title="تحدث ليكتب النظام عنك">
+            <div class="relative mb-2">
+                <textarea id="problem-input" rows="3" class="w-full border border-slate-200 rounded-xl p-3 pr-10 text-xs font-bold outline-none focus:ring-2 focus:ring-amber-300 bg-slate-50 resize-none shadow-inner" placeholder="اكتب الملاحظة أو اضغط المايك للتحدث..."></textarea>
+                
+                <button id="mic-btn" onclick="toggleVoiceRecording()" class="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-white rounded-lg border border-slate-200 text-slate-400 hover:text-red-500 transition-all shadow-sm" title="اضغط لبدء / إيقاف التسجيل">
                     <i class="fa-solid fa-microphone text-sm"></i>
                 </button>
             </div>
+
+            <!-- حاوية معاينة الملف الصوتي قبل الإرسال -->
+            <div id="audio-preview-container" class="mb-4 empty:hidden"></div>
             
             <input type="hidden" id="problem-order-id">
             
-            <button onclick="submitProblemNote()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs">
-                إرسال الملاحظة للإدارة
+            <button id="submit-note-btn" onclick="submitProblemNote()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl transition-all shadow-md active:scale-95 text-xs flex justify-center items-center gap-2">
+                إرسال للإدارة
             </button>
         </div>
     </div>
 
-    <!-- ========================================== -->
     <!-- Script البرمجة والربط مع Firebase -->
-    <!-- ========================================== -->
     <script>
-        // 1. تهيئة قاعدة البيانات Firebase
+        // 1. تهيئة قاعدة البيانات والتخزين Firebase
         const firebaseConfig = { 
             apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", 
             authDomain: "sman-ca8f8.firebaseapp.com", 
@@ -181,13 +183,21 @@
         };
         if (!firebase.apps.length) { firebase.initializeApp(firebaseConfig); }
         const db = firebase.firestore();
+        const storage = firebase.storage();
 
         // 2. المتغيرات العامة
         let currentDriverPhone = '';
         let currentDriverName = '';
         let currentOrdersList = [];
+        
+        // متغيرات تسجيل الصوت
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let currentAudioBlob = null;
+        let isRecording = false;
+        let speechRecognition = null;
 
-        // 3. دالة تنظيف رقم الموبايل (توحيد الأرقام)
+        // 3. دالة تنظيف رقم الموبايل
         window.normalizePhone = (phone) => {
             if (!phone) return '';
             let normalized = phone.toString().replace(/[\u0660-\u0669]/g, c => c.charCodeAt(0) - 0x0660).replace(/[\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x06F0).replace(/\D/g, '');
@@ -199,7 +209,7 @@
             return normalized;
         };
 
-        // 4. التحقق من تسجيل الدخول السابق عند فتح الصفحة
+        // 4. التحقق من تسجيل الدخول
         window.addEventListener('DOMContentLoaded', () => {
             const savedPhone = localStorage.getItem('sman_driver_phone');
             const savedName = localStorage.getItem('sman_driver_name');
@@ -212,7 +222,7 @@
             }
         });
 
-        // 5. دالة تسجيل دخول المندوب
+        // 5. تسجيل دخول المندوب
         window.loginDriver = async () => {
             const phoneInput = document.getElementById('driver-phone-input').value;
             const pinInput = document.getElementById('driver-pin-input').value.trim();
@@ -222,9 +232,7 @@
             errEl.classList.add('hidden');
             let cleanPhone = window.normalizePhone(phoneInput);
             if(!cleanPhone || !pinInput) { 
-                errEl.innerText = 'يرجى إدخال رقم الموبايل والرقم السري كاملاً!'; 
-                errEl.classList.remove('hidden'); 
-                return; 
+                errEl.innerText = 'يرجى إدخال رقم الموبايل والرقم السري كاملاً!'; errEl.classList.remove('hidden'); return; 
             }
 
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التحقق...';
@@ -237,13 +245,10 @@
                     const matchedDriver = drivers.find(d => window.normalizePhone(d.phone) === cleanPhone);
 
                     if(!matchedDriver) { 
-                        errEl.innerText = 'رقم الموبايل هذا غير مسجل كمندوب لدى المتجر!'; 
-                        errEl.classList.remove('hidden'); 
+                        errEl.innerText = 'رقم الموبايل هذا غير مسجل كمندوب!'; errEl.classList.remove('hidden'); 
                     } else if(matchedDriver.pin !== pinInput) { 
-                        errEl.innerText = 'الرقم السري غير صحيح!'; 
-                        errEl.classList.remove('hidden'); 
+                        errEl.innerText = 'الرقم السري غير صحيح!'; errEl.classList.remove('hidden'); 
                     } else {
-                        // نجاح الدخول
                         currentDriverPhone = cleanPhone;
                         currentDriverName = matchedDriver.name || 'المندوب';
                         localStorage.setItem('sman_driver_phone', currentDriverPhone);
@@ -252,72 +257,50 @@
                         document.getElementById('login-screen').classList.add('hidden');
                         fetchDriverOrders();
                     }
-                } else {
-                    errEl.innerText = 'خطأ في الاتصال بالنظام الرئيسي!';
-                    errEl.classList.remove('hidden');
                 }
-            } catch(e) { 
-                errEl.innerText = 'حدث خطأ بالاتصال، التأكد من الإنترنت!'; 
-                errEl.classList.remove('hidden'); 
-            }
+            } catch(e) { errEl.innerText = 'حدث خطأ بالاتصال!'; errEl.classList.remove('hidden'); }
             btn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> دخول لخط السير';
             btn.disabled = false;
         };
 
-        // 6. دالة تسجيل الخروج
         window.logoutDriver = () => {
-            if(confirm('هل تريد تسجيل الخروج من التطبيق؟')) {
-                localStorage.removeItem('sman_driver_phone'); 
-                localStorage.removeItem('sman_driver_name'); 
-                location.reload();
-            }
+            if(confirm('هل تريد تسجيل الخروج؟')) { localStorage.removeItem('sman_driver_phone'); localStorage.removeItem('sman_driver_name'); location.reload(); }
         };
 
-        // 7. جلب الأوردرات الخاصة بالمندوب والمحفظة
+        // 6. جلب الأوردرات وحساب المحفظة
         window.fetchDriverOrders = () => {
             const container = document.getElementById('orders-container');
-            container.innerHTML = '<div class="text-center py-12"><i class="fa-solid fa-spinner fa-spin text-3xl text-brand-primary"></i><p class="text-xs font-bold text-slate-400 mt-2">جاري مزامنة الطلبات الحية...</p></div>';
+            container.innerHTML = '<div class="text-center py-12"><i class="fa-solid fa-spinner fa-spin text-3xl text-brand-primary"></i></div>';
 
             db.collection('orders')
                 .where('status', 'in', ['dispatched', 'no_answer', 'completed'])
                 .onSnapshot(snap => {
                     currentOrdersList = [];
-                    let collectedCash = 0;
-                    let driverEarnings = 0;
-                    let activeCount = 0;
+                    let collectedCash = 0; let driverEarnings = 0; let activeCount = 0;
 
                     snap.forEach(doc => {
                         let data = doc.data();
+                        if (data.isSupplied === true) return; // تم توريدها للإدارة مسبقاً
                         
-                        // استبعاد الأوردرات التي تم توريد نقديتها للإدارة مسبقاً
-                        if (data.isSupplied === true) return; 
-
                         let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
-                        // فلترة للمندوب الحالي
                         if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
                             currentOrdersList.push({ id: doc.id, ...data });
-                            
                             let orderTotal = Number(data.total) || 0;
                             let fee = Number(data.deliveryFee) || 0;
 
-                            if (data.status === 'dispatched' || data.status === 'no_answer') {
-                                activeCount++;
-                            } else if (data.status === 'completed') {
-                                // تم التسليم: نجمع الكاش إذا لم يكن أونلاين، ونجمع العمولة في كل الأحوال
+                            if (data.status === 'dispatched' || data.status === 'no_answer') { activeCount++; } 
+                            else if (data.status === 'completed') {
                                 if(data.paymentMethod !== 'online') collectedCash += orderTotal;
                                 driverEarnings += fee;
                             }
                         }
                     });
 
-                    // ترتيب الأوردرات الأقدم فالأحدث
                     currentOrdersList.sort((a,b) => (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0));
 
-                    // حساب صافي التوريد (الكاش المحصل - عمولة المندوب)
                     let netRemit = collectedCash - driverEarnings;
                     if(netRemit < 0) netRemit = 0;
 
-                    // تحديث أرقام المحفظة في الشاشة
                     document.getElementById('stat-active-count').innerText = `${activeCount} طلب جاري`;
                     document.getElementById('stat-collected-cash').innerHTML = `${collectedCash.toLocaleString()} <span class="text-xs">ج</span>`;
                     document.getElementById('stat-driver-earnings').innerHTML = `${driverEarnings.toLocaleString()} <span class="text-xs">ج</span>`;
@@ -325,32 +308,23 @@
 
                     renderDriverOrdersUI();
                 }, err => {
-                    container.innerHTML = '<div class="text-center py-8 text-red-500 font-bold text-xs">حدث خطأ أثناء تحميل الطلبات!</div>';
+                    container.innerHTML = '<div class="text-center py-8 text-red-500 font-bold text-xs">خطأ أثناء تحميل الطلبات!</div>';
                 });
         };
 
-        // 8. أدوات مساعدة (خرائط وواتساب)
-        window.openMaps = (zone, address) => { 
-            window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((zone||'')+' '+(address||''))}`, '_blank'); 
-        };
-        
+        // 7. أدوات مساعدة
+        window.openMaps = (zone, address) => { window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((zone||'')+' '+(address||''))}`, '_blank'); };
         window.sendImOnMyWay = (phone) => {
-            let msg = `أهلاً بك 🛵\nمندوب "سمان ههيا" في الطريق إليك الآن.\nيرجى الاستعداد لاستلام الطلب وتجهيز المبلغ لتسهيل التسليم، وشكراً لتعاونكم! 🌹`;
+            let msg = `أهلاً بك 🛵\nمندوب "سمان ههيا" في الطريق إليك الآن.\nيرجى الاستعداد للاستلام وشكراً لتعاونكم! 🌹`;
             let cleanPhone = (phone || '').toString().trim();
-            let waNumber = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
-            window.open(`https://wa.me/${waNumber}?text=${encodeURIComponent(msg)}`, '_blank');
+            window.open(`https://wa.me/${cleanPhone.startsWith('0')?'2'+cleanPhone:cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
-        // 9. رسم كروت الطلبات للمندوب
+        // 8. رسم كروت الطلبات ودمج عرض المشغل الصوتي بداخلها
         window.renderDriverOrdersUI = () => {
             const container = document.getElementById('orders-container');
             if(currentOrdersList.length === 0) {
-                container.innerHTML = `
-                <div class="text-center py-16 bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-                    <i class="fa-solid fa-circle-check text-5xl text-emerald-500 mb-3"></i>
-                    <h3 class="font-black text-slate-800 text-base">لا توجد طلبات بعهدتِك حالياً!</h3>
-                    <p class="text-xs font-bold text-slate-400 mt-1">عند توجيه أوردرات جديدة لك ستظهر هنا فوراً.</p>
-                </div>`;
+                container.innerHTML = `<div class="text-center py-16 bg-white rounded-3xl border border-slate-200"><h3 class="font-black text-slate-800">لا توجد طلبات بعهدتِك حالياً!</h3></div>`;
                 return;
             }
 
@@ -360,10 +334,30 @@
                 let isOnline = (o.paymentMethod === 'online');
                 let isNoAnswer = (o.status === 'no_answer');
                 let orderFee = Number(o.deliveryFee) || 0;
-
                 let itemsStr = (o.items && Array.isArray(o.items)) ? o.items.map(i => `<span class="bg-slate-100 text-slate-700 px-2 py-1 rounded-md text-[11px] font-black border border-slate-200">${i.quantity}x ${i.name}</span>`).join(' ') : 'بدون تفاصيل';
 
-                // كارت الأوردر المكتمل (أخضر وبدون أزرار لأنه ينتظر التوريد للإدارة)
+                // معالجة الملاحظات لاكتشاف إذا كان يوجد تسجيل صوتي محفوظ
+                let driverNoteHtml = '';
+                if (o.driverNote) {
+                    let notesArray = o.driverNote.split('\n---\n');
+                    let lastNote = notesArray.pop(); // نأخذ آخر ملاحظة
+                    let noteTextDisplay = lastNote;
+                    let audioPlayerHtml = '';
+
+                    // إذا وجدنا الكود الخاص بالصوت، نفصله عن النص ونعرض المشغل
+                    if (lastNote.includes('|AUDIO:')) {
+                        let parts = lastNote.split('|AUDIO:');
+                        noteTextDisplay = parts[0];
+                        audioPlayerHtml = `<audio controls src="${parts[1]}" class="w-full h-8 mt-2 rounded-lg bg-white opacity-90"></audio>`;
+                    }
+
+                    driverNoteHtml = `
+                    <div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl mb-4 text-xs font-bold text-blue-800 leading-relaxed">
+                        <i class="fa-solid fa-motorcycle text-blue-500 mr-1"></i> <strong>ملاحظة لك:</strong> ${noteTextDisplay}
+                        ${audioPlayerHtml}
+                    </div>`;
+                }
+
                 if(isCompleted) {
                     htmlStr += `
                     <div class="bg-emerald-50 rounded-3xl p-4 border border-emerald-200 shadow-sm opacity-90 relative overflow-hidden">
@@ -377,34 +371,27 @@
                             <span>عمولتك: ${orderFee} ج</span>
                         </div>
                     </div>`;
-                } 
-                // كارت الأوردر الجاري (باللون الأبيض والأزرار كاملة)
-                else {
-                    let phone2Html = o.customerPhone2 ? `<a href="tel:${o.customerPhone2}" class="flex items-center justify-center gap-1 bg-purple-50 text-purple-700 font-black py-2 rounded-xl text-xs border border-purple-100 active:scale-95"><i class="fa-solid fa-phone"></i> رقم بديل</a>` : '<div class="col-span-1"></div>';
+                } else {
+                    let phone2Html = o.customerPhone2 ? `<a href="tel:${o.customerPhone2}" class="flex items-center justify-center gap-1 bg-purple-50 text-purple-700 font-black py-2 rounded-xl text-xs border border-purple-100 active:scale-95"><i class="fa-solid fa-phone"></i> بديل</a>` : '<div></div>';
 
                     htmlStr += `
-                    <div class="bg-white rounded-3xl p-5 border ${isNoAnswer ? 'border-purple-300 bg-purple-50/30' : 'border-slate-200'} shadow-sm relative overflow-hidden transition-all">
-                        
-                        <!-- الهيدر -->
+                    <div class="bg-white rounded-3xl p-5 border ${isNoAnswer ? 'border-purple-300 bg-purple-50/30' : 'border-slate-200'} shadow-sm relative transition-all">
                         <div class="flex justify-between items-start mb-3 pb-3 border-b border-slate-100">
                             <div>
                                 <span class="text-[10px] font-black text-slate-400 block mb-0.5">طلب #${idx + 1}</span>
                                 <h3 class="font-black text-slate-800 text-base">${o.customerName || 'عميل'}</h3>
                             </div>
                             <div class="text-left">
-                                ${isOnline ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-lg"><i class="fa-solid fa-check-double mr-1"></i> خالص أونلاين</span>` : `<span class="bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded-lg"><i class="fa-solid fa-hand-holding-dollar mr-1"></i> كاش</span>`}
+                                ${isOnline ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2 py-1 rounded-lg">خالص أونلاين</span>` : `<span class="bg-amber-500 text-white text-[10px] font-black px-2 py-1 rounded-lg">كاش</span>`}
                                 <div class="font-black text-brand-primary text-xl mt-1">${isOnline ? '0' : o.total} <span class="text-xs">ج</span></div>
                             </div>
                         </div>
 
-                        <!-- العنوان والاتصال -->
                         <div class="space-y-2 mb-4">
                             <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 relative">
                                 <span class="text-[10px] font-black text-indigo-500 block mb-0.5"><i class="fa-solid fa-location-dot"></i> منطقة: ${o.zone || 'عام'} (عمولتك: ${orderFee} ج)</span>
                                 <p class="text-xs font-bold text-slate-700 pr-8 leading-relaxed">${o.customerAddress || 'عنوان غير تفصيلي'}</p>
-                                <button onclick="openMaps('${o.zone}', '${o.customerAddress}')" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors shadow-sm" title="فتح خرائط جوجل">
-                                    <i class="fa-solid fa-map-location-dot text-sm"></i>
-                                </button>
+                                <button onclick="openMaps('${o.zone}', '${o.customerAddress}')" class="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center hover:bg-blue-600 hover:text-white transition-colors shadow-sm"><i class="fa-solid fa-map-location-dot text-sm"></i></button>
                             </div>
                             <div class="grid grid-cols-3 gap-2 pt-1">
                                 <a href="tel:${o.customerPhone}" class="col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95"><i class="fa-solid fa-phone"></i> اتصال</a>
@@ -413,15 +400,13 @@
                             </div>
                         </div>
 
-                        <!-- التفاصيل والملاحظات -->
                         <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex flex-wrap gap-1.5">${itemsStr}</div>
-                        ${o.driverNote ? `<div class="bg-blue-50 border border-blue-100 p-3 rounded-2xl mb-4 text-xs font-bold text-blue-800 leading-relaxed"><i class="fa-solid fa-motorcycle text-blue-500 mr-1"></i> <strong>ملاحظة لك:</strong> ${o.driverNote.split('\n---\n').pop()}</div>` : ''}
+                        ${driverNoteHtml}
 
-                        <!-- أزرار الإجراءات -->
                         <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
-                            <button onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-brand-primary/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"><i class="fa-solid fa-circle-check text-sm"></i> تم التسليم</button>
-                            <button onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-purple-600/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"><i class="fa-solid fa-phone-slash text-sm"></i> لم يرد</button>
-                            <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-amber-500/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all"><i class="fa-solid fa-triangle-exclamation text-sm"></i> مشكلة</button>
+                            <button onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-circle-check text-sm"></i> تم التسليم</button>
+                            <button onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-phone-slash text-sm"></i> لم يرد</button>
+                            <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 text-white font-black py-3 rounded-xl text-xs shadow-md flex flex-col items-center justify-center gap-1 active:scale-95"><i class="fa-solid fa-microphone text-sm"></i> ملاحظة/صوت</button>
                         </div>
                     </div>`;
                 }
@@ -429,106 +414,174 @@
             container.innerHTML = htmlStr;
         };
 
-        // 10. إتمام الأوردر
+        // 9. الأزرار التنفيذية للأوردر والتوريد
         window.markOrderCompleted = async (orderId) => {
             if(!confirm('تأكيد تسليم الطلب واستلام النقدية بنجاح؟')) return;
             const nowStr = new Date().toLocaleDateString('en-US');
             const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
-            try { 
-                await db.collection('orders').doc(orderId).update({ 
-                    status: 'completed', 
-                    completedAt: firebase.firestore.FieldValue.serverTimestamp(), 
-                    completedAtStr: nowStr, 
-                    completedTimeDisplay: nowTimeStr 
-                }); 
-            } catch(e) { alert('حدث خطأ أثناء تحديث التسليم!'); }
+            try { await db.collection('orders').doc(orderId).update({ status: 'completed', completedAt: firebase.firestore.FieldValue.serverTimestamp(), completedAtStr: nowStr, completedTimeDisplay: nowTimeStr }); } 
+            catch(e) { alert('حدث خطأ أثناء تحديث التسليم!'); }
         };
 
-        // 11. الأوردر لم يرد
         window.markOrderNoAnswer = async (orderId) => {
             if(!confirm('تأكيد تحويل الحالة إلى (لم يرد)؟')) return;
             try { await db.collection('orders').doc(orderId).update({ status: 'no_answer' }); } 
             catch(e) { alert('حدث خطأ أثناء التحديث!'); }
         };
 
-        // 12. توريد النقدية (تقفيل الشيفت)
         window.remitCash = async () => {
             let completedOrders = currentOrdersList.filter(o => o.status === 'completed');
             if(completedOrders.length === 0) return alert('عفواً، لا يوجد أي طلبات مسلمة لتوريد نقديتها!');
-            
             if(!confirm('هل قمت بتسليم الكاش للإدارة؟\nبالضغط على موافق سيتم تصفير عهدتك وإخفاء الطلبات الموردة لبدء شيفت جديد.')) return;
-            
             try {
-                // نمر على كل الأوردرات المكتملة ونضع لها علامة التوريد
                 for(let order of completedOrders) {
-                    await db.collection('orders').doc(order.id).update({ 
-                        isSupplied: true, 
-                        suppliedAt: firebase.firestore.FieldValue.serverTimestamp() 
-                    });
+                    await db.collection('orders').doc(order.id).update({ isSupplied: true, suppliedAt: firebase.firestore.FieldValue.serverTimestamp() });
                 }
                 alert('✅ تم توريد النقدية وتصفير محفظتك بنجاح!');
-            } catch(e) {
-                alert('حدث خطأ أثناء التوريد، حاول مرة أخرى. تأكد من اتصال الإنترنت.');
-            }
+            } catch(e) { alert('حدث خطأ أثناء التوريد، تأكد من الإنترنت.'); }
         };
 
-        // 13. نظام الملاحظات والتسجيل الصوتي
+        // ==========================================
+        // 10. نظام الدمج (تسجيل صوتي فعلي + تحويل لنص)
+        // ==========================================
         window.openProblemModal = (orderId) => { 
             document.getElementById('problem-order-id').value = orderId; 
             document.getElementById('problem-input').value = ''; 
+            clearAudio();
             document.getElementById('problem-modal').classList.remove('hidden'); 
         };
-        window.closeProblemModal = () => { document.getElementById('problem-modal').classList.add('hidden'); };
-        window.addQuickProblemNote = (txt) => { 
-            let input = document.getElementById('problem-input'); 
-            input.value += (input.value ? ' - ' : '') + txt; 
+        window.closeProblemModal = () => { 
+            if(isRecording) toggleVoiceRecording(); // إيقاف التسجيل لو المندوب قفل النافذة
+            document.getElementById('problem-modal').classList.add('hidden'); 
         };
-        
-        window.startVoiceRecognition = () => {
+        window.addQuickProblemNote = (txt) => { 
+            let input = document.getElementById('problem-input'); input.value += (input.value ? ' - ' : '') + txt; 
+        };
+        window.clearAudio = () => {
+            currentAudioBlob = null;
+            document.getElementById('audio-preview-container').innerHTML = '';
+        };
+
+        window.toggleVoiceRecording = async () => {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                await startRecording();
+            }
+        };
+
+        async function startRecording() {
             const micBtn = document.getElementById('mic-btn');
             const inputArea = document.getElementById('problem-input');
+            clearAudio();
+
+            try {
+                // فتح المايكروفون لالتقاط الصوت الفعلي
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    // تكوين الملف الصوتي عند الإيقاف
+                    currentAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const audioUrl = URL.createObjectURL(currentAudioBlob);
+                    
+                    document.getElementById('audio-preview-container').innerHTML = `
+                        <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-center">
+                            <span class="text-[10px] font-black text-indigo-600 block mb-2"><i class="fa-solid fa-file-audio"></i> تم التقاط الملف الصوتي بنجاح (جاهز للإرسال)</span>
+                            <audio controls src="${audioUrl}" class="w-full h-8 mb-2"></audio>
+                            <button onclick="clearAudio()" class="text-xs font-black text-red-500 hover:text-red-700 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm"><i class="fa-solid fa-trash"></i> حذف التسجيل</button>
+                        </div>`;
+                    
+                    stream.getTracks().forEach(track => track.stop());
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                
+                // تغيير شكل الزر ليدل على التسجيل
+                micBtn.innerHTML = '<i class="fa-solid fa-stop text-red-600"></i>';
+                micBtn.classList.add('recording-active');
+                inputArea.placeholder = "جاري التسجيل... يتم تحويل كلامك لنص وحفظ صوتك أيضاً.";
+
+                // تشغيل تحويل الكلام لنص في نفس الوقت (للتسهيل)
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    speechRecognition = new SpeechRecognition();
+                    speechRecognition.lang = 'ar-EG';
+                    speechRecognition.interimResults = false;
+                    
+                    speechRecognition.onresult = function(event) {
+                        const speechResult = event.results[event.results.length - 1][0].transcript;
+                        inputArea.value += (inputArea.value ? ' ' : '') + speechResult;
+                    };
+                    
+                    speechRecognition.onend = function() {
+                        if(isRecording) { try { speechRecognition.start(); } catch(e){} }
+                    };
+                    speechRecognition.start();
+                }
+
+            } catch(e) {
+                alert('يرجى السماح للمتصفح باستخدام المايكروفون لتسجيل الصوت.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); }
+            isRecording = false;
             
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                return alert("عفواً، متصفحك الحالي لا يدعم تسجيل الصوت. يرجى استخدام الكتابة اليدوية.");
+            if(speechRecognition) {
+                speechRecognition.onend = null;
+                try { speechRecognition.stop(); } catch(e){}
             }
             
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            const recognition = new SpeechRecognition();
-            
-            recognition.lang = 'ar-EG'; 
-            recognition.interimResults = false;
-            
-            recognition.onstart = function() { 
-                micBtn.innerHTML = '<i class="fa-solid fa-microphone text-red-500 fa-beat"></i>'; 
-                inputArea.placeholder = "تحدث الآن، أنا أسمعك...";
-            };
-            
-            recognition.onresult = function(event) { 
-                inputArea.value += (inputArea.value ? ' ' : '') + event.results[0][0].transcript; 
-            };
-            
-            recognition.onerror = function(event) {
-                alert("تعذر التقاط الصوت، تأكد من إعطاء الصلاحية للميكروفون أو جرب مرة أخرى.");
-            };
+            const micBtn = document.getElementById('mic-btn');
+            const inputArea = document.getElementById('problem-input');
+            micBtn.innerHTML = '<i class="fa-solid fa-microphone text-sm"></i>';
+            micBtn.classList.remove('recording-active');
+            inputArea.placeholder = "اكتب الملاحظة أو اضغط المايك للتحدث...";
+        }
 
-            recognition.onend = function() { 
-                micBtn.innerHTML = '<i class="fa-solid fa-microphone"></i>'; 
-                inputArea.placeholder = "اكتب الملاحظة أو تحدث...";
-            };
-            
-            recognition.start();
-        };
-
+        // ==========================================
+        // 11. إرسال الملاحظة (نص + رفع الملف الصوتي)
+        // ==========================================
         window.submitProblemNote = async () => {
+            if(isRecording) stopRecording(); // ضمان إيقاف التسجيل لو ضغط إرسال وهو بيسجل
+
             const orderId = document.getElementById('problem-order-id').value;
             const noteText = document.getElementById('problem-input').value.trim();
+            const submitBtn = document.getElementById('submit-note-btn');
             
-            if(!noteText) return alert('يرجى كتابة الملاحظة أو المشكلة أولاً!');
+            if(!noteText && !currentAudioBlob) return alert('يرجى كتابة الملاحظة أو تسجيل ملف صوتي!');
             
-            const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
-            const formattedNote = `[المندوب ${nowTimeStr}] ${noteText}`;
+            // تغيير حالة الزر أثناء الرفع
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري رفع البيانات...';
             
             try {
+                let uploadedAudioUrl = '';
+                
+                // إذا كان هناك ملف صوتي، نرفعه لـ Firebase Storage أولاً
+                if(currentAudioBlob) {
+                    const storageRef = firebase.storage().ref();
+                    const audioFileRef = storageRef.child(`driver_voice_notes/order_${orderId}_${Date.now()}.webm`);
+                    await audioFileRef.put(currentAudioBlob);
+                    uploadedAudioUrl = await audioFileRef.getDownloadURL();
+                }
+
+                // تجهيز النص النهائي لحفظه في الداتا بيز
+                const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
+                let formattedNote = `[المندوب ${nowTimeStr}] ${noteText || 'أرسل ملاحظة صوتية'}`;
+                
+                // دمج رابط الصوت في الداتا لكي نقرأه لاحقاً
+                if (uploadedAudioUrl) {
+                    formattedNote += `|AUDIO:${uploadedAudioUrl}`;
+                }
+                
                 const doc = await db.collection('orders').doc(orderId).get();
                 if(doc.exists) {
                     let oldNotes = doc.data().driverNote || '';
@@ -536,11 +589,15 @@
                         driverNote: oldNotes ? oldNotes + '\n---\n' + formattedNote : formattedNote 
                     });
                     closeProblemModal(); 
-                    alert('تم إرسال الملاحظة للإدارة بنجاح! 🚀');
+                    alert('تم إرسال الملاحظة (والصوت) للإدارة بنجاح! 🚀');
                 }
             } catch(e) {
-                alert('خطأ في حفظ الملاحظة!');
+                alert('خطأ في حفظ الملاحظة! تأكد من اتصالك بالإنترنت.');
+                console.error(e);
             }
+            
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = 'إرسال للإدارة';
         };
     </script>
 </body>
