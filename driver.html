@@ -694,7 +694,7 @@
             window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
-        // رسم بطاقات الأوردرات
+        // رسم بطاقات الأوردرات (تظهر ملاحظات المندوب فقط)
         window.renderDriverOrdersUI = () => {
             const container = document.getElementById('orders-container');
             
@@ -735,7 +735,6 @@
                 let safeAddress = window.escapeHtml(o.customerAddress || 'عنوان غير تفصيلي');
                 let cleanPhone1 = window.normalizePhone(o.customerPhone || '');
                 let cleanPhone2 = window.normalizePhone(o.customerPhone2 || '');
-                let adminOrCustNote = window.escapeHtml(o.notes || o.customerNotes || o.adminNote || '');
 
                 let itemsStr = (o.items && Array.isArray(o.items) && o.items.length > 0) 
                     ? o.items.map(i => `<span class="bg-white text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-slate-200 shadow-2xs">${window.escapeHtml(i.quantity)}× ${window.escapeHtml(i.name)}</span>`).join(' ') 
@@ -764,6 +763,7 @@
                         ? `<a href="tel:${cleanPhone2}" class="col-span-1 flex items-center justify-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-black py-2.5 rounded-xl text-xs border border-purple-200 active:scale-95 transition-all"><i class="fa-solid fa-phone-volume"></i> بديل</a>` 
                         : `<button onclick="openMapsByOrder('${o.id}')" class="col-span-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black py-2.5 rounded-xl text-xs border border-blue-200 active:scale-95 transition-all"><i class="fa-solid fa-map-location-dot"></i> الخريطة</button>`;
 
+                    // ملاحظات المندوب فقط هي التي تظهر هنا
                     let lastDriverNote = o.driverNote ? window.escapeHtml(o.driverNote.split('\n---\n').pop()) : '';
 
                     htmlStr += `
@@ -797,18 +797,13 @@
                                 </button>
                             </div>
 
-                            ${adminOrCustNote ? `
-                            <div class="bg-amber-50/90 border border-amber-200 p-3 rounded-2xl text-xs font-bold text-amber-900 leading-relaxed">
-                                <i class="fa-solid fa-clipboard-list text-amber-600 ml-1"></i> <span class="font-black">تعليمات الطلب:</span> ${adminOrCustNote}
-                            </div>` : ''}
-
                             <div class="grid grid-cols-3 gap-2 pt-0.5">
                                 <a href="tel:${cleanPhone1}" class="col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                                     <i class="fa-solid fa-phone"></i> اتصال
                                 </a>
                                 <button onclick="sendImOnMyWayByOrder('${o.id}')" class="col-span-1 bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                                     <i class="fa-brands fa-whatsapp text-sm"></i> بالطريق
-                                </button>
+                                </a>
                                 ${phone2Html}
                             </div>
                         </div>
@@ -820,7 +815,7 @@
 
                         ${lastDriverNote ? `
                         <div class="bg-blue-50 border border-blue-200 p-3 rounded-2xl mb-3 text-xs font-bold text-blue-900 leading-relaxed">
-                            <i class="fa-solid fa-comment-dots text-blue-600 ml-1"></i> ${lastDriverNote}
+                            <i class="fa-solid fa-motorcycle text-blue-600 ml-1"></i> ${lastDriverNote}
                         </div>` : ''}
 
                         <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
@@ -838,6 +833,8 @@
                 }
             });
             container.innerHTML = htmlStr;
+        };
+
         };
 
         // ==========================================
