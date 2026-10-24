@@ -47,8 +47,8 @@
         .modal-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
         @keyframes slideDown {
-            0% { transform: translateY(-100%); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
+            0% { transform: translate(-50%, -100%); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
         }
         .toast-enter { animation: slideDown 0.3s ease-out forwards; }
 
@@ -68,8 +68,7 @@
     </div>
 
     <!-- حاوية الإشعارات الذكية (Toast Notifications) -->
-    <!-- حاوية الإشعارات الذكية (في منتصف الشاشة تماماً بدون ترحيل) -->
-    <div id="toast-container" class="fixed top-4 inset-x-0 mx-auto z-[100] w-[92%] max-w-sm pointer-events-none space-y-2"></div>
+    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm pointer-events-none space-y-2"></div>
 
     <!-- 1. شاشة دخول المندوب -->
     <div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-slate-900 via-brand-dark to-slate-900 z-50 flex items-center justify-center p-4">
@@ -736,7 +735,8 @@
                 let safeAddress = window.escapeHtml(o.customerAddress || 'عنوان غير تفصيلي');
                 let cleanPhone1 = window.normalizePhone(o.customerPhone || '');
                 let cleanPhone2 = window.normalizePhone(o.customerPhone2 || '');
-                
+                let adminOrCustNote = window.escapeHtml(o.notes || o.customerNotes || o.adminNote || '');
+
                 let itemsStr = (o.items && Array.isArray(o.items) && o.items.length > 0) 
                     ? o.items.map(i => `<span class="bg-white text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-slate-200 shadow-2xs">${window.escapeHtml(i.quantity)}× ${window.escapeHtml(i.name)}</span>`).join(' ') 
                     : '<span class="text-xs text-slate-400 font-bold">بدون تفاصيل أصناف</span>';
@@ -797,7 +797,10 @@
                                 </button>
                             </div>
 
-
+                            ${adminOrCustNote ? `
+                            <div class="bg-amber-50/90 border border-amber-200 p-3 rounded-2xl text-xs font-bold text-amber-900 leading-relaxed">
+                                <i class="fa-solid fa-clipboard-list text-amber-600 ml-1"></i> <span class="font-black">تعليمات الطلب:</span> ${adminOrCustNote}
+                            </div>` : ''}
 
                             <div class="grid grid-cols-3 gap-2 pt-0.5">
                                 <a href="tel:${cleanPhone1}" class="col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
