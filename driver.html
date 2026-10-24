@@ -47,8 +47,8 @@
         .modal-pop { animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
 
         @keyframes slideDown {
-            0% { transform: translate(-50%, -100%); opacity: 0; }
-            100% { transform: translate(-50%, 0); opacity: 1; }
+            0% { transform: translateY(-100%); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
         }
         .toast-enter { animation: slideDown 0.3s ease-out forwards; }
 
@@ -67,8 +67,8 @@
         <i class="fa-solid fa-wifi-slash fa-fade"></i> لا يوجد اتصال بالإنترنت.. سيتم تحديث البيانات فور عودة الشبكة
     </div>
 
-    <!-- حاوية الإشعارات الذكية (Toast Notifications) -->
-    <div id="toast-container" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm pointer-events-none space-y-2"></div>
+    <!-- حاوية الإشعارات الذكية (Toast Notifications) متسنترة بدون ترحيل -->
+    <div id="toast-container" class="fixed top-4 inset-x-0 mx-auto z-[100] w-[92%] max-w-sm pointer-events-none space-y-2"></div>
 
     <!-- 1. شاشة دخول المندوب -->
     <div id="login-screen" class="fixed inset-0 bg-gradient-to-br from-slate-900 via-brand-dark to-slate-900 z-50 flex items-center justify-center p-4">
@@ -333,8 +333,8 @@
                 iconHtml = '<i class="fa-solid fa-triangle-exclamation text-white text-base"></i>';
             }
 
-            toast.className = `toast-enter pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl border ${bgClass} text-xs font-black`;
-            toast.innerHTML = `${iconHtml} <span class="flex-1 leading-snug">${window.escapeHtml(message)}</span>`;
+            toast.className = `toast-enter pointer-events-auto flex items-center justify-center text-center gap-2.5 px-4 py-3.5 rounded-2xl shadow-xl border ${bgClass} text-xs font-black`;
+            toast.innerHTML = `${iconHtml} <span class="leading-snug">${window.escapeHtml(message)}</span>`;
             
             container.appendChild(toast);
             setTimeout(() => {
@@ -385,7 +385,7 @@
         });
 
         // مراقبة حالة الإنترنت
-        window. updateNetworkStatus = () => {
+        window.updateNetworkStatus = () => {
             const banner = document.getElementById('offline-banner');
             const dot = document.getElementById('online-dot');
             if (navigator.onLine) {
@@ -396,10 +396,10 @@
                 if (dot) dot.className = 'w-2.5 h-2.5 bg-red-500 border-2 border-brand-dark rounded-full absolute -bottom-0.5 -left-0.5';
             }
         };
-        window.addEventListener('online', updateNetworkStatus);
-        window.addEventListener('offline', updateNetworkStatus);
+        window.addEventListener('online', window.updateNetworkStatus);
+        window.addEventListener('offline', window.updateNetworkStatus);
 
-        // معالجة وتوحيد صيغة أرقام الموبايل
+        // معالجة وتوحيد صيغة أرقام الموبايل (الأساسي والإضافي)
         window.normalizePhone = (phone) => {
             if (!phone) return '';
             let normalized = phone.toString()
@@ -480,7 +480,7 @@
         // 2. التحقق من الدخول وإظهار الترحيب
         // ==========================================
         window.addEventListener('DOMContentLoaded', () => {
-            updateNetworkStatus();
+            window.updateNetworkStatus();
             const savedPhone = localStorage.getItem('sman_driver_phone');
             const savedName = localStorage.getItem('sman_driver_name');
             if(savedPhone && savedName) {
@@ -531,7 +531,7 @@
                         triggerError('الرقم السري (PIN) غير صحيح!');
                     } else {
                         currentDriverPhone = cleanPhone;
-                        currentDriverName = matchedDriver.name || 'المندوب';
+                        currentDriverName = (matchedDriver.name || 'المندوب').trim();
                         localStorage.setItem('sman_driver_phone', currentDriverPhone);
                         localStorage.setItem('sman_driver_name', currentDriverName);
                         document.getElementById('driver-name-display').innerText = currentDriverName;
@@ -618,10 +618,12 @@
 
                     snap.forEach(doc => {
                         let data = doc.data();
-                        if (data.isSupplied === true) return; 
-                        
+                        // إخفاء الطلب فقط إذا كان مكتملاً وتم توريد نقديته (يسمح بظهوره لو أُعيد توجيهه للمندوب)
+                        if (data.status === 'completed' && data.isSupplied === true) return;
+
                         let orderDriverPhone = window.normalizePhone(data.driverPhone || '');
-                        if(orderDriverPhone === currentDriverPhone || data.driverName === currentDriverName) {
+                        let orderDriverName = (data.driverName || '').toString().trim();
+                        if(orderDriverPhone === currentDriverPhone || (orderDriverName && orderDriverName === currentDriverName.trim())) {
                             currentOrdersList.push({ id: doc.id, ...data });
                             let orderTotal = Number(data.total) || 0;
                             let fee = Number(data.deliveryFee) || 0;
@@ -681,7 +683,7 @@
             const order = currentOrdersList.find(o => o.id === orderId);
             if (!order) return;
             
-            let cleanPhone = window.normalizePhone(order.customerPhone || '');
+            let cleanPhone = window.normalizePhone(order.customerPhone || order.phone || '');
             if (!cleanPhone) {
                 showToast('رقم هاتف العميل غير صالح!', 'error');
                 return;
@@ -694,7 +696,7 @@
             window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
         };
 
-        // رسم بطاقات الأوردرات
+        // رسم بطاقات الأوردرات (تظهر ملاحظات المندوب فقط، وتدعم الرقم الأساسي والرقم الإضافي)
         window.renderDriverOrdersUI = () => {
             const container = document.getElementById('orders-container');
             
@@ -733,8 +735,10 @@
                 let safeName = window.escapeHtml(o.customerName || 'عميل');
                 let safeZone = window.escapeHtml(o.zone || 'عام');
                 let safeAddress = window.escapeHtml(o.customerAddress || 'عنوان غير تفصيلي');
-                let cleanPhone1 = window.normalizePhone(o.customerPhone || '');
-                let cleanPhone2 = window.normalizePhone(o.customerPhone2 || '');
+                
+                // التأكد من قراءة الرقم الأساسي والرقم الإضافي (البديل) بكل المسميات المحتملة
+                let cleanPhone1 = window.normalizePhone(o.customerPhone || o.phone || '');
+                let cleanPhone2 = window.normalizePhone(o.customerPhone2 || o.phone2 || o.altPhone || o.secondPhone || '');
                 
                 let itemsStr = (o.items && Array.isArray(o.items) && o.items.length > 0) 
                     ? o.items.map(i => `<span class="bg-white text-slate-700 px-2.5 py-1 rounded-lg text-[11px] font-black border border-slate-200 shadow-2xs">${window.escapeHtml(i.quantity)}× ${window.escapeHtml(i.name)}</span>`).join(' ') 
@@ -760,9 +764,10 @@
                     </div>`;
                 } else {
                     let phone2Html = cleanPhone2 
-                        ? `<a href="tel:${cleanPhone2}" class="col-span-1 flex items-center justify-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-black py-2.5 rounded-xl text-xs border border-purple-200 active:scale-95 transition-all"><i class="fa-solid fa-phone-volume"></i> بديل</a>` 
-                        : `<button onclick="openMapsByOrder('${o.id}')" class="col-span-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black py-2.5 rounded-xl text-xs border border-blue-200 active:scale-95 transition-all"><i class="fa-solid fa-map-location-dot"></i> الخريطة</button>`;
+                        ? `<a href="tel:${cleanPhone2}" class="col-span-1 flex items-center justify-center gap-1 bg-purple-50 hover:bg-purple-100 text-purple-700 font-black py-2.5 rounded-xl text-xs border border-purple-200 active:scale-95 transition-all" title="اتصال بالرقم الإضافي: ${cleanPhone2}"><i class="fa-solid fa-phone-volume"></i> بديل</a>` 
+                        : `<button type="button" onclick="openMapsByOrder('${o.id}')" class="col-span-1 flex items-center justify-center gap-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-black py-2.5 rounded-xl text-xs border border-blue-200 active:scale-95 transition-all"><i class="fa-solid fa-map-location-dot"></i> الخريطة</button>`;
 
+                    // عرض ملاحظة المندوب فقط (إخفاء ملاحظات الإدارة تماماً)
                     let lastDriverNote = o.driverNote ? window.escapeHtml(o.driverNote.split('\n---\n').pop()) : '';
 
                     htmlStr += `
@@ -776,6 +781,10 @@
                                     <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-md">عمولتك: ${orderFee} ج</span>
                                 </div>
                                 <h3 class="font-black text-slate-800 text-base">${safeName}</h3>
+                                <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                    ${cleanPhone1 ? `<span dir="ltr" class="text-[11px] font-black text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200"><i class="fa-solid fa-phone text-[9px] text-emerald-600 mr-1"></i>${cleanPhone1}</span>` : ''}
+                                    ${cleanPhone2 ? `<span dir="ltr" class="text-[11px] font-black text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200"><i class="fa-solid fa-phone-volume text-[9px] text-purple-600 mr-1"></i>${cleanPhone2}</span>` : ''}
+                                </div>
                             </div>
                             <div class="text-left">
                                 ${isOnline 
@@ -791,17 +800,16 @@
                                     <i class="fa-solid fa-location-dot"></i> منطقة: ${safeZone}
                                 </span>
                                 <p class="text-xs font-bold text-slate-700 pl-10 leading-relaxed">${safeAddress}</p>
-                                <button onclick="openMapsByOrder('${o.id}')" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-xs active:scale-90" title="فتح في خرائط جوجل">
+                                <button type="button" onclick="openMapsByOrder('${o.id}')" class="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all shadow-xs active:scale-90" title="فتح في خرائط جوجل">
                                     <i class="fa-solid fa-location-arrow text-sm"></i>
                                 </button>
                             </div>
-
 
                             <div class="grid grid-cols-3 gap-2 pt-0.5">
                                 <a href="tel:${cleanPhone1}" class="col-span-1 bg-emerald-600 hover:bg-emerald-700 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                                     <i class="fa-solid fa-phone"></i> اتصال
                                 </a>
-                                <button onclick="sendImOnMyWayByOrder('${o.id}')" class="col-span-1 bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+                                <button type="button" onclick="sendImOnMyWayByOrder('${o.id}')" class="col-span-1 bg-[#25D366] hover:bg-green-600 text-white font-black py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
                                     <i class="fa-brands fa-whatsapp text-sm"></i> بالطريق
                                 </button>
                                 ${phone2Html}
@@ -819,13 +827,13 @@
                         </div>` : ''}
 
                         <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
-                            <button onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-brand-primary/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <button type="button" onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-brand-primary/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
                                 <i class="fa-solid fa-circle-check text-base"></i> تم التسليم
                             </button>
-                            <button onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-purple-600/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <button type="button" onclick="markOrderNoAnswer('${o.id}')" class="bg-purple-600 hover:bg-purple-700 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-purple-600/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
                                 <i class="fa-solid fa-phone-slash text-base"></i> لم يرد
                             </button>
-                            <button onclick="openProblemModal('${o.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-amber-500/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
+                            <button type="button" onclick="openProblemModal('${o.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-amber-500/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
                                 <i class="fa-solid fa-microphone-lines text-base"></i> ملاحظة
                             </button>
                         </div>
