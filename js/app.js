@@ -1343,8 +1343,10 @@
     };
 
     // =========================================================================
-    // 8. التحقق الآمن من رصيد محفظة العميل (بدون تسريب بياناته الشخصية لأي غريب)
+    // 8. جلب بيانات العميل المسجل ورصيد محفظته (بكل صيغ الرقم + الرجوع لآخر طلب)
     // =========================================================================
+    let lastCheckedCustomerPhone = '';
+
     function setupEventListeners() {
         ['customer-name', 'customer-phone', 'customer-address'].forEach((id) => {
             const el = document.getElementById(id);
@@ -1366,16 +1368,27 @@
 
         let phoneTimer = null;
         const phoneInput = document.getElementById('customer-phone');
-        if (phoneInput) {
-            phoneInput.addEventListener('input', (e) => {
-                clearTimeout(phoneTimer);
-                const norm = U.normalizePhone(e.target.value);
-                if (norm.length >= 10) {
-                    phoneTimer = setTimeout(() => checkCustomerWalletSafe(norm), 650);
+        const triggerLookup = (immediate) => {
+            if (!phoneInput) return;
+            clearTimeout(phoneTimer);
+            const rawVal = phoneInput.value || '';
+            const norm = U.normalizePhone(rawVal);
+            if (norm.length >= 10) {
+                if (immediate) {
+                    checkCustomerWalletSafe(norm, rawVal);
                 } else {
-                    resetWalletBanner();
+                    phoneTimer = setTimeout(() => checkCustomerWalletSafe(norm, rawVal), 500);
                 }
-            });
+            } else {
+                lastCheckedCustomerPhone = '';
+                resetWalletBanner();
+            }
+        };
+
+        if (phoneInput) {
+            phoneInput.addEventListener('input', () => triggerLookup(false));
+            phoneInput.addEventListener('change', () => triggerLookup(true));
+            phoneInput.addEventListener('blur', () => triggerLookup(true));
         }
     }
 
@@ -1398,30 +1411,113 @@
         return !invalidNameKeywords.some((kw) => clean.includes(kw));
     }
 
-    async function checkCustomerWalletSafe(cleanPhone) {
+    function toArabicDigitsStr(str) {
+        const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        return String(str || '').replace(/[0-9]/g, (d) => ar[Number(d)]);
+    }
+
+    function buildCustomerPhoneCandidates(cleanPhone, rawPhone) {
+        const set = new Set();
+        const norm = U.normalizePhone(cleanPhone || rawPhone || '');
+        const rawTrim = String(rawPhone || '').trim();
+        if (norm) set.add(norm);
+        if (rawTrim && rawTrim.length >= 10) set.add(rawTrim);
+        if (norm.startsWith('01') && norm.length === 11) {
+            set.add(norm.substring(1));      // بدون الصفر: 10XXXXXXXX
+            set.add('2' + norm);             // 2010XXXXXXXX
+            set.add('+2' + norm);            // +2010XXXXXXXX
+            set.add('002' + norm);           // 002010XXXXXXXX
+            set.add(toArabicDigitsStr(norm)); // أرقام عربية: ٠١٠...
+        }
+        return Array.from(set);
+    }
+
+    async function checkCustomerWalletSafe(cleanPhone, rawPhone = '') {
         if (!hasCloud || !db || !cleanPhone) return;
+        const norm = U.normalizePhone(cleanPhone);
+        if (norm.length < 10) return;
+
+        // منع تكرار نفس البحث بدون داعي إذا كان نفس الرقم تم جلبه للتو
+        if (lastCheckedCustomerPhone === norm && document.getElementById('customer-name')?.value.trim()) {
+            return;
+        }
+
+        const msgEl = document.getElementById('smart-welcome-msg');
+        const walletBox = document.getElementById('checkout-wallet-box');
+        const walletTxt = document.getElementById('checkout-wallet-text');
+        const nameInput = document.getElementById('customer-name');
+        const addrInput = document.getElementById('customer-address');
+        const zoneSelect = document.getElementById('delivery-zone');
+
+        if (msgEl) {
+            msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-slate-50 text-slate-600 border-slate-200';
+            msgEl.textContent = '⏳ جاري التحقق من بياناتك المسجلة...';
+            msgEl.classList.remove('hidden');
+        }
+
         try {
-            const doc = await db.collection('customers').doc(cleanPhone).get();
-            const msgEl = document.getElementById('smart-welcome-msg');
-            const walletBox = document.getElementById('checkout-wallet-box');
-            const walletTxt = document.getElementById('checkout-wallet-text');
-            const nameInput = document.getElementById('customer-name');
-            const addrInput = document.getElementById('customer-address');
-            const zoneSelect = document.getElementById('delivery-zone');
+            const candidates = buildCustomerPhoneCandidates(norm, rawPhone);
 
-            if (doc.exists) {
-                const data = doc.data() || {};
+            // 1. البحث في جدول العملاء بكل الصيغ المحتملة للرقم (باستخدام get المتوافق مع قواعد الحماية)
+            const custSnaps = await Promise.all(
+                candidates.map((docId) => db.collection('customers').doc(docId).get().catch(() => null))
+            );
 
-                // 1. الملء التلقائي للاسم والعنوان والمنطقة من قاعدة البيانات
-                const hasValidName = Boolean(data.name && isCustomerNameValid(data.name));
-                if (nameInput) {
-                    nameInput.value = hasValidName ? data.name : '';
+            let custData = null;
+            let matchedWalletDocId = norm;
+            for (let i = 0; i < custSnaps.length; i++) {
+                const snap = custSnaps[i];
+                if (snap && snap.exists) {
+                    custData = snap.data() || {};
+                    matchedWalletDocId = snap.id;
+                    break;
                 }
-                if (addrInput && data.address) {
-                    addrInput.value = data.address;
+            }
+
+            let finalName = custData?.name || '';
+            let finalAddress = (custData?.address && custData.address !== 'غير محدد') ? custData.address : '';
+            let finalZone = custData?.zone || '';
+
+            // 2. خطة إنقاذ للداتا القديمة: إذا لم يوجد في customers أو ناقص منه الاسم/العنوان/المنطقة نجلبه من آخر طلب له في orders
+            if (!custData || !finalName || !finalAddress || !finalZone) {
+                const orderSnaps = await Promise.all(
+                    candidates.slice(0, 4).map((pVal) =>
+                        db.collection('orders').where('customerPhone', '==', pVal).limit(5).get().catch(() => null)
+                    )
+                );
+
+                const matchedOrders = [];
+                orderSnaps.forEach((snap) => {
+                    if (!snap || snap.empty) return;
+                    snap.forEach((d) => matchedOrders.push(d.data() || {}));
+                });
+
+                if (matchedOrders.length > 0) {
+                    matchedOrders.sort((a, b) => {
+                        const ma = (a.createdAt && typeof a.createdAt.toMillis === 'function') ? a.createdAt.toMillis() : 0;
+                        const mb = (b.createdAt && typeof b.createdAt.toMillis === 'function') ? b.createdAt.toMillis() : 0;
+                        return mb - ma;
+                    });
+                    const latestOrd = matchedOrders[0];
+                    if (!finalName && latestOrd.customerName) finalName = latestOrd.customerName;
+                    if (!finalAddress && latestOrd.customerAddress && latestOrd.customerAddress !== 'غير محدد') finalAddress = latestOrd.customerAddress;
+                    if (!finalZone && latestOrd.zone) finalZone = latestOrd.zone;
                 }
-                if (zoneSelect && data.zone) {
-                    const targetZone = String(data.zone).trim();
+            }
+
+            const foundAnyRecord = Boolean(custData || finalName || finalAddress || finalZone);
+            lastCheckedCustomerPhone = norm;
+
+            if (foundAnyRecord) {
+                const hasValidName = Boolean(finalName && isCustomerNameValid(finalName));
+                if (nameInput && hasValidName) {
+                    nameInput.value = finalName;
+                }
+                if (addrInput && finalAddress) {
+                    addrInput.value = finalAddress;
+                }
+                if (zoneSelect && finalZone) {
+                    const targetZone = String(finalZone).trim();
                     for (let i = 0; i < zoneSelect.options.length; i++) {
                         const opt = zoneSelect.options[i];
                         if (opt.value === targetZone || opt.textContent.includes(targetZone)) {
@@ -1431,10 +1527,9 @@
                     }
                 }
 
-                // 2. رسالة الترحيب بالعميل (باستخدام textContent الآمن)
                 if (msgEl) {
                     if (hasValidName) {
-                        const firstName = String(data.name).trim().split(/\s+/)[0];
+                        const firstName = String(finalName).trim().split(/\s+/)[0];
                         msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-emerald-50 text-emerald-800 border-emerald-200';
                         msgEl.textContent = `أهلاً بيك مرة تانية في بيتك يا ${firstName}! 👑 جهزنا بياناتك تلقائياً.`;
                     } else {
@@ -1444,20 +1539,19 @@
                     msgEl.classList.remove('hidden');
                 }
 
-                // 3. عرض رصيد محفظة النقاط إن وجد
-                const pts = Math.max(0, parseInt(data.walletPoints) || 0);
+                const pts = Math.max(0, parseInt(custData?.walletPoints) || 0);
                 const pVal = Number(globalSettings.pointValueInEGP) || 0.40;
                 const disc = Math.floor(pts * pVal);
 
                 if (pts > 0 && disc > 0 && walletBox && walletTxt) {
-                    activeCustomerWallet = { phone: cleanPhone, points: pts, discountEGP: disc, useWallet: false };
+                    activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: disc, useWallet: false };
                     walletTxt.textContent = `لديك ${pts} نقطة ولاء = خصم ${disc} ج.م`;
                     const cb = document.getElementById('checkout-wallet-toggle');
                     if (cb) cb.checked = false;
                     walletBox.classList.remove('hidden');
                 } else {
                     if (walletBox) walletBox.classList.add('hidden');
-                    activeCustomerWallet = { phone: cleanPhone, points: 0, discountEGP: 0, useWallet: false };
+                    activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
                 }
             } else {
                 if (walletBox) walletBox.classList.add('hidden');
@@ -1471,9 +1565,9 @@
             updateUI();
         } catch (e) {
             console.error('Customer lookup error:', e);
+            if (msgEl) msgEl.classList.add('hidden');
         }
     }
-
     // =========================================================================
     // 9. إتمام وتسجيل الطلب في Firebase (متوافق 100% مع الـ CRM وبدون Web3Forms)
     // =========================================================================
