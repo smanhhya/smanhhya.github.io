@@ -1,4 +1,54 @@
-/* kitchen/css/kitchen.css - تنسيقات مطبخ سمان ههيا المتوافقة مع الهوية البصرية للمتجر */
+/* kitchen/css/kitchen.css - تنسيقات مطبخ سمان ههيا المستقلة بالكامل والمتوافقة مع هوية المتجر */
+
+:root {
+  --brand-navy: #0f3426;
+  --brand-emerald: #1b4332;
+  --brand-cyanDark: #b91c1c;
+  --brand-yellow: #f59e0b;
+  --brand-gold: #d97706;
+  --brand-light: #f0fdf4;
+  --brand-cream: #faf8f3;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  min-height: 100%;
+  background-color: var(--brand-cream);
+}
+
+body {
+  font-family: 'Cairo', sans-serif !important;
+  scroll-behavior: smooth;
+  margin: 0;
+  color: #1e293b;
+  overflow-x: hidden;
+}
+
+.luxury-hero-bg {
+  background-color: #0b261c;
+  background-image: radial-gradient(circle at 18% 20%, rgba(245, 158, 11, 0.16), transparent 45%),
+                    radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.18), transparent 45%),
+                    linear-gradient(135deg, #0b261c 0%, #153e2e 55%, #1b4332 100%);
+}
+
+.cart-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.cart-scroll::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 4px;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 .kitchen-card {
   background: #ffffff;
@@ -15,8 +65,9 @@
 
 /* غلاف أنيق للوصفات التي لم تُضف صورتها بعد (بدون أي صور عشوائية أو مكررة) */
 .kitchen-cover-placeholder {
-  background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.22), transparent 55%),
-              linear-gradient(135deg, #0b261c 0%, #153e2e 55%, #1f5741 100%);
+  background-color: #0b261c;
+  background-image: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.22), transparent 55%),
+                    linear-gradient(135deg, #0b261c 0%, #153e2e 55%, #1f5741 100%);
   position: relative;
   overflow: hidden;
 }
@@ -61,8 +112,9 @@
 
 /* شاشة وضع الطهي المباشر خطوة بخطوة */
 .cook-mode-overlay {
-  background: radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.14), transparent 40%),
-              linear-gradient(180deg, #091f17 0%, #0f3426 60%, #0b261c 100%);
+  background-color: #091f17;
+  background-image: radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.14), transparent 40%),
+                    linear-gradient(180deg, #091f17 0%, #0f3426 60%, #0b261c 100%);
 }
 
 .cook-step-card {
