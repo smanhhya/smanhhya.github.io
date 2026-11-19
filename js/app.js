@@ -1390,6 +1390,14 @@
         updateUI();
     }
 
+    const invalidNameKeywords = ['جوز', 'سمان', 'طبق', 'سوبر', 'جامبو', 'بيض', 'دبح', 'تنضيف', 'كتاكيت', 'سبشيال'];
+
+    function isCustomerNameValid(name) {
+        if (!name || String(name).trim().length < 3) return false;
+        const clean = String(name).toLowerCase();
+        return !invalidNameKeywords.some((kw) => clean.includes(kw));
+    }
+
     async function checkCustomerWalletSafe(cleanPhone) {
         if (!hasCloud || !db || !cleanPhone) return;
         try {
@@ -1397,19 +1405,49 @@
             const msgEl = document.getElementById('smart-welcome-msg');
             const walletBox = document.getElementById('checkout-wallet-box');
             const walletTxt = document.getElementById('checkout-wallet-text');
+            const nameInput = document.getElementById('customer-name');
+            const addrInput = document.getElementById('customer-address');
+            const zoneSelect = document.getElementById('delivery-zone');
 
             if (doc.exists) {
                 const data = doc.data() || {};
+
+                // 1. الملء التلقائي للاسم والعنوان والمنطقة من قاعدة البيانات
+                const hasValidName = Boolean(data.name && isCustomerNameValid(data.name));
+                if (nameInput) {
+                    nameInput.value = hasValidName ? data.name : '';
+                }
+                if (addrInput && data.address) {
+                    addrInput.value = data.address;
+                }
+                if (zoneSelect && data.zone) {
+                    const targetZone = String(data.zone).trim();
+                    for (let i = 0; i < zoneSelect.options.length; i++) {
+                        const opt = zoneSelect.options[i];
+                        if (opt.value === targetZone || opt.textContent.includes(targetZone)) {
+                            zoneSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                // 2. رسالة الترحيب بالعميل (باستخدام textContent الآمن)
+                if (msgEl) {
+                    if (hasValidName) {
+                        const firstName = String(data.name).trim().split(/\s+/)[0];
+                        msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-emerald-50 text-emerald-800 border-emerald-200';
+                        msgEl.textContent = `أهلاً بيك مرة تانية في بيتك يا ${firstName}! 👑 جهزنا بياناتك تلقائياً.`;
+                    } else {
+                        msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-amber-50 text-amber-800 border-amber-200';
+                        msgEl.textContent = 'أهلاً بيك معانا! ✨ ياريت تكتب اسمك بالكامل عشان نأكدلك الحجز.';
+                    }
+                    msgEl.classList.remove('hidden');
+                }
+
+                // 3. عرض رصيد محفظة النقاط إن وجد
                 const pts = Math.max(0, parseInt(data.walletPoints) || 0);
                 const pVal = Number(globalSettings.pointValueInEGP) || 0.40;
                 const disc = Math.floor(pts * pVal);
-
-                // نرحب بالعميل المسجل فقط بدون كشف اسمه الكامل أو عنوانه الخاص لأي غريب
-                if (msgEl) {
-                    msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-emerald-50 text-emerald-800 border-emerald-200';
-                    msgEl.textContent = '👑 أهلاً بك من جديد في عائلة سمان ههيا! رقمك مسجل لدينا ضمن عملاء الـ VIP.';
-                    msgEl.classList.remove('hidden');
-                }
 
                 if (pts > 0 && disc > 0 && walletBox && walletTxt) {
                     activeCustomerWallet = { phone: cleanPhone, points: pts, discountEGP: disc, useWallet: false };
@@ -1426,12 +1464,14 @@
                 activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
                 if (msgEl) {
                     msgEl.className = 'p-2.5 rounded-xl border text-xs font-black bg-blue-50 text-blue-800 border-blue-200';
-                    msgEl.textContent = '✨ نورت سمان ههيا! أكمل بياناتك لتسجيل طلبك والانضمام لنظام النقاط.';
+                    msgEl.textContent = '✨ نورت عيلة سمان ههيا! كمل بياناتك عشان تتسجل في نظام النقاط والـ VIP.';
                     msgEl.classList.remove('hidden');
                 }
             }
             updateUI();
-        } catch (e) {}
+        } catch (e) {
+            console.error('Customer lookup error:', e);
+        }
     }
 
     // =========================================================================
