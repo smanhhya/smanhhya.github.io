@@ -1,5 +1,6 @@
 // sw.js - محرك السرعة والتخزين المؤقت الآمن (Network-First لملفات الكود لمنع تعليق التحديثات)
-const CACHE_NAME = 'sman-hhya-store-v7';
+const CACHE_NAME = 'sman-hhya-store-v9';
+
 
 const ASSETS_TO_CACHE = [
   './',
