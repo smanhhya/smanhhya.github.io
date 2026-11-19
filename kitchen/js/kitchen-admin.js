@@ -470,4 +470,258 @@
     };
 
     window.kaCloseEditor = function () {
-        document.getElementById('ka-edit-modal')?.classList.add
+        document.getElementById('ka-edit-modal')?.classList.add('hidden');
+        document.body.style.overflow = '';
+    };
+
+    window.kaSaveRecipeFromModal = async function () {
+        const existingId = String(document.getElementById('ke-id')?.value || '').trim();
+        const title = String(document.getElementById('ke-title')?.value || '').trim();
+        if (!title) return alert('يرجى كتابة عنوان الوصفة.');
+
+        const verStatus = document.getElementById('ke-verify-status')?.value || 'needs_practical_test';
+        let practicalTestLog = null;
+
+        if (verStatus === 'practically_tested') {
+            const reviewer = String(document.getElementById('ke-test-reviewer')?.value || '').trim();
+            const measuredTemp = String(document.getElementById('ke-test-temp')?.value || '').trim();
+            if (!reviewer || !measuredTemp) {
+                return alert('التزاماً بمعيار اعتماد سمان ههيا: يجب كتابة اسم المراجع والحرارة المقاسة بالترمومتر لتفعيل شارة «مجرّبة عملياً».');
+            }
+            practicalTestLog = {
+                reviewer,
+                testedAt: document.getElementById('ke-test-date')?.value || '',
+                measuredTemp,
+                productWeight: String(document.getElementById('ke-test-weight')?.value || '').trim(),
+                deviceUsed: String(document.getElementById('ke-test-device')?.value || '').trim(),
+                resultNotes: String(document.getElementById('ke-test-notes')?.value || '').trim()
+            };
+        }
+
+        const btn = document.getElementById('ke-save-btn');
+        if (btn) btn.disabled = true;
+
+        try {
+            const oldRec = existingId ? adminRecipes.find((r) => r.id === existingId) : null;
+            const docId = existingId || `SHK-${String(adminRecipes.length + 1).padStart(3, '0')}-${Date.now().toString().slice(-3)}`;
+
+            const selectedProds = [...document.querySelectorAll('.ke-prod-chk:checked')].map((el) => el.value);
+            const ingredients = String(document.getElementById('ke-ingredients')?.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+            const steps = String(document.getElementById('ke-steps')?.value || '').split('\n').map((s) => s.trim()).filter(Boolean);
+
+            const auditLog = Array.isArray(oldRec?.auditLog) ? [...oldRec.auditLog] : [];
+            auditLog.unshift({
+                at: new Date().toLocaleString('ar-EG'),
+                by: currentAdminUser?.email || 'Admin',
+                action: existingId ? 'تحديث بيانات الوصفة' : 'إنشاء وصفة جديدة'
+            });
+
+            const payload = {
+                id: docId,
+                number: oldRec ? (Number(oldRec.number) || 999) : (adminRecipes.length + 1),
+                slug: oldRec?.slug || makeSlug(docId, title),
+                title,
+                category: document.getElementById('ke-category')?.value || 'وصفات السمان',
+                servings: Math.max(1, parseInt(document.getElementById('ke-servings')?.value, 10) || 4),
+                difficulty: document.getElementById('ke-difficulty')?.value || 'سهل',
+                prep_minutes: String(document.getElementById('ke-prep')?.value || '').trim(),
+                cook_minutes_estimate: String(document.getElementById('ke-cook')?.value || '').trim(),
+                intro: String(document.getElementById('ke-intro')?.value || '').trim(),
+                equipment: String(document.getElementById('ke-equipment')?.value || '').trim(),
+                image_url: String(document.getElementById('ke-image-url')?.value || '').trim(),
+                image_prompt_ar: String(document.getElementById('ke-image-prompt')?.value || '').trim(),
+                image_alt_ar: `طبق ${title} مقدم للتناول`,
+                recommendedProductIds: selectedProds,
+                ingredients,
+                steps,
+                doneness_and_safety: String(document.getElementById('ke-safety')?.value || '').trim(),
+                common_mistakes: String(document.getElementById('ke-mistakes')?.value || '').trim(),
+                serving_suggestions: String(document.getElementById('ke-serving')?.value || '').trim(),
+                storage: String(document.getElementById('ke-storage')?.value || '').trim(),
+                allergens: String(document.getElementById('ke-allergens')?.value || '').trim(),
+                publishStatus: document.getElementById('ke-publish-status')?.value || 'draft',
+                verificationStatus: verStatus,
+                practicalTestLog: practicalTestLog,
+                editorial_status: verStatus === 'practically_tested'
+                    ? 'وصفة مجرّبة ومعتمدة عملياً في مطبخ سمان ههيا.'
+                    : 'محتوى أولي مُراجع إرشادياً؛ يحتاج تجربة عملية قبل وصفه بأنه مجرّب.',
+                nutrition: oldRec?.nutrition || {
+                    status: 'غير محسوبة بعد',
+                    note: 'لا تُنشر أرقام غذائية قبل حسابها من المقادير الفعلية وقاعدة بيانات موثوقة.'
+                },
+                ratingAvg: Number(oldRec?.ratingAvg) || 0,
+                ratingCount: Number(oldRec?.ratingCount) || 0,
+                auditLog: auditLog.slice(0, 25),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await kDb.collection('kitchen_recipes').doc(docId).set(payload, { merge: true });
+            window.kaCloseEditor();
+            await loadAllAdminData();
+            showToast(`✅ تم حفظ وصفة (${title}) بنجاح!`);
+        } catch (err) {
+            console.error('Save Recipe Error:', err);
+            alert('تعذر حفظ الوصفة: ' + err.message);
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.kaDeleteCurrentRecipe = async function () {
+        const docId = String(document.getElementById('ke-id')?.value || '').trim();
+        if (!docId) return;
+        if (!confirm(`⚠️ هل أنت متأكد من حذف الوصفة (${docId}) نهائياً؟`)) return;
+
+        try {
+            await kDb.collection('kitchen_recipes').doc(docId).delete();
+            window.kaCloseEditor();
+            await loadAllAdminData();
+            showToast('🗑️ تم حذف الوصفة نهائياً');
+        } catch (e) {
+            alert('تعذر حذف الوصفة!');
+        }
+    };
+
+    // رفع صورة الوصفة مباشرة عبر ImgBB
+    window.kaSaveImgbbKey = function () {
+        const val = String(document.getElementById('ka-imgbb-key')?.value || '').trim();
+        if (val) localStorage.setItem('sman_imgbb_api_key', val);
+        else localStorage.removeItem('sman_imgbb_api_key');
+        showToast('🔑 تم حفظ مفتاح ImgBB على جهازك بأمان');
+    };
+
+    window.kaUploadRecipeImage = async function (event) {
+        const file = event?.target?.files?.[0];
+        if (!file) return;
+        const apiKey = (localStorage.getItem('sman_imgbb_api_key') || '').trim();
+        if (!apiKey) {
+            alert('🔑 الصق مفتاح ImgBB API أولاً في تبويب (الاستيراد والصور) ثم أعد المحاولة.');
+            return;
+        }
+
+        const btn = document.getElementById('ke-upload-img-btn');
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري الرفع...';
+        }
+
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('تعذر قراءة الصورة'));
+                reader.onload = (ev) => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('ملف غير صالح'));
+                    img.onload = () => {
+                        const cnv = document.createElement('canvas');
+                        const maxD = 1000;
+                        const sc = Math.min(1, maxD / Math.max(img.width, img.height));
+                        cnv.width = Math.round(img.width * sc);
+                        cnv.height = Math.round(img.height * sc);
+                        cnv.getContext('2d').drawImage(img, 0, 0, cnv.width, cnv.height);
+                        resolve(cnv.toDataURL('image/jpeg', 0.84).split(',')[1]);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+
+            const fd = new FormData();
+            fd.append('image', base64);
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${encodeURIComponent(apiKey)}`, { method: 'POST', body: fd });
+            const json = await res.json();
+            if (!res.ok || !json?.success) throw new Error(json?.error?.message || 'فشل الرفع');
+
+            document.getElementById('ke-image-url').value = json.data.display_url || json.data.url;
+            window.kaUpdateImgPreview();
+            showToast('✅ تم رفع الصورة وربطها بالوصفة (اضغط حفظ التعديلات)');
+        } catch (err) {
+            alert('خطأ في رفع الصورة: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+            }
+            event.target.value = '';
+        }
+    };
+
+    // =========================================================================
+    // 6. مراجعة واعتماد تقييمات العملاء وتحديث متوسط تقييم الوصفة تلقائياً
+    // =========================================================================
+    window.kaRenderFeedbackList = function () {
+        const cont = document.getElementById('ka-feedback-list');
+        if (!cont) return;
+
+        const mode = document.getElementById('ka-fb-filter')?.value || 'pending';
+        const list = mode === 'pending' ? adminFeedback.filter((f) => !f.isApproved) : adminFeedback;
+
+        if (list.length === 0) {
+            cont.innerHTML = '<div class="bg-white rounded-2xl p-8 text-center text-xs font-bold text-slate-400 border border-dashed border-slate-200">لا توجد تقييمات في هذا القسم حالياً.</div>';
+            return;
+        }
+
+        cont.innerHTML = list.map((fb) => {
+            const safeId = escAttr(fb.id);
+            const safeRecId = escAttr(fb.recipeId || '');
+            const stars = '★'.repeat(Math.max(1, Math.min(5, Number(fb.rating) || 5)));
+            return `
+            <div class="bg-white rounded-2xl p-4 border ${fb.isApproved ? 'border-emerald-200' : 'border-amber-300 bg-amber-50/20'} shadow-sm flex flex-wrap items-start justify-between gap-3">
+                <div class="space-y-1 flex-1 min-w-[200px]">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-xs font-black text-brand-navy">${esc(fb.customerName || 'عميل')}</span>
+                        <span class="text-amber-500 text-xs">${stars}</span>
+                        <span class="text-[10px] font-black px-2 py-0.5 rounded-md ${fb.isApproved ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}">${fb.isApproved ? '✅ معتمد ومنشور' : '⏳ بانتظار المراجعة'}</span>
+                    </div>
+                    <p class="text-[11px] font-black text-slate-500">الوصفة: ${esc(fb.recipeTitle || fb.recipeId)}</p>
+                    ${fb.comment ? `<p class="text-xs font-bold text-slate-700 bg-slate-50 p-2 rounded-xl border border-slate-100">${esc(fb.comment)}</p>` : ''}
+                </div>
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <button type="button" onclick="window.kaSetFeedbackApproval('${safeId}', '${safeRecId}', ${!fb.isApproved})" class="px-3 py-2 rounded-xl text-[11px] font-black ${fb.isApproved ? 'bg-amber-100 text-amber-900' : 'bg-emerald-600 text-white'}">
+                        ${fb.isApproved ? 'إخفاء' : '✅ اعتماد ونشر'}
+                    </button>
+                    <button type="button" onclick="window.kaDeleteFeedback('${safeId}', '${safeRecId}')" class="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center">
+                        <i class="fa-solid fa-trash text-xs"></i>
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    async function recalcRecipeRating(recipeId) {
+        if (!recipeId || !kDb) return;
+        const approved = adminFeedback.filter((f) => f.recipeId === recipeId && f.isApproved);
+        const count = approved.length;
+        const avg = count > 0 ? Number((approved.reduce((s, f) => s + (Number(f.rating) || 5), 0) / count).toFixed(1)) : 0;
+        await kDb.collection('kitchen_recipes').doc(recipeId).set({ ratingAvg: avg, ratingCount: count }, { merge: true }).catch(() => {});
+    }
+
+    window.kaSetFeedbackApproval = async function (fbId, recipeId, approve) {
+        try {
+            await kDb.collection('kitchen_feedback').doc(fbId).update({ isApproved: Boolean(approve) });
+            const item = adminFeedback.find((f) => f.id === fbId);
+            if (item) item.isApproved = Boolean(approve);
+            await recalcRecipeRating(recipeId);
+            updateStats();
+            window.kaRenderFeedbackList();
+            showToast(approve ? '✅ تم اعتماد ونشر التقييم' : 'تم إخفاء التقييم');
+        } catch (e) {
+            showToast('تعذر تحديث حالة التقييم', 'fa-triangle-exclamation text-rose-400');
+        }
+    };
+
+    window.kaDeleteFeedback = async function (fbId, recipeId) {
+        if (!confirm('هل تريد حذف هذا التقييم نهائياً؟')) return;
+        try {
+            await kDb.collection('kitchen_feedback').doc(fbId).delete();
+            adminFeedback = adminFeedback.filter((f) => f.id !== fbId);
+            await recalcRecipeRating(recipeId);
+            updateStats();
+            window.kaRenderFeedbackList();
+            showToast('🗑️ تم حذف التقييم');
+        } catch (e) {
+            showToast('تعذر حذف التقييم', 'fa-triangle-exclamation text-rose-400');
+        }
+    };
+})();
