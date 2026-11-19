@@ -1,61 +1,71 @@
-const CACHE_NAME = 'sman-hhya-v4'; 
+// sw.js - محرك السرعة والتخزين المؤقت الآمن لمتجر سمان ههيا
+const CACHE_NAME = 'sman-hhya-store-v5';
 
-
-// 1. الملفات الأساسية اللي عايزين المتصفح يحفظها عشان يفتح الموقع طلقة
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
+  './track.html',
   './css/style.css',
   './js/config.js',
   './js/app.js',
   './manifest.json'
 ];
 
-// 2. تثبيت فوري وتحميل الملفات في الذاكرة
-self.addEventListener('install', (e) => {
+self.addEventListener('install', (event) => {
   self.skipWaiting();
-  e.waitUntil(
+  event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map((url) => cache.add(url).catch(() => null))
+      );
     })
   );
 });
 
-// 3. تنظيف الذاكرة القديمة للعملاء اللي فتحوا الموقع قبل كده
-self.addEventListener('activate', (e) => {
-  e.waitUntil(clients.claim());
-  e.waitUntil(
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
             return caches.delete(cache);
           }
+          return null;
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
 });
 
-// 4. استراتيجية (Stale-While-Revalidate) للسرعة الصاروخية
-self.addEventListener('fetch', (e) => {
-  // نتجاهل طلبات قاعدة البيانات (Firebase) عشان دايماً تيجي لايف
-  if (e.request.method !== 'GET' || e.request.url.includes('firestore.googleapis.com')) return;
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
 
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      // لو الملف في الذاكرة هنعرضه فوراً (صفر ثانية)، وفي نفس الوقت نحدثه من النت في الخلفية
-      const fetchPromise = fetch(e.request).then((networkResponse) => {
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(e.request, networkResponse.clone());
-        });
-        return networkResponse;
-      }).catch(() => {
-        // لو النت فاصل تماماً، مفيش مشكلة الموقع هيشتغل من الكاش
-      });
-      
-      // اعرض المحفوظ في الذاكرة أولاً، لو مش موجود استنى النت
-      return cachedResponse || fetchPromise;
+  const url = req.url;
+  // استثناء تام لطلبات Firebase وواجهات البيانات الحية لمنع أي بيانات قديمة
+  if (
+    !url.startsWith('http') ||
+    url.includes('firestore.googleapis.com') ||
+    url.includes('identitytoolkit.googleapis.com') ||
+    url.includes('securetoken.googleapis.com') ||
+    url.includes('firebase')
+  ) {
+    return;
+  }
+
+  event.respondWith(
+    caches.match(req).then((cachedResponse) => {
+      const networkFetch = fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return networkResponse;
+        })
+        .catch(() => cachedResponse);
+
+      return cachedResponse || networkFetch;
     })
   );
 });
