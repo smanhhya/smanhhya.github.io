@@ -1,9 +1,112 @@
-// js/config.js
+// js/config.js - الإعدادات المركزية وأدوات الأمان المشتركة لمتجر سمان ههيا
 
-// مفتاح ربط الإيميل (Web3Forms) الجديد بتاعك
-const WEB3FORMS_ACCESS_KEY = "29c14342-5ab0-4c2a-a57d-16f2e2bac1d8";
+// إعدادات الاتصال بقاعدة البيانات (مشتركة بين المتجر وصفحة التتبع)
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY",
+    authDomain: "sman-ca8f8.firebaseapp.com",
+    projectId: "sman-ca8f8",
+    storageBucket: "sman-ca8f8.firebasestorage.app",
+    messagingSenderId: "538778803310",
+    appId: "1:538778803310:web:5eeff42bae534375a21a7f"
+};
 
-// قاموس النصوص الأساسية اللي تقدر تعدلها من لوحة التحكم (تم تنظيفه من الزوائد القديمة)
+// أدوات الأمان والتنسيق المشتركة (حماية ضد XSS + توحيد الأرقام + ترتيب الأصناف)
+window.SMAN_UTILS = {
+    // تنظيف النصوص قبل عرضها داخل HTML لمنع حقن الأكواد (XSS)
+    escapeHtml: function (str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    },
+
+    // تنظيف النصوص المستخدمة داخل خصائص onclick
+    escapeJsAttr: function (str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '&quot;')
+            .replace(/\n/g, ' ')
+            .replace(/\r/g, '');
+    },
+
+    // تحويل الأرقام العربية والفارسية إلى إنجليزية وتوحيد رقم الموبايل المصري (01XXXXXXXXX)
+    normalizePhone: function (phone) {
+        if (!phone) return '';
+        let cleaned = String(phone)
+            .replace(/[٠١٢٣٤٥٦٧٨٩]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1632 + 48))
+            .replace(/[۰۱۲۳۴۵۶۷۸۹]/g, (d) => String.fromCharCode(d.charCodeAt(0) - 1776 + 48))
+            .replace(/\D/g, '');
+
+        if (cleaned.startsWith('00201') && cleaned.length >= 14) cleaned = '0' + cleaned.substring(4);
+        else if (cleaned.startsWith('0201') && cleaned.length >= 13) cleaned = '0' + cleaned.substring(3);
+        else if (cleaned.startsWith('201') && cleaned.length >= 12) cleaned = '0' + cleaned.substring(2);
+        else if (cleaned.length === 10 && cleaned.startsWith('1')) cleaned = '0' + cleaned;
+
+        return cleaned;
+    },
+
+    // تنسيق رقم الواتساب الدولي الصحيح لمصر (201XXXXXXXXX)
+    formatWaPhone: function (phone) {
+        const norm = window.SMAN_UTILS.normalizePhone(phone || '01208027294');
+        if (!norm) return '201208027294';
+        if (norm.startsWith('0')) return '2' + norm;
+        if (norm.startsWith('20')) return norm;
+        return '20' + norm;
+    },
+
+    // تحليل مصفوفة أوزان الجرام للأصناف المباعة بالوزن (فراخ تسمين / رومي)
+    parseWeightsArray: function (rawVal) {
+        if (Array.isArray(rawVal)) {
+            return rawVal.map((n) => parseFloat(n)).filter((n) => !isNaN(n) && n > 0);
+        }
+        return String(rawVal || '')
+            .split(/[\s,،;\n\r\-]+/)
+            .map((w) => parseFloat(w.trim()))
+            .filter((w) => !isNaN(w) && w > 0);
+    },
+
+    // تصنيف وترتيب الأصناف بنفس الترتيب الموحد في لوحة الـ CRM
+    getProductCategoryAndRank: function (id, p) {
+        const safeId = String(id || '').toLowerCase();
+        const safeName = String(p?.name || '').toLowerCase();
+
+        if (p && p.isWeightBased) {
+            let wRank = 50;
+            if (safeName.includes('فراخ') || safeName.includes('فرخ') || safeName.includes('تسمين')) wRank = 10;
+            else if (safeName.includes('رومي')) wRank = 20;
+            else if (safeName.includes('بط')) wRank = 30;
+            return { group: 'weight', rank: wRank };
+        }
+
+        if (
+            p?.isExtra ||
+            safeId === 'eggs' || safeId === 'chicks' ||
+            safeName.includes('بيض') || safeName.includes('كتكوت') ||
+            safeName.includes('كتاكيت') || safeName.includes('عمر')
+        ) {
+            let ecRank = 50;
+            if (safeId === 'eggs' || safeName.includes('بيض')) ecRank = 10;
+            else if (safeId === 'chicks' || safeName.includes('كتكوت') || safeName.includes('كتاكيت') || safeName.includes('عمر')) ecRank = 20;
+            return { group: 'eggs_chicks', rank: ecRank };
+        }
+
+        let qRank = 50;
+        if (safeId === 'super' || (safeName.includes('سوبر') && !safeName.includes('سبشيال') && !safeName.includes('اسبيشيال'))) qRank = 10;
+        else if (safeId === 'jumbo' || safeName.includes('جامبو')) qRank = 20;
+        else if (safeId === 'special' || ((safeName.includes('سبشيال') || safeName.includes('اسبيشيال')) && !safeName.includes('سوبر'))) qRank = 30;
+        else if (safeId === 'superspecial' || (safeName.includes('سوبر') && (safeName.includes('سبشيال') || safeName.includes('اسبيشيال')))) qRank = 40;
+        else qRank = 50 + (Number(p?.basePrice) || 0) / 1000;
+
+        return { group: 'quail', rank: qRank };
+    }
+};
+
+// قاموس النصوص الافتراضية القابلة للتخصيص من لوحة الـ CRM
 const textsConfig = [
     { id: 'cartTotalLabel', label: 'إجمالي السلة (الشريط السفلي)', default: 'الإجمالي (بدون التوصيل)' },
     { id: 'viewCartBtn', label: 'زر عرض السلة', default: 'عرض السلة' },
@@ -12,106 +115,87 @@ const textsConfig = [
     { id: 'subtotalLabel', label: 'قيمة الطلبات', default: 'قيمة الطلبات:' },
     { id: 'deliveryLabel', label: 'مصاريف التوصيل', default: 'مصاريف التوصيل:' },
     { id: 'finalTotalLabel', label: 'الإجمالي المطلوب', default: 'الإجمالي النهائي:' },
-    { id: 'menuTitle', label: 'عنوان قائمة المنتجات', default: 'قائمة الأطباق' },
-    { id: 'extrasTitle', label: 'عنوان منتجات أخرى', default: 'منتجات أخرى' },
-    { id: 'addBtn', label: 'زر الإضافة للسلة', default: 'إضافة للسلة' },
-    { id: 'vipBtn', label: 'زر حجز VIP', default: 'حجز للدفعة القادمة' },
-    { id: 'closedBtn', label: 'زر المتجر مغلق', default: 'مغلق' },
-    { id: 'emptyCartMsg', label: 'رسالة السلة الفارغة', default: 'السلة فارغة' },
-    { id: 'emptyMenuMsg', label: 'رسالة عدم وجود منتجات', default: 'لا توجد منتجات حالياً' },
-    
-    // الخانات الجديدة لشاشة نجاح الأوردر
-        // الخانات الجديدة لشاشة نجاح الأوردر
+    { id: 'menuTitle', label: 'عنوان قائمة المنتجات', default: 'سمان مذبوح طازج (بالجوز)' },
+    { id: 'extrasTitle', label: 'عنوان منتجات أخرى', default: 'بيض سمان ومنتجات أخرى' },
+    { id: 'emptyCartMsg', label: 'رسالة السلة الفارغة', default: 'السلة فارغة حالياً' },
+    { id: 'emptyMenuMsg', label: 'رسالة عدم وجود منتجات', default: 'لا توجد منتجات متاحة حالياً' },
     { id: 'successTitle', label: 'عنوان شاشة نجاح الأوردر', default: 'تم تأكيد أوردرك بنجاح! 🎉' },
-    { id: 'successMsgTemplate', label: 'نص رسالة النجاح (اكتب {اليوم} لليوم)', default: 'أوردرك اتسجل في السيستم عندنا خلاص ومفيش حاجة تانية مطلوبة منك. هيتم التجهيز عشان تستلمه إن شاء الله غداً (يوم {اليوم}).<br><br>لو حابب تتواصل معانا أو تتابع الأوردر، تقدر تكلمنا ع الواتساب.' },
-    { id: 'waFollowUpBtn', label: 'كلام زرار المتابعة واتساب', default: 'التواصل والمتابعة ع الواتساب' },
-    { id: 'closeFollowUpBtn', label: 'كلام زرار إنهاء/انتظار الأوردر', default: 'تمام، شكراً 👍' }
-
+    { id: 'successMsgTemplate', label: 'نص رسالة النجاح', default: 'أوردرك اتسجل في السيستم عندنا خلاص وهيتم التجهيز والتواصل معاك للتأكيد.' },
+    { id: 'waFollowUpBtn', label: 'زر المتابعة واتساب', default: 'التواصل والمتابعة ع الواتساب' },
+    { id: 'closeFollowUpBtn', label: 'زر إغلاق شاشة النجاح', default: 'تمام، شكراً 👍' }
 ];
 
-
-// الإعدادات الافتراضية للموقع (تم إضافة الكتالوج، الإشعارات، شريط الأخبار، والمربعات الأربعة)
+// الإعدادات الافتراضية للمتجر (تُحدّث تلقائياً من Firebase فور الفتح)
 let globalSettings = {
     storeOpen: true,
     storeName: "سمان ههيا",
-    storeDesc: "مرحباً بك في متجر سمان ههيا.. نضمن لك أعلى جودة ونظافة.",
+    storeDesc: "سمان مذبوح طازج بالطلب من المزرعة لطبقك — بدون تجميد وبأعلى معايير النظافة.",
     storePhone: "01208027294",
     minOrder: 0,
-    freeDeliveryActive: false, 
+    freeDeliveryActive: false,
     freeDeliveryThreshold: 500,
-    
-    // إعدادات شريط الأخبار المتحرك
-    bannerActive: true, 
-    bannerText: "متاح الآن حجز أوردرات - الكمية محدودة!", 
-    marqueeMessages: [
-        "🔥 متاح الآن حجز أوردرات - الكمية محدودة!",
-        "🚚 توصيل مجاني للطلبات فوق 500 ج.م",
-        "🌿 سمان ههيا.. طازج، صحي، ومضمون 100%"
-    ],
+    pointValueInEGP: 0.40,
+    heroMessage: "",
+    closedMessage: "المتجر مغلق حالياً، نعود قريباً!",
 
-    // إعدادات المربعات الأربعة (عناصر الثقة)
     trustBadges: [
         { icon: 'fa-regular fa-circle-check', title: 'أوزان دقيقة', desc: 'زي ما طلبت بالظبط' },
-        { icon: 'fa-regular fa-star', title: 'طلبك باسمك', desc: 'استيكر مخصص ليك' },
-        { icon: 'fa-regular fa-clock', title: 'تجهيز يومي', desc: 'طازج مية بالمية' },
-        { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية' }
+        { icon: 'fa-solid fa-snowflake', title: 'طازج بالطلب', desc: 'صفر تجميد ومخزون' },
+        { icon: 'fa-regular fa-star', title: 'طلبك باسمك', desc: 'بوليصة وتغليف خاص' },
+        { icon: 'fa-solid fa-shield-halved', title: 'تغليف آمن', desc: 'أطباق صحية محكمة' }
     ],
-    
-    // إعدادات كتالوج الصور (السلايدر)
-    galleryImages: [
-        "all-sizes.jpg" // صورتك القديمة كأول سلايد
-    ],
-    
-    // إعدادات الإشعارات الحية (Social Proof)
+
+    galleryImages: ["all-sizes.jpg"],
+
     liveNotiActive: true,
     liveNotiNames: ["أحمد", "محمد", "محمود", "كريم", "مصطفى", "علي", "سارة", "نورهان", "إبراهيم", "طارق", "يوسف", "عمر"],
-    liveNotiPlaces: ["الزقازيق", "ههيا", "أبو كبير", "ديرب نجم", "الإبراهيمية", "فاقوس", "القنايات", "بلبيس", "منيا القمح"],
+    liveNotiPlaces: ["ههيا", "الزقازيق", "أبو كبير", "الإبراهيمية", "المهدية", "العدوة"],
 
-    crossSellActive: true, 
+    crossSellActive: true,
     crossSellProductId: 'eggs',
-    promoCodes: [], 
-    bestSellers: ['super'],
-    showPromoField: true, 
-    successTitle: "تم استلام الأوردر! 🎉",
-    successMessage: "شكراً لثقتك في سمان ههيا.. الأوردر وصل للسيستم بنجاح وهنجهزهولك فوراً. هنتواصل معاك قريباً للتأكيد.",
-    rewardActive: false, 
-    rewardType: "fixed", 
-    rewardValue: 20, 
+    promoCodes: [],
+    bestSellers: ['super', 'jumbo'],
+    showPromoField: true,
+    rewardActive: false,
+    rewardType: "fixed",
+    rewardValue: 20,
     rewardMaxDiscount: 0,
     rewardMaxGenerations: 0,
-    whatsappTemplate: "السلام عليكم، أريد تأكيد حجزي:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)",
-    ticktickTemplate: "🧾 **تفاصيل الأوردر كاملة:**\n👤 الاسم: {اسم_العميل}\n📱 الموبايل: {الموبايل}\n📍 المنطقة: {المنطقة}\n{العنوان}\n🕒 الوقت: {الوقت}\n--------------------------------\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n--------------------------------\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n{الخصم}🚚 رسوم التوصيل: {التوصيل}\n💰 الإجمالي النهائي: {الاجمالي} ج.م\n{ملاحظات}\n{الهاشتاجات}",
-    vipWhatsappTemplate: "السلام عليكم،\nأريد الانضمام لقائمة الـ VIP وحجز ({اسم_المنتج}) من الدفعة القادمة قبل نزولها المتجر. 👑",
-    dispatchTemplate: "📦 طلب جديد من {اسم_العميل}\n📱 {رقم_العميل}\n📍 {المنطقة} - {العنوان}\n🛒 الطلبات:\n{تفاصيل_الطلبات}\n💰 إجمالي الطلب: {إجمالي_الطلب} ج.م\n🚚 التوصيل: {التوصيل}\n⭐ الإجمالي النهائي: {الإجمالي_النهائي} ج.م",
+    whatsappTemplate: "السلام عليكم، أريد تأكيد حجزي من سمان ههيا:\n\n📋 *بيانات العميل:*\n{تفاصيل_العميل}\n\n🛒 *الطلبات:*\n{الطلبات}\n{الخصم}═════════════════\n📦 قيمة الطلبات: {قيمة_الطلبات} ج.م\n🚚 رسوم التوصيل: {التوصيل}\n💰 *الإجمالي النهائي: {الاجمالي} ج.م*\n\n(في انتظار تأكيد الحجز وموعد الاستلام)",
     batchHashtag: "",
     autoPromoModalMsg: "تم إصدار كود خصم خاص بك لطلبك القادم 🎁",
     uiTexts: {}
 };
 
-// المنتجات الافتراضية بأوزانها الصحيحة والمضبوطة
+// المنتجات الافتراضية (كاحتياط لحين تحميل أحدث أسعار وأصناف من الـ CRM)
 let productsInfo = {
-    'super': { name: 'طبق سوبر', basePrice: 100, weight: '300-350 جم', images: ['super.png'], isExtra: false },
-    'jumbo': { name: 'طبق جامبو', basePrice: 110, weight: '350-400 جم', images: ['jumbo.png'], isExtra: false },
-    'special': { name: 'طبق سبشيال', basePrice: 120, weight: '400-450 جم', images: ['special.png'], isExtra: false },
-    'superspecial': { name: 'سوبر سبشيال', basePrice: 130, weight: '450-500 جم', images: ['superspecial.png'], isExtra: false },
+    'super': { name: 'طبق سوبر', basePrice: 110, weight: '300-350 جم', images: ['super.png'], isExtra: false },
+    'jumbo': { name: 'طبق جامبو', basePrice: 120, weight: '350-400 جم', images: ['jumbo.png'], isExtra: false },
+    'special': { name: 'طبق سبشيال', basePrice: 130, weight: '400-450 جم', images: ['special.png'], isExtra: false },
+    'superspecial': { name: 'سوبر سبشيال', basePrice: 140, weight: '450-500 جم', images: ['superspecial.png'], isExtra: false },
     'eggs': { name: 'طبق بيض سمان', basePrice: 50, weight: 'طبق 18 بيضة', images: ['eggs.jpg'], isExtra: true },
-    'chicks': { name: 'كتاكيت سمان', basePrice: 8, weight: 'كتكوت', images: ['chicks.jpg'], isExtra: true } 
+    'chicks': { name: 'كتاكيت سمان', basePrice: 8, weight: 'كتكوت عمر يوم', images: ['chicks.jpg'], isExtra: true }
 };
 
-// --- تهيئة المتغيرات الأساسية للموقع (State Variables) ---
-let globalStock = {}; 
-let globalPrices = {}; 
-let globalOldPrices = {}; 
-let globalDiscounts = {}; 
-let globalDeliveryZones = [{ id: 'z1', name: 'ههيا', price: 15 }, { id: 'other', name: 'مكان آخر', price: 0 }];
+// متغيرات حالة المتجر (State Variables)
+let globalStock = {};
+let globalPrices = {};
+let globalOldPrices = {};
+let globalDiscounts = {};
+let globalBatches = {};
+let globalDeliveryZones = [
+    { id: 'ههيا', name: 'ههيا', price: 15 },
+    { id: 'الزقازيق', name: 'الزقازيق', price: 25 },
+    { id: 'أبو كبير', name: 'أبو كبير', price: 25 },
+    { id: 'الإبراهيمية', name: 'الإبراهيمية', price: 20 },
+    { id: 'المهدية', name: 'المهدية', price: 15 },
+    { id: 'العدوة', name: 'العدوة', price: 15 },
+    { id: 'مكان آخر', name: 'مكان آخر', price: 0 }
+];
 
 let dailyStats = { sales: 0, orders: 0 };
-let tempAdminZones = []; 
-let tempPromoCodes = []; 
-let tempProducts = {};
-let cart = {}; 
-let appliedPromo = null; 
-let db = null; 
-let hasCloud = false; 
+let cart = {};
+let appliedPromo = null;
+let db = null;
+let hasCloud = false;
 let isStoreDataLoaded = false;
-let dispatchOrdersList = [];
