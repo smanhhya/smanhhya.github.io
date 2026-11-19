@@ -184,16 +184,24 @@
 
     // =========================================================================
     // 3. حسابات المخزون وسقف الدفعة ونصائح الطهي لكل حجم
-    // =========================================================================
+    function classifyStoreProduct(id, p) {
+        if (p && p.categoryType === 'custom') return { group: 'custom', rank: 50 };
+        if (p && p.categoryType === 'weight') return { group: 'weight', rank: 50 };
+        if (p && p.categoryType === 'eggs_chicks') return { group: 'eggs_chicks', rank: 50 };
+        if (p && p.categoryType === 'quail') return { group: 'quail', rank: 50 };
+        return U.getProductCategoryAndRank(id, p);
+    }
+
     function isMainQuailItem(id) {
         const p = productsInfo[id];
         if (!p) return true;
-        return U.getProductCategoryAndRank(id, p).group === 'quail';
+        return classifyStoreProduct(id, p).group === 'quail';
     }
 
     function getShortUsageTag(id, p) {
         const sId = String(id || '').toLowerCase();
         const sName = String(p?.name || '').toLowerCase();
+        if (p?.categoryType === 'custom') return p.weight ? `✨ ${p.weight}` : '✨ منتج خاص';
         if (p?.isWeightBased) return '⚖️ بالميزان الطازج';
         if (sId === 'eggs' || sName.includes('بيض')) return '🥚 مغذي للأطفال';
         if (sId === 'chicks' || sName.includes('كتكوت')) return '🐣 تربية ممتازة';
@@ -207,6 +215,7 @@
     function getCookingTipForProduct(id, p) {
         const sId = String(id || '').toLowerCase();
         const sName = String(p?.name || '').toLowerCase();
+        if (p?.categoryType === 'custom') return p.weight || 'منتج خاص متاح للطلب المباشر من سمان ههيا.';
         if (p?.isWeightBased) return 'مذبوح ومنظف طازج بالوزن الدقيق — اختر الوزن المناسب لأسرتك.';
         if (sId === 'eggs' || sName.includes('بيض')) return 'طبق طازج غني بالفيتامينات والحديد — مثالي للأطفال والرياضيين.';
         if (sId === 'chicks' || sName.includes('كتكوت')) return 'كتاكيت سمان أبيض هجين بصحة ممتازة جاهزة للتربية.';
@@ -229,7 +238,9 @@
         if (activeProductFilter === 'all') return true;
         if (activeProductFilter === 'eggs_chicks') return group === 'eggs_chicks';
         if (activeProductFilter === 'weight') return group === 'weight';
+        if (activeProductFilter === 'custom') return group === 'custom';
         if (group !== 'quail') return false;
+
 
         const sId = String(id || '').toLowerCase();
         const sName = String(p?.name || '').toLowerCase();
@@ -271,11 +282,12 @@
         return 'quail';
     }
 
-    // تحديد مسار المنتج: quail (سمان مذبوح) | chicks (كتاكيت عمر يوم) | weight (طيور بالوزن) | immediate (بيض يومي فوري)
+    // تحديد مسار المنتج: quail (سمان مذبوح) | chicks (كتاكيت عمر يوم) | weight (طيور بالوزن) | immediate (بيض يومي أو صنف مستقل)
     function getProductTrackType(id) {
         const p = productsInfo[id];
         if (!p) return 'quail';
-        const meta = U.getProductCategoryAndRank(id, p);
+        if (p.categoryType === 'custom') return 'immediate';
+        const meta = classifyStoreProduct(id, p);
         if (meta.group === 'weight' || p.isWeightBased) return 'weight';
         if (meta.group === 'quail') return 'quail';
         const sId = String(id || '').toLowerCase();
@@ -1496,32 +1508,40 @@
         const extrasWrap = document.getElementById('extras-section-wrap');
         const weightContainer = document.getElementById('weight-products-container');
         const weightWrap = document.getElementById('weight-section-wrap');
+        const customWrap = document.getElementById('custom-sections-wrap');
         if (!container) return;
 
-        const groups = { quail: [], eggs_chicks: [], weight: [] };
+        const groups = { quail: [], eggs_chicks: [], weight: [], custom: [] };
         let hasAnyWeightProduct = false;
+        let hasAnyCustomProduct = false;
 
         Object.keys(productsInfo).forEach((id) => {
             const item = productsInfo[id];
             if (!item || item.isVisible === false || item.isHidden === true) return;
-            const meta = U.getProductCategoryAndRank(id, item);
+            const meta = classifyStoreProduct(id, item);
             if (meta.group === 'weight') hasAnyWeightProduct = true;
+            if (meta.group === 'custom') hasAnyCustomProduct = true;
             if (!matchesStoreFilter(id, item, meta.group)) return;
-            groups[meta.group].push({ id, item, rank: meta.rank });
+            if (!groups[meta.group]) groups.custom.push({ id, item, rank: meta.rank });
+            else groups[meta.group].push({ id, item, rank: meta.rank });
         });
 
         const weightFilterBtn = document.querySelector('.store-filter-btn[data-filter="weight"]');
         if (weightFilterBtn) weightFilterBtn.classList.toggle('hidden', !hasAnyWeightProduct);
 
+        const customFilterBtn = document.querySelector('.store-filter-btn[data-filter="custom"]');
+        if (customFilterBtn) customFilterBtn.classList.toggle('hidden', !hasAnyCustomProduct);
+
         groups.quail.sort((a, b) => a.rank - b.rank);
         groups.eggs_chicks.sort((a, b) => a.rank - b.rank);
         groups.weight.sort((a, b) => a.rank - b.rank);
+        groups.custom.sort((a, b) => a.rank - b.rank);
 
         if (quailWrap) {
             if (groups.quail.length > 0) {
                 container.innerHTML = groups.quail.map((g) => buildAppGridProductCard(g.id, g.item, false)).join('');
                 quailWrap.classList.remove('hidden');
-            } else if (activeProductFilter === 'all') {
+            } else if (activeProductFilter === 'all' && groups.eggs_chicks.length === 0 && groups.custom.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-200">${esc(globalSettings.uiTexts?.emptyMenuMsg || 'لا توجد منتجات متاحة حالياً')}</div>`;
                 quailWrap.classList.remove('hidden');
             } else {
@@ -1545,6 +1565,39 @@
                 weightWrap.classList.remove('hidden');
             } else {
                 weightWrap.classList.add('hidden');
+            }
+        }
+
+        // رسم الأقسام المستقلة المفتوحة (كل قسم باسمه المخصص الذي كتبته في الـ CRM)
+        if (customWrap) {
+            if (groups.custom.length > 0) {
+                const bySectionTitle = {};
+                groups.custom.forEach((g) => {
+                    const secTitle = (g.item.customGroupTitle && g.item.customGroupTitle.trim())
+                        ? g.item.customGroupTitle.trim()
+                        : 'أصناف ومنتجات خاصة';
+                    if (!bySectionTitle[secTitle]) bySectionTitle[secTitle] = [];
+                    bySectionTitle[secTitle].push(g);
+                });
+
+                customWrap.innerHTML = Object.keys(bySectionTitle).map((secTitle) => {
+                    const secItems = bySectionTitle[secTitle];
+                    const isSingle = secItems.length === 1;
+                    return `
+                    <div class="space-y-3">
+                        <h2 class="text-base sm:text-lg font-black text-brand-navy flex items-center gap-2">
+                            <span class="w-1.5 h-5 rounded-full bg-purple-600 inline-block"></span>
+                            <span>${esc(secTitle)}</span>
+                        </h2>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
+                            ${secItems.map((g) => buildAppGridProductCard(g.id, g.item, isSingle)).join('')}
+                        </div>
+                    </div>`;
+                }).join('');
+                customWrap.classList.remove('hidden');
+            } else {
+                customWrap.innerHTML = '';
+                customWrap.classList.add('hidden');
             }
         }
 
