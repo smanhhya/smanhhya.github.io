@@ -1,10 +1,12 @@
-/* css/style.css - الهوية البصرية الموحدة لمتجر ونظام تتبع سمان ههيا */
+/* css/style.css - الهوية البصرية الفاخرة لمتجر ونظام تتبع سمان ههيا */
 :root {
-  --brand-navy: #1b4332;
-  --brand-dark: #0f291e;
+  --brand-navy: #0f3426;
+  --brand-emerald: #1b4332;
   --brand-cyanDark: #b91c1c;
   --brand-yellow: #f59e0b;
+  --brand-gold: #d97706;
   --brand-light: #f0fdf4;
+  --brand-cream: #faf8f3;
 }
 
 * {
@@ -14,8 +16,9 @@
 body {
   font-family: 'Cairo', sans-serif;
   scroll-behavior: smooth;
-  padding-bottom: 92px;
-  background-color: #fdfbf7;
+  padding-bottom: 108px;
+  background-color: var(--brand-cream);
+  color: #1e293b;
   overflow-x: hidden;
 }
 
@@ -42,34 +45,86 @@ input[type=number]::-webkit-outer-spin-button {
   margin: 0;
 }
 
-/* خلفية الهيدر المميزة */
-.pattern-bg {
-  background-color: var(--brand-navy);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
+/* الهيدر الفاخر بتدرج الزمرد الملكي */
+.luxury-hero-bg {
+  background: radial-gradient(circle at 18% 20%, rgba(245, 158, 11, 0.16), transparent 45%),
+              radial-gradient(circle at 85% 80%, rgba(16, 185, 129, 0.18), transparent 45%),
+              linear-gradient(135deg, #0b261c 0%, #153e2e 55%, #1b4332 100%);
 }
 
-/* الحركات والانيميشن المسرّعة بالعتاد */
+.pattern-bg {
+  background-color: var(--brand-navy);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+/* إطار القصص الذهبي (Instagram Stories Style) */
+.story-ring {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 45%, #10b981 100%);
+  padding: 2.5px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.story-ring:active {
+  transform: scale(0.93);
+}
+
+/* شريط التقدم داخل نافذة القصص */
+.story-progress-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  overflow: hidden;
+  flex: 1;
+}
+.story-progress-fill {
+  height: 100%;
+  background: #f59e0b;
+  width: 0%;
+  transition: width 0.25s ease;
+}
+.story-progress-fill.done {
+  width: 100%;
+}
+.story-progress-fill.active {
+  width: 100%;
+}
+
+/* بطاقات المنتجات الفاخرة */
+.product-app-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 52, 38, 0.08);
+  box-shadow: 0 4px 16px -4px rgba(15, 52, 38, 0.06);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.product-app-card:hover {
+  box-shadow: 0 10px 24px -6px rgba(15, 52, 38, 0.12);
+}
+.product-app-card.in-cart {
+  border-color: rgba(15, 52, 38, 0.45);
+  box-shadow: 0 6px 20px -4px rgba(15, 52, 38, 0.14);
+}
+
+/* الحركات والانيميشن */
 .sale-badge {
-  animation: bounce-small 2s infinite ease-in-out;
+  animation: bounce-small 2.2s infinite ease-in-out;
 }
 @keyframes bounce-small {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  50% { transform: translateY(-3px); }
 }
 
 @keyframes pulse-btn {
-  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
+  0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
   70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
   100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
 }
 .pulse-animation {
-  animation: pulse-btn 2.2s infinite;
+  animation: pulse-btn 2.4s infinite;
 }
 
 @keyframes pop-scale {
   0% { transform: scale(1); }
-  50% { transform: scale(1.45); color: var(--brand-yellow); }
+  50% { transform: scale(1.38); color: #f59e0b; }
   100% { transform: scale(1); }
 }
 .pop-anim {
@@ -81,57 +136,53 @@ input[type=number]::-webkit-outer-spin-button {
   to { opacity: 1; transform: translateY(0); }
 }
 .animate-slide {
-  animation: slideUp 0.35s ease-out forwards;
+  animation: slideUp 0.32s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .progress-bar-animated {
   transition: width 0.5s ease-in-out;
 }
 
-/* غطاء إغلاق المتجر */
-.store-closed-overlay {
-  position: relative;
-  pointer-events: none;
-  opacity: 0.7;
-}
+/* غطاء إغلاق المتجر (محصّن ضد التعارض مع hidden) */
 .store-closed-message {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: 25;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.65);
+  padding-top: 64px;
+  background: rgba(250, 248, 243, 0.72);
   backdrop-filter: blur(4px);
+}
+.store-closed-message.hidden {
+  display: none !important;
 }
 .store-closed-message div {
   background: var(--brand-navy);
   color: var(--brand-yellow);
-  padding: 14px 24px;
-  border-radius: 16px;
+  padding: 16px 26px;
+  border-radius: 18px;
   font-weight: 900;
-  font-size: 1.1rem;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+  font-size: 1.05rem;
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
   pointer-events: auto;
   text-align: center;
+  border: 2px solid rgba(245, 158, 11, 0.35);
 }
 
-/* السلايدر والكتالوج */
+/* السلايدر */
 .slider-wrapper {
   display: flex;
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   will-change: transform;
 }
 .slider-dot.active {
-  background-color: var(--brand-cyanDark);
+  background-color: var(--brand-yellow);
   width: 1.5rem;
 }
-#slider-track > div {
-  width: 100%;
-  flex-shrink: 0;
-}
 
-/* شريط خطوات إتمام الطلب */
+/* شريط خطوات الدفع */
 .step-active .step-icon {
   background-color: var(--brand-navy);
   color: #ffffff;
@@ -173,7 +224,7 @@ input[type=number]::-webkit-outer-spin-button {
   transform: scale(1.1);
 }
 
-/* احترام حواف شاشات الموبايل الحديثة */
-.safe-bottom-bar {
-  padding-bottom: max(0.85rem, env(safe-area-inset-bottom));
+/* كبسولة السلة العائمة فوق حافة الموبايل */
+.floating-cart-wrap {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
