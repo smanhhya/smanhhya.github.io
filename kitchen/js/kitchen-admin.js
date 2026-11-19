@@ -88,13 +88,35 @@
         const errEl = document.getElementById('ka-login-err');
         const btn = document.getElementById('ka-login-btn');
         if (errEl) errEl.classList.add('hidden');
+
+        if (!kAuth) {
+            if (errEl) {
+                errEl.textContent = '⚠️ لم يتم تهيئة Firebase Auth — تأكد من تحميل ملف ../js/config.js ووجود FIREBASE_CONFIG بداخله.';
+                errEl.classList.remove('hidden');
+            }
+            return;
+        }
+
         if (btn) btn.disabled = true;
 
         try {
             await kAuth.signInWithEmailAndPassword(email, pass);
         } catch (err) {
+            const code = String(err?.code || '');
+            let msg = `خطأ غير متوقع (${code || err?.message || 'unknown'})`;
+            if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+                msg = `الإيميل أو كلمة المرور غير مطابقة لحساب الإدارة في Firebase (${code}).`;
+            } else if (code === 'auth/invalid-email') {
+                msg = 'صيغة البريد الإلكتروني غير صحيحة.';
+            } else if (code === 'auth/too-many-requests') {
+                msg = 'تم إيقاف المحاولات مؤقتاً لكثرة المحاولات الخاطئة؛ انتظر بضع دقائق وحاول مجدداً.';
+            } else if (code === 'auth/network-request-failed') {
+                msg = 'تعذر الاتصال بسيرفر Firebase — تأكد من الإنترنت أو حالة sw.js.';
+            } else if (code === 'auth/operation-not-allowed') {
+                msg = 'تسجيل الدخول بالإيميل غير مفعّل في هذا المشروع على Firebase.';
+            }
             if (errEl) {
-                errEl.textContent = 'بيانات الدخول غير صحيحة أو الحساب غير مصرح له.';
+                errEl.textContent = msg;
                 errEl.classList.remove('hidden');
             }
         } finally {
