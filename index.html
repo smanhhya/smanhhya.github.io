@@ -201,25 +201,6 @@
         <section id="products" class="relative scroll-mt-16 space-y-5">
             <div id="store-wrapper" class="space-y-5">
 
-                <!-- 3. شريط اختيار الدفعة المدمج الذكي -->
-                <div id="batch-selection-container" class="hidden space-y-2">
-                    <div class="flex items-center justify-between gap-2">
-                        <h2 class="text-xs sm:text-sm font-black text-brand-navy flex items-center gap-1.5">
-                            <i class="fa-solid fa-calendar-days text-amber-500"></i>
-                            <span>اختر ميعاد الاستلام (الدفعة):</span>
-                        </h2>
-                        <span class="text-[10px] font-bold text-slate-400">ذبح طازج حسب الحجز</span>
-                    </div>
-
-                    <div id="batch-cards-wrapper" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1"></div>
-
-                    <p id="batch-error-msg" class="hidden text-xs font-black text-red-600 bg-red-50 border border-red-200 p-2.5 rounded-xl text-center">
-                        <i class="fa-solid fa-circle-exclamation ml-1"></i> برجاء اختيار دفعة متاحة أولاً لإتمام الحجز.
-                    </p>
-
-                    <input type="hidden" id="user-batch-select" value="">
-                    <input type="hidden" id="selected-batch-name" value="">
-                </div>
 
                 <!-- 4. بانر حاسبة العزومة + شريط الفلاتر -->
                 <div class="space-y-3">
@@ -255,7 +236,11 @@
                     </div>
                 </div>
 
-                <!-- 5. القسم الأول: سمان مذبوح بالجوز (صور مربعة كاملة + شارة الاستخدام) -->
+                <!-- حقول الربط المخفية لدورة تفريخ الكتاكيت (عمر يوم) مستقلة عن السمان المذبوح -->
+                <input type="hidden" id="user-chicks-batch-select" value="">
+                <input type="hidden" id="selected-chicks-batch-name" value="">
+
+                <!-- 5. القسم الأول: سمان مذبوح بالجوز (مرتبط بدفعات الذبح فقط) -->
                 <div id="quail-section-wrap" class="space-y-3">
                     <div class="flex items-center justify-between">
                         <h2 class="text-base sm:text-lg font-black text-brand-navy flex items-center gap-2" id="lbl-menu-title">
@@ -266,6 +251,27 @@
                             <i class="fa-regular fa-images"></i> قارن الأحجام
                         </button>
                     </div>
+
+                    <!-- شريط اختيار دفعة الذبح (خاص بقسم السمان المذبوح فقط ولا يؤثر على البيض أو الكتاكيت أو الرومي) -->
+                    <div id="batch-selection-container" class="hidden space-y-2 bg-white/70 p-2.5 rounded-2xl border border-emerald-900/10">
+                        <div class="flex items-center justify-between gap-2 px-1">
+                            <span class="text-[11px] font-black text-brand-navy flex items-center gap-1.5">
+                                <i class="fa-solid fa-calendar-days text-amber-500"></i>
+                                <span>اختر ميعاد ذبح واستلام السمان:</span>
+                            </span>
+                            <span class="text-[10px] font-bold text-slate-400">ذبح طازج حسب الحجز</span>
+                        </div>
+
+                        <div id="batch-cards-wrapper" class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1"></div>
+
+                        <p id="batch-error-msg" class="hidden text-xs font-black text-red-600 bg-red-50 border border-red-200 p-2.5 rounded-xl text-center">
+                            <i class="fa-solid fa-circle-exclamation ml-1"></i> برجاء اختيار دفعة سمان متاحة أولاً لإتمام الحجز.
+                        </p>
+
+                        <input type="hidden" id="user-batch-select" value="">
+                        <input type="hidden" id="selected-batch-name" value="">
+                    </div>
+
 
                     <div id="products-container" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-3">
                         <div class="bg-white rounded-3xl p-2 border border-slate-100 animate-pulse space-y-2">
@@ -803,7 +809,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="./js/config.js?v=8"></script>
-    <script src="./js/app.js?v=9"></script>
+    <script src="./js/app.js?v=10"></script>
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
