@@ -442,9 +442,14 @@
                     const phoneCandidates = new Set([phone]);
                     if (rawInput && rawInput !== phone) phoneCandidates.add(rawInput);
                     if (phone.startsWith('01') && phone.length === 11) {
+                        phoneCandidates.add(phone.substring(1));
                         phoneCandidates.add('2' + phone);
                         phoneCandidates.add('+2' + phone);
+                        phoneCandidates.add('002' + phone);
+                        const arDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+                        phoneCandidates.add(phone.replace(/[0-9]/g, (d) => arDigits[Number(d)]));
                     }
+
 
                     const queries = [];
                     phoneCandidates.forEach((pVal) => {
