@@ -1,0 +1,473 @@
+// kitchen/js/kitchen-admin.js - محرك إدارة مطبخ سمان ههيا (الاستيراد، النشر، الاعتماد العملي، الصور، والتقييمات)
+
+(function () {
+    let kDb = null;
+    let kAuth = null;
+    let currentAdminUser = null;
+    let adminRecipes = [];
+    let adminFeedback = [];
+    let storeProductsMap = {};
+    let toastTimer = null;
+
+    function esc(str) {
+        return String(str === null || str === undefined ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function escAttr(str) {
+        return String(str === null || str === undefined ? '' : str)
+            .replace(/\\/g, '\\\\')
+            .replace(/'/g, "\\'")
+            .replace(/"/g, '&quot;');
+    }
+
+    function showToast(text, iconCls = 'fa-circle-check text-emerald-400') {
+        const el = document.getElementById('ka-toast');
+        const txt = document.getElementById('ka-toast-text');
+        const ico = document.getElementById('ka-toast-icon');
+        if (!el || !txt) return;
+        txt.textContent = text;
+        if (ico) ico.className = `fa-solid ${iconCls}`;
+        el.classList.remove('opacity-0', '-translate-y-4');
+        el.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            el.classList.remove('opacity-100', 'translate-y-0');
+            el.classList.add('opacity-0', '-translate-y-4');
+        }, 2500);
+    }
+
+    function makeSlug(id, title) {
+        const cleanTitle = String(title || '').trim().replace(/\s+/g, '-').replace(/[^\u0600-\u06FFa-zA-Z0-9\-]/g, '');
+        return `${String(id || '').toLowerCase()}-${cleanTitle}`.slice(0, 80);
+    }
+
+    // =========================================================================
+    // 1. تهيئة Firebase والمصادقة الآمنة
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', () => {
+        try {
+            const cfg = (typeof FIREBASE_CONFIG !== 'undefined') ? FIREBASE_CONFIG : window.FIREBASE_CONFIG;
+            if (!firebase.apps.length && cfg) {
+                firebase.initializeApp(cfg);
+            }
+            kDb = firebase.firestore();
+            kAuth = firebase.auth();
+
+            const savedKey = localStorage.getItem('sman_imgbb_api_key') || '';
+            if (document.getElementById('ka-imgbb-key')) {
+                document.getElementById('ka-imgbb-key').value = savedKey;
+            }
+
+            kAuth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentAdminUser = user;
+                    document.getElementById('ka-login-screen')?.classList.add('hidden');
+                    document.getElementById('ka-app-shell')?.classList.remove('hidden');
+                    const tag = document.getElementById('ka-admin-email-tag');
+                    if (tag) tag.textContent = user.email || user.uid;
+                    loadAllAdminData();
+                } else {
+                    currentAdminUser = null;
+                    document.getElementById('ka-app-shell')?.classList.add('hidden');
+                    document.getElementById('ka-login-screen')?.classList.remove('hidden');
+                }
+            });
+        } catch (e) {
+            console.error('Kitchen Admin Init Error:', e);
+        }
+    });
+
+    window.kaHandleLogin = async function () {
+        const email = String(document.getElementById('ka-email')?.value || '').trim();
+        const pass = String(document.getElementById('ka-password')?.value || '');
+        const errEl = document.getElementById('ka-login-err');
+        const btn = document.getElementById('ka-login-btn');
+        if (errEl) errEl.classList.add('hidden');
+        if (btn) btn.disabled = true;
+
+        try {
+            await kAuth.signInWithEmailAndPassword(email, pass);
+        } catch (err) {
+            if (errEl) {
+                errEl.textContent = 'بيانات الدخول غير صحيحة أو الحساب غير مصرح له.';
+                errEl.classList.remove('hidden');
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    window.kaHandleLogout = function () {
+        if (confirm('هل تريد تسجيل الخروج من لوحة إدارة المطبخ؟')) {
+            kAuth.signOut();
+        }
+    };
+
+    // =========================================================================
+    // 2. تحميل البيانات والإحصائيات والتبويبات
+    // =========================================================================
+    async function loadAllAdminData() {
+        if (!kDb) return;
+        try {
+            const [recSnap, fbSnap, settingsDoc] = await Promise.all([
+                kDb.collection('kitchen_recipes').get(),
+                kDb.collection('kitchen_feedback').get(),
+                kDb.collection('inventory').doc('settings').get().catch(() => null)
+            ]);
+
+            adminRecipes = [];
+            recSnap.forEach((d) => {
+                const data = d.data() || {};
+                adminRecipes.push({ ...data, id: data.id || d.id });
+            });
+            adminRecipes.sort((a, b) => (Number(a.number) || 999) - (Number(b.number) || 999));
+
+            adminFeedback = [];
+            fbSnap.forEach((d) => adminFeedback.push({ id: d.id, ...(d.data() || {}) }));
+            adminFeedback.sort((a, b) => {
+                if (Boolean(a.isApproved) !== Boolean(b.isApproved)) return a.isApproved ? 1 : -1;
+                const ta = (a.createdAt && a.createdAt.toMillis) ? a.createdAt.toMillis() : 0;
+                const tb = (b.createdAt && b.createdAt.toMillis) ? b.createdAt.toMillis() : 0;
+                return tb - ta;
+            });
+
+            if (settingsDoc && settingsDoc.exists) {
+                const sData = settingsDoc.data() || {};
+                if (sData.productsData) storeProductsMap = sData.productsData;
+            }
+
+            updateStats();
+            window.kaRenderRecipesList();
+            window.kaRenderFeedbackList();
+        } catch (err) {
+            console.error('Admin Load Error:', err);
+            showToast('⚠️ تأكد أن هذا الحساب يملك صلاحية الأدمن في firestore.rules', 'fa-triangle-exclamation text-rose-400');
+        }
+    }
+
+    function updateStats() {
+        const total = adminRecipes.length;
+        const pub = adminRecipes.filter((r) => r.publishStatus === 'published').length;
+        const draft = total - pub;
+        const tested = adminRecipes.filter((r) => r.verificationStatus === 'practically_tested').length;
+        const pendingFb = adminFeedback.filter((f) => !f.isApproved).length;
+
+        const setTxt = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+        setTxt('ka-stat-total', total);
+        setTxt('ka-stat-pub', pub);
+        setTxt('ka-stat-draft', draft);
+        setTxt('ka-stat-tested', tested);
+        setTxt('ka-stat-fb', pendingFb);
+    }
+
+    window.kaSwitchTab = function (tabKey) {
+        ['recipes', 'feedback', 'import'].forEach((k) => {
+            document.getElementById(`ka-tab-${k}`)?.classList.toggle('hidden', k !== tabKey);
+            const btn = document.getElementById(`ka-btn-tab-${k}`);
+            if (btn) {
+                btn.className = (k === tabKey)
+                    ? 'py-2.5 px-2 rounded-xl text-xs font-black bg-brand-navy text-white shadow-sm'
+                    : 'py-2.5 px-2 rounded-xl text-xs font-black bg-slate-100 text-slate-600 hover:bg-slate-200';
+            }
+        });
+    };
+
+    // =========================================================================
+    // 3. استيراد ملف sman_hhya_kitchen_50_recipes.json بضغطة واحدة وبأمان
+    // =========================================================================
+    window.kaImportJsonFile = async function () {
+        const fileInp = document.getElementById('ka-json-file');
+        const logEl = document.getElementById('ka-import-log');
+        const btn = document.getElementById('ka-import-btn');
+        const file = fileInp?.files?.[0];
+
+        if (!file) {
+            showToast('اختر ملف sman_hhya_kitchen_50_recipes.json أولاً', 'fa-circle-exclamation text-amber-400');
+            return;
+        }
+
+        if (btn) btn.disabled = true;
+        if (logEl) {
+            logEl.className = 'text-xs font-bold p-3 rounded-xl border bg-slate-50 border-slate-200 text-slate-700';
+            logEl.textContent = '⏳ جاري قراءة الملف واستيراد الوصفات...';
+            logEl.classList.remove('hidden');
+        }
+
+        try {
+            const text = await file.text();
+            const json = JSON.parse(text);
+            const recipesArr = Array.isArray(json.recipes) ? json.recipes : [];
+            const guidesArr = Array.isArray(json.knowledge_cards) ? json.knowledge_cards : [];
+
+            if (recipesArr.length === 0) {
+                throw new Error('لم يتم العثور على مصفوفة recipes داخل الملف المختار.');
+            }
+
+            const existingIds = new Set(adminRecipes.map((r) => r.id));
+            const batch = kDb.batch();
+            let addedCount = 0;
+            let skippedCount = 0;
+            const nowStr = new Date().toLocaleString('ar-EG');
+            const actor = currentAdminUser?.email || 'Admin';
+
+            recipesArr.forEach((rec, idx) => {
+                const docId = String(rec.id || `SHK-${String(idx + 1).padStart(3, '0')}`).trim();
+                if (existingIds.has(docId)) {
+                    skippedCount++;
+                    return;
+                }
+
+                const payload = {
+                    ...rec,
+                    id: docId,
+                    number: Number(rec.number) || (idx + 1),
+                    slug: makeSlug(docId, rec.title),
+                    image_url: rec.image_url || '',
+                    recommendedProductIds: Array.isArray(rec.recommendedProductIds) ? rec.recommendedProductIds : [],
+                    publishStatus: 'draft',
+                    verificationStatus: 'needs_practical_test',
+                    practicalTestLog: null,
+                    ratingAvg: 0,
+                    ratingCount: 0,
+                    auditLog: [{ at: nowStr, by: actor, action: 'استيراد تأسيسي من ملف الـ 50 وصفة (مسودة)' }],
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                batch.set(kDb.collection('kitchen_recipes').doc(docId), payload);
+                addedCount++;
+            });
+
+            const guideIcons = ['fa-hand-sparkles', 'fa-snowflake', 'fa-temperature-high', 'fa-box-open', 'fa-certificate'];
+            guidesArr.forEach((g, idx) => {
+                const gId = `guide_${String(idx + 1).padStart(2, '0')}`;
+                batch.set(kDb.collection('kitchen_guides').doc(gId), {
+                    order: idx + 1,
+                    icon: guideIcons[idx] || 'fa-shield-halved',
+                    title: g.title || '',
+                    content: g.content || ''
+                }, { merge: true });
+            });
+
+            await batch.commit();
+
+            if (logEl) {
+                logEl.className = 'text-xs font-black p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900';
+                logEl.innerHTML = `✅ اكتمل الاستيراد بنجاح!<br>• وصفات جديدة أُضيفت (كمسودات): ${addedCount}<br>• وصفات موجودة مسبقاً (لم تُمس): ${skippedCount}<br>• بطاقات سلامة الغذاء: ${guidesArr.length}`;
+            }
+
+            await loadAllAdminData();
+            showToast(`🎉 تم استيراد ${addedCount} وصفة بنجاح!`);
+        } catch (err) {
+            console.error('Import JSON Error:', err);
+            if (logEl) {
+                logEl.className = 'text-xs font-black p-3 rounded-xl border bg-rose-50 border-rose-200 text-rose-700';
+                logEl.textContent = `❌ خطأ أثناء الاستيراد: ${err.message}`;
+            }
+        } finally {
+            if (btn) btn.disabled = false;
+        }
+    };
+
+    // =========================================================================
+    // 4. عرض قائمة الوصفات + التبديل السريع للنشر/الإخفاء
+    // =========================================================================
+    window.kaRenderRecipesList = function () {
+        const cont = document.getElementById('ka-recipes-list');
+        if (!cont) return;
+
+        const q = String(document.getElementById('ka-search')?.value || '').trim().toLowerCase();
+        const fCat = document.getElementById('ka-filter-cat')?.value || 'all';
+        const fPub = document.getElementById('ka-filter-pub')?.value || 'all';
+        const fVer = document.getElementById('ka-filter-ver')?.value || 'all';
+
+        const filtered = adminRecipes.filter((r) => {
+            if (fCat !== 'all' && r.category !== fCat) return false;
+            const pub = r.publishStatus === 'published' ? 'published' : 'draft';
+            if (fPub !== 'all' && pub !== fPub) return false;
+            const ver = r.verificationStatus === 'practically_tested' ? 'practically_tested' : 'needs_practical_test';
+            if (fVer !== 'all' && ver !== fVer) return false;
+            if (q && !`${r.id} ${r.title} ${r.category}`.toLowerCase().includes(q)) return false;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            cont.innerHTML = `<div class="col-span-full bg-white rounded-3xl p-8 text-center border-2 border-dashed border-slate-200 space-y-2">
+                <p class="text-sm font-black text-slate-600">${adminRecipes.length === 0 ? 'لم يتم استيراد الـ 50 وصفة بعد.' : 'لا توجد وصفات تطابق الفلتر الحالي.'}</p>
+                ${adminRecipes.length === 0 ? `<button type="button" onclick="window.kaSwitchTab('import')" class="bg-brand-navy text-white px-4 py-2 rounded-xl text-xs font-black">اذهب لتبويب الاستيراد 📥</button>` : ''}
+            </div>`;
+            return;
+        }
+
+        cont.innerHTML = filtered.map((r) => {
+            const isPub = r.publishStatus === 'published';
+            const isTested = r.verificationStatus === 'practically_tested';
+            const hasImg = Boolean(r.image_url && String(r.image_url).trim());
+            const safeId = escAttr(r.id);
+
+            return `
+            <div class="bg-white rounded-2xl p-3.5 border-2 ${isPub ? 'border-emerald-200' : 'border-slate-200'} shadow-sm flex flex-col justify-between gap-3">
+                <div class="flex items-start gap-3">
+                    <div class="w-16 h-16 rounded-xl overflow-hidden shrink-0 ${hasImg ? 'bg-slate-100' : 'kitchen-cover-placeholder'} flex items-center justify-center text-white text-xs font-black">
+                        ${hasImg ? `<img src="${esc(r.image_url)}" alt="" class="w-full h-full object-cover">` : `<span dir="ltr" class="relative z-10 text-[10px] text-amber-300">${esc(r.id)}</span>`}
+                    </div>
+                    <div class="min-w-0 flex-1 space-y-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-[10px] font-black bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded" dir="ltr">${esc(r.id)}</span>
+                            <span class="text-[10px] font-black ${isPub ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'} px-2 py-0.5 rounded-md">${isPub ? '🟢 منشورة' : '📝 مسودة'}</span>
+                            <span class="text-[10px] font-black ${isTested ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-500'} px-2 py-0.5 rounded-md">${isTested ? '✅ مجرّبة' : '📋 إرشادية'}</span>
+                        </div>
+                        <h4 class="text-sm font-black text-brand-navy truncate">${esc(r.title)}</h4>
+                        <p class="text-[10px] font-bold text-slate-500">${esc(r.category)} • ${hasImg ? '🖼️ بها صورة' : '⚠️ بدون صورة بعد'}</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 pt-2 border-t border-slate-100">
+                    <button type="button" onclick="window.kaQuickTogglePublish('${safeId}')" class="flex-1 py-2 px-2.5 rounded-xl text-[11px] font-black transition-all ${isPub ? 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200' : 'bg-emerald-600 hover:bg-emerald-700 text-white'}">
+                        ${isPub ? '⏸️ تحويل لمسودة' : '🚀 نشر للعملاء'}
+                    </button>
+                    <button type="button" onclick="window.kaOpenEditor('${safeId}')" class="bg-slate-900 hover:bg-brand-navy text-white py-2 px-3.5 rounded-xl text-[11px] font-black">
+                        <i class="fa-solid fa-pen text-amber-400 ml-1"></i> تعديل واعتماد
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+    };
+
+    window.kaQuickTogglePublish = async function (recipeId) {
+        const rec = adminRecipes.find((r) => r.id === recipeId);
+        if (!rec || !kDb) return;
+
+        const nextStatus = rec.publishStatus === 'published' ? 'draft' : 'published';
+        const audit = Array.isArray(rec.auditLog) ? [...rec.auditLog] : [];
+        audit.unshift({
+            at: new Date().toLocaleString('ar-EG'),
+            by: currentAdminUser?.email || 'Admin',
+            action: nextStatus === 'published' ? 'نشر الوصفة في المطبخ العام' : 'إخفاء الوصفة وتحويلها لمسودة'
+        });
+
+        try {
+            await kDb.collection('kitchen_recipes').doc(recipeId).update({
+                publishStatus: nextStatus,
+                auditLog: audit.slice(0, 20),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            rec.publishStatus = nextStatus;
+            rec.auditLog = audit.slice(0, 20);
+            updateStats();
+            window.kaRenderRecipesList();
+            showToast(nextStatus === 'published' ? `🚀 تم نشر (${rec.title}) للعملاء!` : `📝 تم إخفاء (${rec.title}) كمسودة.`);
+        } catch (e) {
+            showToast('تعذر تحديث حالة النشر', 'fa-triangle-exclamation text-rose-400');
+        }
+    };
+
+    // =========================================================================
+    // 5. محرر الوصفة + توثيق التجربة العملية + رفع الصور
+    // =========================================================================
+    window.kaTogglePracticalBox = function () {
+        const val = document.getElementById('ke-verify-status')?.value;
+        document.getElementById('ke-practical-box')?.classList.toggle('hidden', val !== 'practically_tested');
+    };
+
+    window.kaUpdateImgPreview = function () {
+        const url = String(document.getElementById('ke-image-url')?.value || '').trim();
+        const img = document.getElementById('ke-img-preview');
+        if (!img) return;
+        if (url) {
+            img.src = url;
+            img.classList.remove('hidden');
+        } else {
+            img.classList.add('hidden');
+        }
+    };
+
+    window.kaCopyImagePrompt = function () {
+        const txt = String(document.getElementById('ke-image-prompt')?.value || '').trim();
+        if (!txt) return;
+        navigator.clipboard?.writeText(txt).then(() => showToast('📋 تم نسخ برومبت الصورة بنجاح')).catch(() => {});
+    };
+
+    window.kaOpenEditor = function (recipeId) {
+        const rec = recipeId ? adminRecipes.find((r) => r.id === recipeId) : null;
+        const isNew = !rec;
+
+        const nextNum = adminRecipes.length + 1;
+        const defaultId = isNew ? `SHK-${String(nextNum).padStart(3, '0')}` : rec.id;
+
+        document.getElementById('ke-id').value = isNew ? '' : rec.id;
+        document.getElementById('ke-modal-title').textContent = isNew ? 'إضافة وصفة جديدة' : `تعديل: ${rec.title}`;
+        document.getElementById('ke-modal-id-sub').textContent = defaultId;
+        document.getElementById('ke-delete-btn')?.classList.toggle('hidden', isNew);
+
+        const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v !== undefined && v !== null ? v : ''; };
+        setV('ke-publish-status', rec?.publishStatus || 'draft');
+        setV('ke-verify-status', rec?.verificationStatus || 'needs_practical_test');
+        setV('ke-title', rec?.title || '');
+        setV('ke-category', rec?.category || 'وصفات السمان');
+        setV('ke-servings', rec?.servings || 4);
+        setV('ke-difficulty', rec?.difficulty || 'سهل');
+        setV('ke-prep', rec?.prep_minutes || '');
+        setV('ke-cook', rec?.cook_minutes_estimate || '');
+        setV('ke-intro', rec?.intro || '');
+        setV('ke-equipment', rec?.equipment || '');
+        setV('ke-image-url', rec?.image_url || '');
+        setV('ke-image-prompt', rec?.image_prompt_ar || '');
+        setV('ke-ingredients', Array.isArray(rec?.ingredients) ? rec.ingredients.join('\n') : '');
+        setV('ke-steps', Array.isArray(rec?.steps) ? rec.steps.join('\n') : '');
+        setV('ke-safety', rec?.doneness_and_safety || '');
+        setV('ke-mistakes', rec?.common_mistakes || '');
+        setV('ke-serving', rec?.serving_suggestions || '');
+        setV('ke-storage', rec?.storage || '');
+        setV('ke-allergens', rec?.allergens || '');
+
+        const pLog = rec?.practicalTestLog || {};
+        setV('ke-test-reviewer', pLog.reviewer || '');
+        setV('ke-test-date', pLog.testedAt || new Date().toISOString().split('T')[0]);
+        setV('ke-test-temp', pLog.measuredTemp || '');
+        setV('ke-test-weight', pLog.productWeight || '');
+        setV('ke-test-device', pLog.deviceUsed || '');
+        setV('ke-test-notes', pLog.resultNotes || '');
+
+        window.kaTogglePracticalBox();
+        window.kaUpdateImgPreview();
+
+        // رسم أصناف المتجر للربط
+        const linkedWrap = document.getElementById('ke-linked-products');
+        const selectedProds = Array.isArray(rec?.recommendedProductIds) ? rec.recommendedProductIds : [];
+        if (linkedWrap) {
+            const pKeys = Object.keys(storeProductsMap).filter((k) => storeProductsMap[k] && !storeProductsMap[k].isHidden);
+            linkedWrap.innerHTML = pKeys.map((pid) => {
+                const p = storeProductsMap[pid];
+                const chk = selectedProds.includes(pid) ? 'checked' : '';
+                return `
+                    <label class="inline-flex items-center gap-1.5 bg-white border border-slate-200 px-2.5 py-1.5 rounded-xl text-[11px] font-black cursor-pointer">
+                        <input type="checkbox" class="ke-prod-chk w-3.5 h-3.5 accent-emerald-700" value="${esc(pid)}" ${chk}>
+                        <span>${esc(p.name)}</span>
+                    </label>`;
+            }).join('') || '<span class="text-[11px] font-bold text-slate-400">سيتم الربط التلقائي بأصناف المتجر.</span>';
+        }
+
+        // سجل التعديلات
+        const auditWrap = document.getElementById('ke-audit-wrap');
+        const auditBox = document.getElementById('ke-audit-log');
+        if (auditWrap && auditBox) {
+            const logs = Array.isArray(rec?.auditLog) ? rec.auditLog : [];
+            if (logs.length > 0) {
+                auditBox.innerHTML = logs.map((l) => `<div>• <strong>${esc(l.action)}</strong> — ${esc(l.by)} (${esc(l.at)})</div>`).join('');
+                auditWrap.classList.remove('hidden');
+            } else {
+                auditWrap.classList.add('hidden');
+            }
+        }
+
+        document.getElementById('ka-edit-modal')?.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.kaCloseEditor = function () {
+        document.getElementById('ka-edit-modal')?.classList.add
