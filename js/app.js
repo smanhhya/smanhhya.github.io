@@ -1,4 +1,4 @@
-// js/app.js - محرك متجر سمان ههيا البريميوم (App Experience + توافق 100% مع الـ CRM والأمان)
+// js/app.js - محرك متجر سمان ههيا البريميوم (معرض Filmstrip + كروت متوازنة + تجربة سلة وإتمام طلب فاخرة)
 
 (function () {
     const U = window.SMAN_UTILS;
@@ -18,7 +18,6 @@
     let toastTimer = null;
     let currentQuickViewId = null;
 
-    // حالة عارض القصص وحاسبة العزومة
     let currentStoryIdx = 0;
     const TOTAL_STORIES = 5;
     const feastState = { adults: 4, kids: 0, style: 'grill', includeEggs: false, plan: [] };
@@ -192,6 +191,19 @@
         return U.getProductCategoryAndRank(id, p).group === 'quail';
     }
 
+    function getShortUsageTag(id, p) {
+        const sId = String(id || '').toLowerCase();
+        const sName = String(p?.name || '').toLowerCase();
+        if (p?.isWeightBased) return '⚖️ بالميزان الطازج';
+        if (sId === 'eggs' || sName.includes('بيض')) return '🥚 مغذي للأطفال';
+        if (sId === 'chicks' || sName.includes('كتكوت')) return '🐣 تربية ممتازة';
+        if (sId === 'superspecial' || (sName.includes('سوبر') && (sName.includes('سبشيال') || sName.includes('اسبيشيال')))) return '👑 ملكي للعزومات';
+        if (sId === 'special' || sName.includes('سبشيال') || sName.includes('اسبيشيال')) return '🍚 مثالي للحشو';
+        if (sId === 'jumbo' || sName.includes('جامبو')) return '⭐ شوي وحشو';
+        if (sId === 'super' || sName.includes('سوبر')) return '🔥 مثالي للشوي';
+        return '🌿 طازج بالطلب';
+    }
+
     function getCookingTipForProduct(id, p) {
         const sId = String(id || '').toLowerCase();
         const sName = String(p?.name || '').toLowerCase();
@@ -316,7 +328,7 @@
     }
 
     // =========================================================================
-    // 4. عرض الإعدادات والنصوص والكتالوج والمناطق
+    // 4. عرض الإعدادات والمناطق (مع أزرار اختيار المناطق السريعة) والكتالوج الفاخر
     // =========================================================================
     function applyUITexts() {
         const t = globalSettings.uiTexts || {};
@@ -345,10 +357,8 @@
     function applySettingsToUI() {
         const storeName = globalSettings.storeName || 'سمان ههيا';
         const headerName = document.getElementById('header-store-name');
-        const footerName = document.getElementById('footer-store-name');
         const descEl = document.getElementById('header-store-desc');
         if (headerName) headerName.textContent = storeName;
-        if (footerName) footerName.textContent = storeName;
         if (descEl && globalSettings.storeDesc) descEl.textContent = globalSettings.storeDesc;
 
         const phoneStr = globalSettings.storePhone || '01208027294';
@@ -406,7 +416,7 @@
         const promoToggle = document.getElementById('promo-toggle-btn');
         if (promoToggle) promoToggle.classList.toggle('hidden', globalSettings.showPromoField === false);
 
-        renderSlider();
+        renderCatalogFilmstrip();
         applyUITexts();
     }
 
@@ -414,7 +424,7 @@
         const select = document.getElementById('delivery-zone');
         if (!select) return;
         const currentVal = select.value || window._preferredSavedZone || '';
-        select.innerHTML = '<option value="" disabled selected>اختر منطقتك لحساب الشحن...</option>';
+        select.innerHTML = '<option value="" disabled selected>أو اختر من القائمة الكاملة للمناطق...</option>';
 
         globalDeliveryZones.forEach((zone) => {
             const opt = document.createElement('option');
@@ -429,64 +439,85 @@
             const match = globalDeliveryZones.find((z) => z.id === currentVal || z.name === currentVal);
             if (match) select.value = match.id || match.name;
         }
+
+        renderQuickZoneChips();
     }
 
-    // --- السلايدر وعارض الصور ---
-    window.moveSlider = function (direction) {
-        if (!window.sliderImages || window.sliderImages.length <= 1) return;
-        window.currentSlide = (window.currentSlide + direction + window.sliderImages.length) % window.sliderImages.length;
-        window.updateSliderView();
+    function renderQuickZoneChips() {
+        const wrap = document.getElementById('quick-zone-chips');
+        const select = document.getElementById('delivery-zone');
+        if (!wrap || !select) return;
+
+        const curVal = select.value;
+        wrap.innerHTML = globalDeliveryZones.slice(0, 8).map((z) => {
+            const val = z.id || z.name;
+            const isSel = curVal === val || curVal === z.name;
+            const priceTxt = Number(z.price) === 0 ? 'تُحدد لاحقاً' : `${z.price}ج`;
+            return `
+                <button type="button" data-zone-val="${esc(val)}" onclick="selectQuickZoneChip('${escAttr(val)}')" class="zone-chip ${isSel ? 'active' : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-brand-navy/40'} border-2 px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1.5">
+                    <span>${esc(z.name)}</span>
+                    <span class="text-[9px] px-1.5 py-0.5 rounded-md ${isSel ? 'bg-amber-400 text-[#0b261c]' : 'bg-white text-slate-500 border border-slate-200'}">${priceTxt}</span>
+                </button>`;
+        }).join('');
+    }
+
+    window.selectQuickZoneChip = function (val) {
+        const select = document.getElementById('delivery-zone');
+        if (!select) return;
+        select.value = val;
+        if (navigator.vibrate) navigator.vibrate(25);
+        window.syncQuickZoneChipsUI();
+        updateUI();
     };
 
-    window.updateSliderView = function () {
-        const track = document.getElementById('slider-track');
-        if (track) track.style.transform = `translateX(${window.currentSlide * 100}%)`;
-        document.querySelectorAll('.slider-dot').forEach((dot, idx) => {
-            dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 cursor-pointer ${idx === window.currentSlide ? 'active' : 'bg-white/50'}`;
-        });
+    window.syncQuickZoneChipsUI = function () {
+        renderQuickZoneChips();
     };
 
-    function renderSlider() {
-        const track = document.getElementById('slider-track');
-        const dots = document.getElementById('slider-dots');
-        const container = document.getElementById('main-slider-container');
-        if (!track || !dots || !container) return;
+    window.appendQuickNote = function (txt) {
+        const ta = document.getElementById('customer-notes');
+        if (!ta) return;
+        const cur = ta.value.trim();
+        if (cur.includes(txt)) return;
+        ta.value = cur ? `${cur} - ${txt}` : txt;
+        if (navigator.vibrate) navigator.vibrate(20);
+        showStoreToast('تمت إضافة الملاحظة للطلب');
+    };
+
+    // --- معرض الكتالوج الفاخر (Luxury Filmstrip Cards — صفر مساحات بيضاء جانبية) ---
+    function renderCatalogFilmstrip() {
+        const strip = document.getElementById('catalog-filmstrip');
+        const badge = document.getElementById('catalog-count-badge');
+        if (!strip) return;
 
         const images = (Array.isArray(globalSettings.galleryImages) && globalSettings.galleryImages.length > 0)
             ? globalSettings.galleryImages.filter((x) => x && String(x).trim() !== '')
             : ['all-sizes.jpg'];
         window.sliderImages = images;
 
-        track.innerHTML = images.map((img) => {
+        if (badge) badge.textContent = `${images.length} ${images.length === 1 ? 'صورة' : 'صور'}`;
+
+        const isSingle = images.length === 1;
+        strip.innerHTML = images.map((img, idx) => {
             const safeImg = escAttr(img);
+            const widthCls = isSingle ? 'w-full h-[300px] sm:h-[340px]' : 'w-[74%] sm:w-[44%] h-[280px] sm:h-[310px]';
             return `
-            <div class="w-full shrink-0 max-h-[340px] bg-[#faf8f3] overflow-hidden relative flex justify-center items-center p-2 cursor-zoom-in" onclick="openImageModal('${safeImg}')">
-                <img src="${esc(img)}" alt="دليل الأحجام" loading="lazy" class="max-w-full max-h-[320px] object-contain rounded-xl transition-transform duration-300 hover:scale-[1.02]" onerror="this.style.display='none'">
-            </div>`;
+                <div onclick="openImageModal('${safeImg}')" class="catalog-slide-card ${widthCls} cursor-zoom-in border border-white/15 shadow-lg group">
+                    <img src="${esc(img)}" alt="" aria-hidden="true" class="catalog-blur-bg">
+                    <img src="${esc(img)}" alt="صورة من مزرعة سمان ههيا ${idx + 1}" loading="lazy" class="relative z-10 w-full h-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-[1.03]" onerror="this.style.display='none'">
+                    <div class="absolute bottom-2.5 right-2.5 z-20 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full border border-white/15 flex items-center gap-1">
+                        <i class="fa-solid fa-magnifying-glass-plus text-amber-400 text-[9px]"></i>
+                        <span>${idx + 1} / ${images.length}</span>
+                    </div>
+                </div>`;
         }).join('');
-
-        dots.innerHTML = images.length > 1
-            ? images.map((_, idx) => `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx === 0 ? 'active' : 'bg-white/50'} cursor-pointer" onclick="event.stopPropagation(); window.currentSlide=${idx}; window.updateSliderView();"></div>`).join('')
-            : '';
-
-        container.querySelectorAll('.slider-nav-btn').forEach((btn) => {
-            btn.classList.toggle('hidden', images.length <= 1);
-        });
-
-        window.currentSlide = 0;
-        window.updateSliderView();
-
-        let touchStartX = 0;
-        const viewport = document.getElementById('slider-viewport');
-        if (viewport) {
-            viewport.ontouchstart = (e) => { touchStartX = e.changedTouches[0].screenX; };
-            viewport.ontouchend = (e) => {
-                const diff = e.changedTouches[0].screenX - touchStartX;
-                if (diff < -35) window.moveSlider(-1);
-                if (diff > 35) window.moveSlider(1);
-            };
-        }
     }
+
+    window.moveSlider = function (dir) {
+        const strip = document.getElementById('catalog-filmstrip');
+        if (strip) strip.scrollBy({ left: dir * -260, behavior: 'smooth' });
+    };
+    window.updateSliderView = function () {};
 
     window.openImageModal = function (imgSrc) {
         if (!imgSrc || !String(imgSrc).trim()) return;
@@ -533,7 +564,7 @@
     window.addEventListener('popstate', closeImageViewer);
 
     // =========================================================================
-    // 5. عارض القصص التفاعلي (Instagram Stories Viewer ببيانات حية من Firebase)
+    // 5. عارض القصص التفاعلي (Instagram Stories Viewer)
     // =========================================================================
     function renderStoryContent(idx) {
         currentStoryIdx = ((idx % TOTAL_STORIES) + TOTAL_STORIES) % TOTAL_STORIES;
@@ -553,13 +584,12 @@
         if (counterEl) counterEl.textContent = `${currentStoryIdx + 1} / ${TOTAL_STORIES}`;
 
         if (currentStoryIdx === 0) {
-            // قصة 1: دليل الأحجام والصور الحية
             titleEl.textContent = 'دليل الأحجام على الطبيعة';
             iconEl.innerHTML = '<i class="fa-solid fa-ruler-combined"></i>';
             const imgs = (Array.isArray(globalSettings.galleryImages) && globalSettings.galleryImages.length > 0)
                 ? globalSettings.galleryImages : ['all-sizes.jpg'];
             const imgsHtml = imgs.map((src) => `
-                <img src="${esc(src)}" alt="دليل الأحجام" onclick="openImageModal('${escAttr(src)}')" class="w-full rounded-2xl border border-white/15 bg-white/5 max-h-64 object-contain cursor-zoom-in">`).join('');
+                <img src="${esc(src)}" alt="دليل الأحجام" onclick="openImageModal('${escAttr(src)}')" class="w-full rounded-2xl border border-white/15 bg-white/5 max-h-60 object-contain cursor-zoom-in">`).join('');
 
             const quailSummary = Object.keys(productsInfo)
                 .filter((id) => productsInfo[id] && !productsInfo[id].isHidden && isMainQuailItem(id))
@@ -579,7 +609,6 @@
                 <p class="text-[11px] text-emerald-200/80 text-center font-bold">اضغط على أي صورة لتكبيرها ومشاهدة التفاصيل</p>
             `;
         } else if (currentStoryIdx === 1) {
-            // قصة 2: طازج بالطلب بدون تجميد
             titleEl.textContent = 'ليه سمان ههيا طعمه مختلف؟';
             iconEl.innerHTML = '<i class="fa-solid fa-leaf"></i>';
             const badges = (Array.isArray(globalSettings.trustBadges) && globalSettings.trustBadges.length > 0)
@@ -605,7 +634,6 @@
                 </div>
             `;
         } else if (currentStoryIdx === 2) {
-            // قصة 3: نظام النقاط والهدايا
             titleEl.textContent = 'نظام نقاط الولاء والهدايا 🎁';
             iconEl.innerHTML = '<i class="fa-solid fa-gift"></i>';
             bodyEl.innerHTML = `
@@ -630,7 +658,6 @@
                 </a>
             `;
         } else if (currentStoryIdx === 3) {
-            // قصة 4: مناطق التوصيل الحية من Firebase
             titleEl.textContent = 'مناطق التوصيل ورسوم الشحن';
             iconEl.innerHTML = '<i class="fa-solid fa-truck-fast"></i>';
             const zonesHtml = globalDeliveryZones.map((z) => `
@@ -644,7 +671,6 @@
                 ${globalSettings.freeDeliveryActive ? `<div class="bg-emerald-500/20 border border-emerald-400/30 p-2.5 rounded-xl text-center text-xs font-black text-emerald-200">🎉 التوصيل مجاني للطلبات فوق ${globalSettings.freeDeliveryThreshold} ج.م</div>` : ''}
             `;
         } else {
-            // قصة 5: دليل الطهي لكل حجم
             titleEl.textContent = 'دليل اختيار الحجم حسب الأكلة 🍳';
             iconEl.innerHTML = '<i class="fa-solid fa-fire-burner"></i>';
             bodyEl.innerHTML = `
@@ -695,7 +721,7 @@
     };
 
     // =========================================================================
-    // 6. حاسبة العزومة الذكية (مربوطة بالأسعار والمخزون الحي في Firebase)
+    // 6. حاسبة العزومة الذكية
     // =========================================================================
     window.openFeastCalculator = function () {
         const md = document.getElementById('feast-calc-modal');
@@ -755,8 +781,6 @@
 
     window.recalcFeastRecommendation = function () {
         feastState.includeEggs = Boolean(document.getElementById('feast-include-eggs')?.checked);
-
-        // كل طبق = جوز (فردتين سمان). للشوي الفرد البالغ يأخذ جوز كامل، للحشو أو العزومة القوية جوز كامل مع حجم أكبر، والطفل نصف جوز
         const basePlates = Math.max(1, Math.ceil(feastState.adults + (feastState.kids * 0.5)));
         const prefMap = {
             grill: ['super', 'jumbo', 'special', 'superspecial'],
@@ -846,7 +870,7 @@
     };
 
     // =========================================================================
-    // 7. كروت الدفعات المدمجة (Smart Batch Switcher)
+    // 7. كروت الدفعات المدمجة
     // =========================================================================
     window.getFriendlyBatchDatePhrase = function (startDateStr, endDateStr) {
         if (!startDateStr) return 'قريباً فور التجهيز';
@@ -883,6 +907,23 @@
         return null;
     }
 
+    function updateCartBatchBanner() {
+        const pill = document.getElementById('cart-active-batch-pill');
+        const nameEl = document.getElementById('cart-batch-pill-name');
+        const dateEl = document.getElementById('cart-batch-pill-date');
+        if (!pill) return;
+
+        const bId = document.getElementById('user-batch-select')?.value || '';
+        const b = bId ? globalBatches[bId] : null;
+        if (b && b.name) {
+            if (nameEl) nameEl.textContent = b.name;
+            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(b.deliveryStart, b.deliveryEnd);
+            pill.classList.remove('hidden');
+        } else {
+            pill.classList.add('hidden');
+        }
+    }
+
     function renderBatchesSelection() {
         const batchSelect = document.getElementById('user-batch-select');
         const batchNameHidden = document.getElementById('selected-batch-name');
@@ -892,7 +933,7 @@
         const heroPillLabel = document.getElementById('hero-batch-pill-label');
         if (!batchSelect || !batchContainer || !cardsWrapper) return;
 
-        let batchesArr = Object.keys(globalBatches)
+        const batchesArr = Object.keys(globalBatches)
             .map((id) => ({ id, ...globalBatches[id] }))
             .filter((b) => b && b.name && b.name !== 'undefined' && b.isVisible !== false);
 
@@ -903,6 +944,7 @@
         if (toShow.length === 0) {
             batchContainer.classList.add('hidden');
             if (heroPillName) heroPillName.textContent = 'اطلب مباشرة من المنيو';
+            updateCartBatchBanner();
             return;
         }
 
@@ -915,7 +957,6 @@
             if (batchNameHidden) batchNameHidden.value = openBatches[0].name || '';
         }
 
-        // تحديث كبسولة الهيدر العلوية باسم الدفعة النشطة
         const activeObj = globalBatches[currentVal] || openBatches[0] || toShow[0];
         if (heroPillName && activeObj) {
             heroPillName.textContent = activeObj.name;
@@ -995,6 +1036,8 @@
                 </span>
             </div>`;
         }).join('');
+
+        updateCartBatchBanner();
     }
 
     window.selectBatchAndScroll = function (bId) {
@@ -1040,9 +1083,9 @@
     };
 
     // =========================================================================
-    // 8. شبكة المنتجات البريميوم (App Grid + المعاينة السريعة + الوزن)
+    // 8. شبكة المنتجات المصقولة (صور مربعة كاملة + كارت أفقي للصنف الوحيد)
     // =========================================================================
-    function buildAppGridProductCard(id, item) {
+    function buildAppGridProductCard(id, item, isFullWidthSingle = false) {
         const available = getAvailableStock(id);
         const inCart = Number(cart[id]?.quantity) || 0;
         const currentPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
@@ -1053,6 +1096,7 @@
 
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
+        const usageTag = getShortUsageTag(id, item);
 
         const stockLine = available === 0
             ? `<span class="text-[10px] font-black text-rose-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> نفذت الكمية</span>`
@@ -1060,27 +1104,57 @@
                 ? `<span class="text-[10px] font-black text-amber-700 flex items-center gap-1"><i class="fa-solid fa-fire text-orange-500 animate-pulse text-[9px]"></i> متبقي ${available} فقط!</span>`
                 : `<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متاح (${available})</span>`);
 
+        // إذا كان الصنف وحيداً في قسم الإضافات (مثل بيض سمان فقط) يُعرض ككارت أفقي مميز بلا أي فراغ أبيض جانبي
+        if (isFullWidthSingle) {
+            return `
+            <div class="col-span-full product-app-card ${inCart > 0 ? 'in-cart' : ''} rounded-3xl p-2.5 flex items-center gap-3 relative overflow-hidden">
+                <div onclick="openProductQuickView('${safeId}')" class="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-[#f4f1ea] shrink-0 cursor-pointer">
+                    ${imgSrc
+                        ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-cover" onerror="this.style.display='none'">`
+                        : `<div class="w-full h-full flex items-center justify-center text-amber-500 bg-amber-50"><i class="fa-solid fa-egg text-3xl"></i></div>`}
+                    ${item.weight ? `<span class="absolute bottom-1.5 right-1.5 bg-black/65 text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+                </div>
+                <div class="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                    <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer space-y-1">
+                        <div class="flex items-center gap-1.5 flex-wrap">
+                            <h3 class="text-sm sm:text-base font-black text-brand-navy">${esc(item.name)}</h3>
+                            <span class="text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg">${usageTag}</span>
+                        </div>
+                        <p class="text-[11px] font-bold text-slate-500 line-clamp-1">${esc(getCookingTipForProduct(id, item))}</p>
+                        <div>${stockLine}</div>
+                    </div>
+                    <div class="flex items-end justify-between gap-2 pt-2 border-t border-slate-100 mt-2">
+                        <div>
+                            ${isDiscountActive ? `<span class="block text-[10px] text-slate-400 line-through font-bold">${oldPrice} ج</span>` : ''}
+                            <span class="font-black text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'}">${currentPrice} <span class="text-[10px] font-bold text-slate-400">ج.م</span></span>
+                        </div>
+                        <div id="card-action-${esc(id)}" class="shrink-0">${getCardActionHTML(id)}</div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        // الكارت المربع المتوازن لأطباق السمان (يظهر الطبق وستيكر سمان ههيا بالكامل بدون قص)
         return `
         <div class="product-app-card ${inCart > 0 ? 'in-cart' : ''} ${available === 0 && inCart === 0 ? 'opacity-85' : ''} rounded-3xl p-2 flex flex-col justify-between relative overflow-hidden">
-            <!-- صورة الطبق + الشارات العائمة -->
-            <div onclick="openProductQuickView('${safeId}')" class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-[#f4f1ea] cursor-pointer group">
+            <div onclick="openProductQuickView('${safeId}')" class="relative aspect-square rounded-2xl overflow-hidden bg-[#f4f1ea] cursor-pointer group">
                 ${imgSrc
                     ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" onerror="this.style.display='none'">`
                     : `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-kiwi-bird text-3xl"></i></div>`}
 
                 ${isDiscountActive ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md sale-badge">وفر ${savePct}%</span>` : ''}
                 ${isBestSeller ? `<span class="absolute top-2 right-2 bg-[#0b261c]/90 text-amber-300 text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md backdrop-blur-sm border border-amber-400/30">👑 الأكثر طلباً</span>` : ''}
-                ${item.weight ? `<span class="absolute bottom-2 right-2 bg-black/65 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+                ${item.weight ? `<span class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
             </div>
 
-            <!-- التفاصيل والسعر والتحكم -->
-            <div class="pt-2.5 px-1 pb-1 flex-1 flex flex-col justify-between gap-2">
-                <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer">
+            <div class="pt-2 px-1 pb-0.5 flex-1 flex flex-col justify-between gap-1.5">
+                <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer space-y-0.5">
                     <h3 class="text-xs sm:text-sm font-black text-brand-navy leading-snug line-clamp-1">${esc(item.name)}</h3>
-                    <div class="mt-0.5">${stockLine}</div>
+                    <span class="inline-block text-[10px] font-bold text-slate-500">${usageTag}</span>
+                    <div>${stockLine}</div>
                 </div>
 
-                <div class="flex items-end justify-between gap-1.5 pt-1 border-t border-slate-100">
+                <div class="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100 mt-1">
                     <div>
                         ${isDiscountActive ? `<span class="block text-[10px] text-slate-400 line-through font-bold leading-none">${oldPrice} ج</span>` : ''}
                         <span class="font-black text-base sm:text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'} leading-none">${currentPrice} <span class="text-[10px] font-bold text-slate-400">ج.م</span></span>
@@ -1274,7 +1348,6 @@
             groups[meta.group].push({ id, item, rank: meta.rank });
         });
 
-        // إظهار فلتر الطيور بالوزن فقط إذا وُجدت أصناف بالوزن
         const weightFilterBtn = document.querySelector('.store-filter-btn[data-filter="weight"]');
         if (weightFilterBtn) weightFilterBtn.classList.toggle('hidden', !hasAnyWeightProduct);
 
@@ -1284,7 +1357,7 @@
 
         if (quailWrap) {
             if (groups.quail.length > 0) {
-                container.innerHTML = groups.quail.map((g) => buildAppGridProductCard(g.id, g.item)).join('');
+                container.innerHTML = groups.quail.map((g) => buildAppGridProductCard(g.id, g.item, false)).join('');
                 quailWrap.classList.remove('hidden');
             } else if (activeProductFilter === 'all') {
                 container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-200">${esc(globalSettings.uiTexts?.emptyMenuMsg || 'لا توجد منتجات متاحة حالياً')}</div>`;
@@ -1296,7 +1369,8 @@
 
         if (extrasContainer && extrasWrap) {
             if (groups.eggs_chicks.length > 0) {
-                extrasContainer.innerHTML = groups.eggs_chicks.map((g) => buildAppGridProductCard(g.id, g.item)).join('');
+                const isSingleExtra = groups.eggs_chicks.length === 1;
+                extrasContainer.innerHTML = groups.eggs_chicks.map((g) => buildAppGridProductCard(g.id, g.item, isSingleExtra)).join('');
                 extrasWrap.classList.remove('hidden');
             } else {
                 extrasWrap.classList.add('hidden');
@@ -1414,8 +1488,57 @@
     };
 
     // =========================================================================
-    // 9. السلة، الكوبونات، ومحفظة النقاط
+    // 9. السلة، شريط الإضافة السريعة، الكوبونات، وملخص الخطوة 2
     // =========================================================================
+    function renderInCartQuickAddons() {
+        const wrap = document.getElementById('cart-quick-addons-wrap');
+        const list = document.getElementById('cart-quick-addons-list');
+        if (!wrap || !list) return;
+
+        if (Object.keys(cart).length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+
+        const suggestions = Object.keys(productsInfo)
+            .filter((id) => {
+                const p = productsInfo[id];
+                return p && !p.isHidden && !p.isWeightBased && !cart[id] && getAvailableStock(id) > 0;
+            })
+            .sort((a, b) => {
+                // أولوية لبيض السمان ثم الأكثر طلباً ثم الترتيب الطبيعي
+                const aEgg = (a === 'eggs' || String(productsInfo[a]?.name || '').includes('بيض')) ? 0 : 1;
+                const bEgg = (b === 'eggs' || String(productsInfo[b]?.name || '').includes('بيض')) ? 0 : 1;
+                if (aEgg !== bEgg) return aEgg - bEgg;
+                return (productsInfo[b]?.isBest ? 1 : 0) - (productsInfo[a]?.isBest ? 1 : 0);
+            })
+            .slice(0, 3);
+
+        if (suggestions.length === 0) {
+            wrap.classList.add('hidden');
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        list.innerHTML = suggestions.map((id) => {
+            const p = productsInfo[id];
+            const pr = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
+            const imgSrc = (Array.isArray(p.images) && p.images[0]) ? p.images[0] : '';
+            const safeId = escAttr(id);
+            return `
+                <div class="shrink-0 w-44 bg-white border border-slate-200 rounded-2xl p-2 flex items-center gap-2 shadow-sm">
+                    ${imgSrc
+                        ? `<img src="${esc(imgSrc)}" alt="${esc(p.name)}" class="w-11 h-11 rounded-xl object-cover shrink-0 bg-slate-50">`
+                        : `<div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-egg"></i></div>`}
+                    <div class="min-w-0 flex-1">
+                        <span class="block text-[11px] font-black text-brand-navy truncate">${esc(p.name)}</span>
+                        <span class="block text-[10px] font-black text-emerald-700">${pr} ج.م</span>
+                    </div>
+                    <button type="button" onclick="addToCart('${safeId}')" class="w-7 h-7 rounded-lg bg-brand-navy text-amber-400 font-black flex items-center justify-center shrink-0 active:scale-90">+</button>
+                </div>`;
+        }).join('');
+    }
+
     window.applyPromoCode = function () {
         const inputEl = document.getElementById('promo-code-input');
         const msg = document.getElementById('promo-message');
@@ -1468,38 +1591,54 @@
         const cartItemsContainer = document.getElementById('cart-items');
         if (cartItemsContainer) cartItemsContainer.innerHTML = '';
 
+        const step2Lines = [];
+
         Object.keys(cart).forEach((id) => {
             if (!productsInfo[id]) {
                 delete cart[id];
                 return;
             }
+            const p = productsInfo[id];
             const item = cart[id];
-            item.price = Number(globalPrices[id] !== undefined ? globalPrices[id] : productsInfo[id].basePrice) || 0;
+            item.price = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
             const lineTotal = Math.round((Number(item.quantity) || 0) * item.price);
             subTotalPrice += lineTotal;
             totalItems += item.isWeightBased ? (item.selectedWeightsGrams?.length || 1) : Number(item.quantity);
 
+            const thumbSrc = (Array.isArray(p.images) && p.images[0]) ? p.images[0] : '';
+            step2Lines.push(`<div class="flex justify-between items-center text-slate-700 font-bold"><span>${esc(item.quantity)} × ${esc(item.name)}</span><strong class="text-brand-navy">${lineTotal} ج.م</strong></div>`);
+
             if (cartItemsContainer) {
                 const safeId = escAttr(id);
+                const thumbHtml = thumbSrc
+                    ? `<img src="${esc(thumbSrc)}" alt="${esc(item.name)}" class="w-13 h-13 w-[52px] h-[52px] rounded-xl object-cover shrink-0 border border-slate-100 bg-slate-50">`
+                    : `<div class="w-[52px] h-[52px] rounded-xl bg-emerald-50 text-brand-navy flex items-center justify-center shrink-0"><i class="fa-solid fa-kiwi-bird text-lg"></i></div>`;
+
                 cartItemsContainer.innerHTML += item.isWeightBased
                     ? `
-                    <div class="bg-white p-3 rounded-2xl border border-indigo-100 flex justify-between items-center gap-2 shadow-sm">
+                    <div class="bg-white p-2.5 rounded-2xl border border-indigo-100 flex items-center gap-2.5 shadow-sm">
+                        ${thumbHtml}
                         <div class="min-w-0 flex-1">
                             <h4 class="font-black text-indigo-950 text-xs truncate">${esc(item.name)}</h4>
-                            <div class="text-indigo-700 font-black text-xs mt-0.5">${item.quantity} كجم × ${item.price} = ${lineTotal} ج.م</div>
+                            <div class="text-indigo-700 font-black text-xs mt-0.5">${item.quantity} كجم × ${item.price} = <strong>${lineTotal} ج.م</strong></div>
                         </div>
-                        <button type="button" onclick="updateQuantity('${safeId}', -1)" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button type="button" onclick="updateQuantity('${safeId}', -1)" class="bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>`
                     : `
-                    <div class="bg-white p-3 rounded-2xl border border-slate-200/70 flex justify-between items-center gap-2 shadow-sm">
+                    <div class="bg-white p-2.5 rounded-2xl border border-slate-200/70 flex items-center gap-2.5 shadow-sm">
+                        ${thumbHtml}
                         <div class="min-w-0 flex-1">
                             <h4 class="font-black text-brand-navy text-xs truncate">${esc(item.name)}</h4>
-                            <div class="text-emerald-700 font-black text-xs mt-0.5">${item.price} ج.م للطبق</div>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span class="text-[11px] font-bold text-slate-400">${item.price} ج</span>
+                                <span class="text-slate-300">•</span>
+                                <span class="text-xs font-black text-emerald-700">${lineTotal} ج.م</span>
+                            </div>
                         </div>
-                        <div class="flex items-center gap-1.5 bg-slate-50 rounded-xl p-1 border border-slate-200 h-[34px] shrink-0">
-                            <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-full bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center">+</button>
-                            <span class="font-black text-brand-navy min-w-[22px] text-center text-xs">${item.quantity}</span>
-                            <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-full bg-white text-rose-500 rounded-lg shadow-sm font-black text-sm flex items-center justify-center">-</button>
+                        <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1 border border-slate-200 h-[34px] shrink-0">
+                            <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-full bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center active:scale-90">+</button>
+                            <span class="font-black text-brand-navy min-w-[20px] text-center text-xs">${item.quantity}</span>
+                            <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-full bg-white text-rose-500 rounded-lg shadow-sm font-black text-sm flex items-center justify-center active:scale-90">-</button>
                         </div>
                     </div>`;
             }
@@ -1543,6 +1682,17 @@
             }
         }
 
+        renderInCartQuickAddons();
+
+        // تحديث ملخص الخطوة 2 القابل للفتح
+        const step2Title = document.getElementById('step2-summary-title');
+        const step2Sub = document.getElementById('step2-summary-sub');
+        const step2Collapse = document.getElementById('step2-items-collapse');
+        const bNameNow = document.getElementById('selected-batch-name')?.value || '';
+        if (step2Title) step2Title.textContent = `ملخص طلبك (${totalItems} صنف • ${subTotalPrice} ج.م)`;
+        if (step2Sub) step2Sub.textContent = bNameNow ? `حجز ضمن: ${bNameNow} — اضغط لعرض التفاصيل` : 'اضغط لعرض الأصناف المختارة';
+        if (step2Collapse) step2Collapse.innerHTML = step2Lines.join('') || '<p class="text-slate-400">لا توجد أصناف</p>';
+
         let freeDelivery = Boolean(globalSettings.freeDeliveryActive && subTotalPrice >= (Number(globalSettings.freeDeliveryThreshold) || 0) && subTotalPrice > 0);
         const tracker = document.getElementById('free-delivery-tracker');
         if (tracker) {
@@ -1568,10 +1718,12 @@
 
         let promoDiscount = 0;
         const promoRow = document.getElementById('promo-discount-row');
+        const step2PromoRow = document.getElementById('step2-promo-row');
         if (appliedPromo && subTotalPrice > 0) {
             if (appliedPromo.minOrder && subTotalPrice < Number(appliedPromo.minOrder)) {
                 appliedPromo = null;
                 if (promoRow) promoRow.classList.add('hidden');
+                if (step2PromoRow) step2PromoRow.classList.add('hidden');
             } else {
                 if (appliedPromo.type === 'free_delivery') {
                     freeDelivery = true;
@@ -1589,9 +1741,14 @@
                     document.getElementById('cart-discount').textContent = promoDiscount;
                 }
                 if (promoRow) promoRow.classList.remove('hidden');
+                if (step2PromoRow && promoDiscount > 0) {
+                    document.getElementById('step2-promo-val').textContent = promoDiscount;
+                    step2PromoRow.classList.remove('hidden');
+                }
             }
-        } else if (promoRow) {
-            promoRow.classList.add('hidden');
+        } else {
+            if (promoRow) promoRow.classList.add('hidden');
+            if (step2PromoRow) step2PromoRow.classList.add('hidden');
         }
 
         const totalAfterPromo = Math.max(0, subTotalPrice - promoDiscount);
@@ -1612,6 +1769,7 @@
         const finalTotal = Math.max(0, totalAfterPromo - walletDiscount + finalDelivery);
 
         if (document.getElementById('cart-subtotal')) document.getElementById('cart-subtotal').textContent = subTotalPrice;
+        if (document.getElementById('step2-subtotal-val')) document.getElementById('step2-subtotal-val').textContent = subTotalPrice;
         if (document.getElementById('cart-step1-total')) document.getElementById('cart-step1-total').textContent = totalAfterPromo;
         if (document.getElementById('cart-delivery-fee')) {
             const feeEl = document.getElementById('cart-delivery-fee');
@@ -1657,10 +1815,11 @@
         document.getElementById('checkout-step-1').classList.add('hidden');
         document.getElementById('checkout-step-2').classList.remove('hidden');
         document.getElementById('btn-back-step').classList.remove('hidden');
-        document.getElementById('lbl-checkout-title').textContent = 'بيانات التوصيل والتأكيد';
+        document.getElementById('lbl-checkout-title').textContent = 'التوصيل والتأكيد';
         document.getElementById('step-1-indicator').classList.replace('step-active', 'step-completed');
         document.getElementById('step-line-1').classList.add('active');
-        document.getElementById('step-2-indicator').classList.replace('opacity-50', 'step-active');
+        document.getElementById('step-2-indicator').classList.replace('opacity-60', 'step-active');
+        renderQuickZoneChips();
         updateUI();
     };
 
@@ -1669,7 +1828,7 @@
         document.getElementById('checkout-step-1').classList.remove('hidden');
         document.getElementById('btn-back-step').classList.add('hidden');
         document.getElementById('lbl-checkout-title').textContent = globalSettings.uiTexts?.checkoutTitle || 'سلة المشتريات';
-        document.getElementById('step-2-indicator').classList.replace('step-active', 'opacity-50');
+        document.getElementById('step-2-indicator').classList.replace('step-active', 'opacity-60');
         document.getElementById('step-line-1').classList.remove('active');
         document.getElementById('step-1-indicator').classList.replace('step-completed', 'step-active');
         updateUI();
@@ -1684,6 +1843,7 @@
             overlay.classList.remove('hidden');
             setTimeout(() => overlay.classList.remove('opacity-0'), 10);
             document.body.style.overflow = 'hidden';
+            updateCartBatchBanner();
             backToCart();
         } else {
             sidebar.classList.add('translate-x-full');
@@ -1702,7 +1862,7 @@
             if (el) el.addEventListener('input', updateUI);
         });
         const dZone = document.getElementById('delivery-zone');
-        if (dZone) dZone.addEventListener('change', updateUI);
+        if (dZone) dZone.addEventListener('change', () => { renderQuickZoneChips(); updateUI(); });
 
         const pInput = document.getElementById('promo-code-input');
         if (pInput) {
@@ -1863,6 +2023,7 @@
                             break;
                         }
                     }
+                    renderQuickZoneChips();
                 }
 
                 if (msgEl) {
@@ -1883,7 +2044,7 @@
 
                 if (pts > 0 && disc > 0 && walletBox && walletTxt) {
                     activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: disc, useWallet: false };
-                    walletTxt.textContent = `لديك ${pts} نقطة ولاء = خصم ${disc} ج.م`;
+                    walletTxt.textContent = `لديك ${pts} نقطة = خصم ${disc} ج.م`;
                     const cb = document.getElementById('checkout-wallet-toggle');
                     if (cb) cb.checked = false;
                     walletBox.classList.remove('hidden');
@@ -2154,7 +2315,7 @@
                     orderTime: orderTime,
                     isRead: false,
                     adminNote: finalAdminNote,
-                    source: 'storefront_v3',
+                    source: 'storefront_v4',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
