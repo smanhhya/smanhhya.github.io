@@ -768,6 +768,10 @@
                 <button type="button" onclick="closeStoryModal(); openFeastCalculator();" class="w-full bg-amber-400 text-[#0b261c] font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
                     <i class="fa-solid fa-calculator"></i> احسب الكمية المناسبة لأسرتك الآن
                 </button>
+                 <a href="./kitchen/" class="w-full bg-white/15 hover:bg-white/25 text-white border border-white/20 font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-fire-burner text-amber-400"></i> افتح مطبخ سمان ههيا الكامل (الوصفات)
+                </a>
+               
             `;
         }
     }
@@ -1402,9 +1406,15 @@
             ? `<span class="block text-xs text-slate-400 line-through font-bold">${oldPrice} ج.م</span><span class="text-xl font-black text-rose-600">${price} <span class="text-xs">ج.م</span></span>`
             : `<span class="text-xl font-black text-brand-navy">${price} <span class="text-xs">ج.م</span></span>`;
 
-        document.getElementById('pq-stock-line').innerHTML = avail > 0
+        const trackForKitchen = getProductTrackType(id);
+        const showKitchenBtn = trackForKitchen === 'quail' || trackForKitchen === 'weight' || id === 'eggs' || String(item.name || '').includes('بيض');
+        const stockBadge = avail > 0
             ? `<span class="text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl inline-block">🟢 متاح للحجز الآن: ${avail}</span>`
             : `<span class="text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl inline-block">🔴 نفذت الكمية في هذه الدفعة</span>`;
+        const kitchenLinkHtml = showKitchenBtn
+            ? `<a href="./kitchen/?product=${encodeURIComponent(id)}" class="text-amber-900 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-xl inline-flex items-center gap-1 transition-colors"><i class="fa-solid fa-fire-burner text-amber-600"></i> وصفات وطريقة الطهي</a>`
+            : '';
+        document.getElementById('pq-stock-line').innerHTML = `<div class="flex flex-wrap items-center justify-between gap-2">${stockBadge}${kitchenLinkHtml}</div>`;
 
         updateQuickViewActionButton();
 
