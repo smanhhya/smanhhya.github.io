@@ -1,0 +1,90 @@
+/* kitchen/css/kitchen.css - تنسيقات مطبخ سمان ههيا المتوافقة مع الهوية البصرية للمتجر */
+
+.kitchen-card {
+  background: #ffffff;
+  border: 1px solid rgba(15, 52, 38, 0.09);
+  box-shadow: 0 6px 20px -6px rgba(15, 52, 38, 0.08);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+
+.kitchen-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -8px rgba(15, 52, 38, 0.14);
+  border-color: rgba(15, 52, 38, 0.28);
+}
+
+/* غلاف أنيق للوصفات التي لم تُضف صورتها بعد (بدون أي صور عشوائية أو مكررة) */
+.kitchen-cover-placeholder {
+  background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.22), transparent 55%),
+              linear-gradient(135deg, #0b261c 0%, #153e2e 55%, #1f5741 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.kitchen-cover-placeholder::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  pointer-events: none;
+}
+
+/* شريط التصفية النشط */
+.kitchen-pill {
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.kitchen-pill.active {
+  background: linear-gradient(135deg, #0f3426, #1b4332);
+  color: #ffffff;
+  border-color: #f59e0b;
+  box-shadow: 0 4px 12px rgba(15, 52, 38, 0.18);
+}
+
+/* قائمة المقادير التفاعلية (Checklist) */
+.ingredient-check-item.checked {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #64748b;
+  text-decoration: line-through;
+}
+
+/* بطاقة خطوة الطهي في وضع العرض التفصيلي */
+.step-row-card {
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.step-row-card:hover {
+  border-color: rgba(15, 52, 38, 0.25);
+}
+
+/* شاشة وضع الطهي المباشر خطوة بخطوة */
+.cook-mode-overlay {
+  background: radial-gradient(circle at 80% 10%, rgba(245, 158, 11, 0.14), transparent 40%),
+              linear-gradient(180deg, #091f17 0%, #0f3426 60%, #0b261c 100%);
+}
+
+.cook-step-card {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(10px);
+}
+
+/* نبض المؤقت النشط */
+@keyframes timerPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.45); }
+  50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+}
+
+.timer-running-badge {
+  animation: timerPulse 1.8s infinite;
+}
+
+/* نجوم التقييم */
+.k-star-btn {
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+.k-star-btn:hover {
+  transform: scale(1.15);
+}
