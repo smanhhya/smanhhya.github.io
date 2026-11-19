@@ -1,5 +1,5 @@
-// sw.js - محرك السرعة والتخزين المؤقت الآمن لمتجر سمان ههيا
-const CACHE_NAME = 'sman-hhya-store-v5';
+// sw.js - محرك السرعة والتخزين المؤقت الآمن (Network-First لملفات الكود لمنع تعليق التحديثات)
+const CACHE_NAME = 'sman-hhya-store-v6';
 
 const ASSETS_TO_CACHE = [
   './',
@@ -42,7 +42,6 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = req.url;
-  // استثناء تام لطلبات Firebase وواجهات البيانات الحية لمنع أي بيانات قديمة
   if (
     !url.startsWith('http') ||
     url.includes('firestore.googleapis.com') ||
@@ -53,6 +52,29 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  const isCodeOrPage =
+    req.mode === 'navigate' ||
+    url.includes('.html') ||
+    url.includes('.js') ||
+    url.includes('.css');
+
+  // جلب النسخة الأحدث من الإنترنت أولاً لملفات الكود والصفحات، والرجوع للكاش فقط عند انقطاع النت
+  if (isCodeOrPage) {
+    event.respondWith(
+      fetch(req)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.ok && networkResponse.type === 'basic') {
+            const copy = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(req, copy)).catch(() => {});
+          }
+          return networkResponse;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // استراتيجية سريعة للصور والأيقونات
   event.respondWith(
     caches.match(req).then((cachedResponse) => {
       const networkFetch = fetch(req)
