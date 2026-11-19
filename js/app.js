@@ -255,6 +255,43 @@
         renderProducts();
     };
 
+    // تحديد نوع مسار الدفعة (متوافق 100% مع الدفعات القديمة تلقائياً بدون تعديل بياناتها)
+    function getBatchTrackType(batch) {
+        if (!batch) return 'quail';
+        if (batch.batchType === 'quail' || batch.batchType === 'chicks' || batch.batchType === 'weight') {
+            return batch.batchType;
+        }
+        const n = String(batch.name || '').toLowerCase();
+        if (n.includes('كتكوت') || n.includes('كتاكيت') || n.includes('عمر يوم') || n.includes('تفريخ') || n.includes('فقس')) {
+            return 'chicks';
+        }
+        if (n.includes('فراخ') || n.includes('تسمين') || n.includes('رومي') || n.includes('بط')) {
+            return 'weight';
+        }
+        return 'quail';
+    }
+
+    // تحديد مسار المنتج: quail (سمان مذبوح) | chicks (كتاكيت عمر يوم) | weight (طيور بالوزن) | immediate (بيض يومي فوري)
+    function getProductTrackType(id) {
+        const p = productsInfo[id];
+        if (!p) return 'quail';
+        const meta = U.getProductCategoryAndRank(id, p);
+        if (meta.group === 'weight' || p.isWeightBased) return 'weight';
+        if (meta.group === 'quail') return 'quail';
+        const sId = String(id || '').toLowerCase();
+        const sName = String(p.name || '').toLowerCase();
+        if (sId === 'chicks' || sName.includes('كتكوت') || sName.includes('كتاكيت') || sName.includes('عمر يوم') || sName.includes('عمر')) {
+            return 'chicks';
+        }
+        return 'immediate';
+    }
+
+    function getVisibleBatchesByTrack(trackType) {
+        return Object.keys(globalBatches)
+            .map((id) => ({ id, ...globalBatches[id] }))
+            .filter((b) => b && b.name && b.name !== 'undefined' && b.isVisible !== false && getBatchTrackType(b) === trackType);
+    }
+
     function getBatchRemainingCeilingPairs(batch) {
         if (!batch) return null;
         const cap = Number(batch.publicPairs) || Number(batch.actualPairs) || 0;
@@ -263,12 +300,12 @@
         let bookedMain = 0;
         if (batch.booked && typeof batch.booked === 'object') {
             Object.keys(batch.booked).forEach((pId) => {
-                if (isMainQuailItem(pId)) bookedMain += Number(batch.booked[pId]) || 0;
+                if (getProductTrackType(pId) === 'quail') bookedMain += Number(batch.booked[pId]) || 0;
             });
         }
         let inCartMain = 0;
         Object.keys(cart).forEach((pId) => {
-            if (isMainQuailItem(pId)) inCartMain += Number(cart[pId]?.quantity) || 0;
+            if (getProductTrackType(pId) === 'quail') inCartMain += Number(cart[pId]?.quantity) || 0;
         });
         return Math.max(0, cap - bookedMain - inCartMain);
     }
@@ -276,10 +313,35 @@
     function getPureAvailableStock(id) {
         const p = productsInfo[id];
         if (!p) return 0;
-        if (p.isWeightBased) return U.parseWeightsArray(p.weightsList).length;
+        const track = getProductTrackType(id);
 
+        // المسار 2-أ: فراخ تسمين / رومي بالوزن — مستقل تماماً (من مصفوفة الجرامات فقط)
+        if (track === 'weight') {
+            return U.parseWeightsArray(p.weightsList).length;
+        }
+
+        // المسار 2-ب: البيض والمنتجات اليومية الفورية — مستقل تماماً عن جميع الدفعات
+        if (track === 'immediate') {
+            return Math.max(0, Math.floor(Number(globalStock[id]) || 0));
+        }
+
+        // المسار 3: كتاكيت عمر يوم — مرتبط بدورة التفريخ المفتوحة (إن وُجدت)، وإلا بالمخزون المباشر
+        if (track === 'chicks') {
+            const cBatchId = document.getElementById('user-chicks-batch-select')?.value || '';
+            if (cBatchId && globalBatches[cBatchId]) {
+                const cb = globalBatches[cBatchId];
+                const bStock = (cb.stock && cb.stock[id] !== undefined && Number(cb.stock[id]) > 0)
+                    ? Number(cb.stock[id])
+                    : (Number(cb.publicPairs) || Number(cb.actualPairs) || Number(globalStock[id]) || 0);
+                const bBooked = (cb.booked && cb.booked[id]) ? Number(cb.booked[id]) : 0;
+                return Math.max(0, Math.floor(bStock - bBooked));
+            }
+            return Math.max(0, Math.floor(Number(globalStock[id]) || 0));
+        }
+
+        // المسار 1: السمان المذبوح بالجوز — مرتبط بدفعات السمان المذبوح فقط
         const batchId = document.getElementById('user-batch-select')?.value || '';
-        if (batchId && globalBatches[batchId]) {
+        if (batchId && globalBatches[batchId] && getBatchTrackType(globalBatches[batchId]) === 'quail') {
             const batch = globalBatches[batchId];
             const bStock = (batch.stock && batch.stock[id] !== undefined && Number(batch.stock[id]) > 0)
                 ? Number(batch.stock[id])
@@ -287,18 +349,16 @@
             const bBooked = (batch.booked && batch.booked[id]) ? Number(batch.booked[id]) : 0;
             let rem = Math.max(0, bStock - bBooked);
 
-            if (isMainQuailItem(id)) {
-                const cap = Number(batch.publicPairs) || Number(batch.actualPairs) || 0;
-                if (cap > 0) {
-                    let bookedMain = 0;
-                    if (batch.booked) {
-                        Object.keys(batch.booked).forEach((k) => {
-                            if (isMainQuailItem(k)) bookedMain += Number(batch.booked[k]) || 0;
-                        });
-                    }
-                    const capRem = Math.max(0, cap - bookedMain);
-                    rem = Math.min(rem > 0 ? rem : capRem, capRem);
+            const cap = Number(batch.publicPairs) || Number(batch.actualPairs) || 0;
+            if (cap > 0) {
+                let bookedMain = 0;
+                if (batch.booked) {
+                    Object.keys(batch.booked).forEach((k) => {
+                        if (getProductTrackType(k) === 'quail') bookedMain += Number(batch.booked[k]) || 0;
+                    });
                 }
+                const capRem = Math.max(0, cap - bookedMain);
+                rem = Math.min(rem > 0 ? rem : capRem, capRem);
             }
             return Math.max(0, Math.floor(rem));
         }
@@ -309,7 +369,9 @@
     function getAvailableStock(id) {
         const p = productsInfo[id];
         if (!p) return 0;
-        if (p.isWeightBased) {
+        const track = getProductTrackType(id);
+
+        if (track === 'weight') {
             const allW = U.parseWeightsArray(p.weightsList);
             const pickedCount = Array.isArray(cart[id]?.selectedWeightsGrams) ? cart[id].selectedWeightsGrams.length : 0;
             return Math.max(0, allW.length - pickedCount);
@@ -319,13 +381,16 @@
         const pure = getPureAvailableStock(id);
         let rem = Math.max(0, pure - inCart);
 
-        const batchId = document.getElementById('user-batch-select')?.value || '';
-        if (batchId && globalBatches[batchId] && isMainQuailItem(id)) {
-            const capRem = getBatchRemainingCeilingPairs(globalBatches[batchId]);
-            if (capRem !== null) rem = Math.min(rem, Math.floor(capRem));
+        if (track === 'quail') {
+            const batchId = document.getElementById('user-batch-select')?.value || '';
+            if (batchId && globalBatches[batchId] && getBatchTrackType(globalBatches[batchId]) === 'quail') {
+                const capRem = getBatchRemainingCeilingPairs(globalBatches[batchId]);
+                if (capRem !== null) rem = Math.min(rem, Math.floor(capRem));
+            }
         }
         return Math.max(0, rem);
     }
+
 
     // =========================================================================
     // 4. عرض الإعدادات والمناطق (مع أزرار اختيار المناطق السريعة) والكتالوج الفاخر
@@ -913,11 +978,30 @@
         const dateEl = document.getElementById('cart-batch-pill-date');
         if (!pill) return;
 
-        const bId = document.getElementById('user-batch-select')?.value || '';
-        const b = bId ? globalBatches[bId] : null;
-        if (b && b.name) {
-            if (nameEl) nameEl.textContent = b.name;
-            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(b.deliveryStart, b.deliveryEnd);
+        const cartKeys = Object.keys(cart);
+        const hasQuail = cartKeys.some((id) => getProductTrackType(id) === 'quail');
+        const hasChicks = cartKeys.some((id) => getProductTrackType(id) === 'chicks');
+
+        const qId = document.getElementById('user-batch-select')?.value || '';
+        const qBatch = (qId && globalBatches[qId]) ? globalBatches[qId] : null;
+        const cId = document.getElementById('user-chicks-batch-select')?.value || '';
+        const cBatch = (cId && globalBatches[cId]) ? globalBatches[cId] : null;
+
+        if (hasQuail && qBatch) {
+            if (nameEl) nameEl.textContent = qBatch.name;
+            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
+            pill.classList.remove('hidden');
+        } else if (hasChicks && cBatch) {
+            if (nameEl) nameEl.textContent = `🐣 ${cBatch.name}`;
+            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(cBatch.deliveryStart, cBatch.deliveryEnd);
+            pill.classList.remove('hidden');
+        } else if (cartKeys.length > 0 && !hasQuail && !hasChicks) {
+            if (nameEl) nameEl.textContent = 'طلب فوري مستقل (بيض / طيور بالوزن)';
+            if (dateEl) dateEl.textContent = '⚡ متاح فوراً';
+            pill.classList.remove('hidden');
+        } else if (qBatch) {
+            if (nameEl) nameEl.textContent = qBatch.name;
+            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
             pill.classList.remove('hidden');
         } else {
             pill.classList.add('hidden');
@@ -927,23 +1011,48 @@
     function renderBatchesSelection() {
         const batchSelect = document.getElementById('user-batch-select');
         const batchNameHidden = document.getElementById('selected-batch-name');
+        const chicksSelect = document.getElementById('user-chicks-batch-select');
+        const chicksNameHidden = document.getElementById('selected-chicks-batch-name');
         const batchContainer = document.getElementById('batch-selection-container');
         const cardsWrapper = document.getElementById('batch-cards-wrapper');
         const heroPillName = document.getElementById('hero-batch-pill-name');
         const heroPillLabel = document.getElementById('hero-batch-pill-label');
         if (!batchSelect || !batchContainer || !cardsWrapper) return;
 
-        const batchesArr = Object.keys(globalBatches)
-            .map((id) => ({ id, ...globalBatches[id] }))
-            .filter((b) => b && b.name && b.name !== 'undefined' && b.isVisible !== false);
+        // 1. ضبط دورات التفريخ (كتاكيت عمر يوم) بشكل مستقل تماماً عن السمان المذبوح
+        const chicksBatches = getVisibleBatchesByTrack('chicks');
+        const openChicksBatches = chicksBatches.filter((b) => b.isOpen).sort((a, b) => a.id.localeCompare(b.id));
+        if (chicksSelect) {
+            let curChicks = chicksSelect.value;
+            if ((!curChicks || !globalBatches[curChicks] || !globalBatches[curChicks].isOpen || getBatchTrackType(globalBatches[curChicks]) !== 'chicks') && openChicksBatches.length > 0) {
+                curChicks = openChicksBatches[0].id;
+                chicksSelect.value = curChicks;
+                if (chicksNameHidden) chicksNameHidden.value = openChicksBatches[0].name || '';
+            } else if (openChicksBatches.length === 0) {
+                chicksSelect.value = '';
+                if (chicksNameHidden) chicksNameHidden.value = '';
+            }
+        }
 
-        const openBatches = batchesArr.filter((b) => b.isOpen).sort((a, b) => a.id.localeCompare(b.id));
-        const closedBatches = batchesArr.filter((b) => !b.isOpen).sort((a, b) => b.id.localeCompare(a.id));
+        // 2. دورات السمان المذبوح فقط في شريط قسم السمان
+        const quailBatches = getVisibleBatchesByTrack('quail');
+        const openBatches = quailBatches.filter((b) => b.isOpen).sort((a, b) => a.id.localeCompare(b.id));
+        const closedBatches = quailBatches.filter((b) => !b.isOpen).sort((a, b) => b.id.localeCompare(a.id));
         const toShow = [...openBatches, ...closedBatches.slice(0, 2)];
 
         if (toShow.length === 0) {
             batchContainer.classList.add('hidden');
-            if (heroPillName) heroPillName.textContent = 'اطلب مباشرة من المنيو';
+            batchSelect.value = '';
+            if (batchNameHidden) batchNameHidden.value = '';
+            if (heroPillName) {
+                if (openChicksBatches.length > 0) {
+                    heroPillName.textContent = `🐣 ${openChicksBatches[0].name}`;
+                    if (heroPillLabel) heroPillLabel.textContent = 'حجز تفريخ عمر يوم متاح الآن';
+                } else {
+                    heroPillName.textContent = 'متاح للطلب المباشر من المنيو';
+                    if (heroPillLabel) heroPillLabel.textContent = 'بيض ومنتجات المزرعة الطازجة';
+                }
+            }
             updateCartBatchBanner();
             return;
         }
@@ -951,19 +1060,23 @@
         batchContainer.classList.remove('hidden');
 
         let currentVal = batchSelect.value;
-        if ((!currentVal || !globalBatches[currentVal] || !globalBatches[currentVal].isOpen) && openBatches.length > 0) {
+        if ((!currentVal || !globalBatches[currentVal] || !globalBatches[currentVal].isOpen || getBatchTrackType(globalBatches[currentVal]) !== 'quail') && openBatches.length > 0) {
             currentVal = openBatches[0].id;
             batchSelect.value = currentVal;
             if (batchNameHidden) batchNameHidden.value = openBatches[0].name || '';
+        } else if (openBatches.length === 0) {
+            currentVal = '';
+            batchSelect.value = '';
+            if (batchNameHidden) batchNameHidden.value = '';
         }
 
-        const activeObj = globalBatches[currentVal] || openBatches[0] || toShow[0];
+        const activeObj = (currentVal && globalBatches[currentVal]) ? globalBatches[currentVal] : (openBatches[0] || toShow[0]);
         if (heroPillName && activeObj) {
             heroPillName.textContent = activeObj.name;
             if (heroPillLabel) {
                 heroPillLabel.textContent = activeObj.isOpen
                     ? `التسليم: ${window.getFriendlyBatchDatePhrase(activeObj.deliveryStart, activeObj.deliveryEnd)}`
-                    : 'آخر دفعة (مكتملة الحجز)';
+                    : 'آخر دفعة سمان (البيض والمنتجات اليومية متاحة)';
             }
         }
 
@@ -976,12 +1089,14 @@
             if (batch.isOpen) {
                 let totalStock = Number(batch.publicPairs) || Number(batch.actualPairs) || 0;
                 if (totalStock <= 0 && batch.stock) {
-                    Object.values(batch.stock).forEach((v) => { totalStock += Number(v) || 0; });
+                    Object.keys(batch.stock).forEach((k) => {
+                        if (getProductTrackType(k) === 'quail') totalStock += Number(batch.stock[k]) || 0;
+                    });
                 }
                 let totalBooked = 0;
                 if (batch.booked) {
                     Object.keys(batch.booked).forEach((k) => {
-                        if (isMainQuailItem(k)) totalBooked += Number(batch.booked[k]) || 0;
+                        if (getProductTrackType(k) === 'quail') totalBooked += Number(batch.booked[k]) || 0;
                     });
                 }
                 const pct = totalStock > 0 ? Math.min(100, Math.round((totalBooked / totalStock) * 100)) : 0;
@@ -1042,7 +1157,7 @@
 
     window.selectBatchAndScroll = function (bId) {
         const batch = globalBatches[bId];
-        if (!batch || !batch.isOpen) return;
+        if (!batch || !batch.isOpen || getBatchTrackType(batch) !== 'quail') return;
 
         const batchInput = document.getElementById('user-batch-select');
         const batchNameInput = document.getElementById('selected-batch-name');
@@ -1050,9 +1165,10 @@
         if (batchNameInput) batchNameInput.value = batch.name || '';
         document.getElementById('batch-error-msg')?.classList.add('hidden');
 
+        // ضبط كميات السمان المذبوح فقط عند تبديل الدفعة (بدون المساس بالبيض أو الكتاكيت أو الطيور بالوزن)
         let adjusted = false;
         Object.keys(cart).forEach((id) => {
-            if (!productsInfo[id] || productsInfo[id].isWeightBased) return;
+            if (!productsInfo[id] || getProductTrackType(id) !== 'quail') return;
             const maxPure = getPureAvailableStock(id);
             if (cart[id].quantity > maxPure) {
                 cart[id].quantity = maxPure;
@@ -1063,15 +1179,38 @@
         window.nextBatchCart = {};
         if (adjusted) {
             saveCart();
-            showStoreToast('تم ضبط السلة لتناسب متاح هذه الدفعة', 'fa-circle-info text-amber-400');
+            showStoreToast('تم ضبط كميات السمان لتناسب متاح هذه الدفعة', 'fa-circle-info text-amber-400');
         } else {
-            showStoreToast(`تم اختيار: ${batch.name}`);
+            showStoreToast(`تم اختيار دفعة السمان: ${batch.name}`);
         }
 
         renderBatchesSelection();
         renderProducts();
         updateUI();
     };
+
+    window.selectChicksBatch = function (bId) {
+        const batch = globalBatches[bId];
+        if (!batch || !batch.isOpen || getBatchTrackType(batch) !== 'chicks') return;
+        const cInp = document.getElementById('user-chicks-batch-select');
+        const cNameInp = document.getElementById('selected-chicks-batch-name');
+        if (cInp) cInp.value = bId;
+        if (cNameInp) cNameInp.value = batch.name || '';
+
+        Object.keys(cart).forEach((id) => {
+            if (getProductTrackType(id) !== 'chicks') return;
+            const maxPure = getPureAvailableStock(id);
+            if (cart[id].quantity > maxPure) {
+                cart[id].quantity = maxPure;
+                if (cart[id].quantity <= 0) delete cart[id];
+            }
+        });
+        saveCart();
+        showStoreToast(`🐣 تم اختيار دورة التفريخ: ${batch.name}`);
+        renderProducts();
+        updateUI();
+    };
+
 
     window.scrollToBatch = function () {
         const batchBox = document.getElementById('batch-selection-container');
@@ -1097,6 +1236,27 @@
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
         const usageTag = getShortUsageTag(id, item);
+        const trackType = getProductTrackType(id);
+
+        // شارة دورة التفريخ (عمر يوم) تظهر على كارت الكتاكيت نفسه فقط ولا تلمس باقي الأصناف
+        let chicksHatchBadgeHtml = '';
+        if (trackType === 'chicks') {
+            const openChicks = getVisibleBatchesByTrack('chicks').filter((b) => b.isOpen).sort((a, b) => a.id.localeCompare(b.id));
+            const selectedChicksId = document.getElementById('user-chicks-batch-select')?.value || '';
+            if (openChicks.length === 1) {
+                const cb = openChicks[0];
+                const dTxt = window.getFriendlyBatchDatePhrase(cb.deliveryStart, cb.deliveryEnd);
+                chicksHatchBadgeHtml = `<div class="mt-1 bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 rounded-lg text-[9px] font-black leading-tight">🐣 ${esc(cb.name)} • ${esc(dTxt)}</div>`;
+            } else if (openChicks.length > 1) {
+                chicksHatchBadgeHtml = `
+                    <div class="mt-1 flex flex-wrap gap-1" onclick="event.stopPropagation()">
+                        ${openChicks.map((cb) => `
+                            <button type="button" onclick="selectChicksBatch('${escAttr(cb.id)}')" class="px-2 py-0.5 rounded-md text-[9px] font-black border transition-all ${selectedChicksId === cb.id ? 'bg-amber-500 text-slate-950 border-amber-600' : 'bg-amber-50 text-amber-900 border-amber-200'}">
+                                🐣 ${esc(cb.name)}
+                            </button>`).join('')}
+                    </div>`;
+            }
+        }
 
         const stockLine = available === 0
             ? `<span class="text-[10px] font-black text-rose-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> نفذت الكمية</span>`
@@ -1122,6 +1282,7 @@
                         </div>
                         <p class="text-[11px] font-bold text-slate-500 line-clamp-1">${esc(getCookingTipForProduct(id, item))}</p>
                         <div>${stockLine}</div>
+                        ${chicksHatchBadgeHtml}
                     </div>
                     <div class="flex items-end justify-between gap-2 pt-2 border-t border-slate-100 mt-2">
                         <div>
@@ -1134,7 +1295,7 @@
             </div>`;
         }
 
-        // الكارت المربع المتوازن لأطباق السمان (يظهر الطبق وستيكر سمان ههيا بالكامل بدون قص)
+        // الكارت المربع المتوازن لأطباق السمان والمنتجات
         return `
         <div class="product-app-card ${inCart > 0 ? 'in-cart' : ''} ${available === 0 && inCart === 0 ? 'opacity-85' : ''} rounded-3xl p-2 flex flex-col justify-between relative overflow-hidden">
             <div onclick="openProductQuickView('${safeId}')" class="relative aspect-square rounded-2xl overflow-hidden bg-[#f4f1ea] cursor-pointer group">
@@ -1152,6 +1313,7 @@
                     <h3 class="text-xs sm:text-sm font-black text-brand-navy leading-snug line-clamp-1">${esc(item.name)}</h3>
                     <span class="inline-block text-[10px] font-bold text-slate-500">${usageTag}</span>
                     <div>${stockLine}</div>
+                    ${chicksHatchBadgeHtml}
                 </div>
 
                 <div class="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100 mt-1">
@@ -1398,9 +1560,11 @@
         const safeId = escAttr(id);
 
         if (available === 0 && inCart === 0) {
-            const hasOpenBatch = Object.values(globalBatches).some((b) => b && b.isOpen && b.isVisible !== false);
-            return `<button type="button" onclick="${hasOpenBatch ? 'scrollToBatch()' : `updateNextBatch('${safeId}', 1)`}" class="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black transition-colors">${hasOpenBatch ? 'غيّر الدفعة' : 'للقادمة'}</button>`;
+            const isQuailProd = getProductTrackType(id) === 'quail';
+            const hasOpenQuailBatch = isQuailProd && getVisibleBatchesByTrack('quail').some((b) => b.isOpen);
+            return `<button type="button" onclick="${hasOpenQuailBatch ? 'scrollToBatch()' : `updateNextBatch('${safeId}', 1)`}" class="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black transition-colors">${hasOpenQuailBatch ? 'غيّر الدفعة' : 'للقادمة'}</button>`;
         }
+
 
         if (inCart > 0) {
             return `
@@ -1427,12 +1591,14 @@
 
     window.addToCart = function (id) {
         if (globalSettings.storeOpen === false) return;
-        const hasOpenBatches = Object.values(globalBatches).some((b) => b && b.isOpen && b.isVisible !== false);
-        const batchSelect = document.getElementById('user-batch-select');
-        if (hasOpenBatches && (!batchSelect || !batchSelect.value)) {
-            showAlert('اختر الدفعة أولاً', 'برجاء اختيار ميعاد الاستلام (الدفعة) أولاً.');
-            window.scrollToBatch();
-            return;
+        if (getProductTrackType(id) === 'quail') {
+            const hasOpenQuailBatches = getVisibleBatchesByTrack('quail').some((b) => b.isOpen);
+            const batchSelect = document.getElementById('user-batch-select');
+            if (hasOpenQuailBatches && (!batchSelect || !batchSelect.value)) {
+                showAlert('اختر دفعة السمان أولاً', 'برجاء اختيار ميعاد ذبح واستلام السمان أولاً.');
+                window.scrollToBatch();
+                return;
+            }
         }
         if (getAvailableStock(id) <= 0) {
             showAlert('عذراً', 'الكمية المتاحة لا تكفي حالياً.');
@@ -1807,14 +1973,18 @@
     };
 
     window.goToCheckoutStep2 = function () {
-        const hasOpenBatches = Object.values(globalBatches).some((b) => b && b.isOpen && b.isVisible !== false);
-        const batchSelect = document.getElementById('user-batch-select');
-        if (hasOpenBatches && (!batchSelect || !batchSelect.value)) {
-            showAlert('تنبيه مهم', 'برجاء تحديد ميعاد الاستلام (الدفعة) قبل إتمام الطلب.');
-            toggleCart();
-            setTimeout(() => window.scrollToBatch(), 300);
-            return;
+        const hasQuailInCart = Object.keys(cart).some((id) => getProductTrackType(id) === 'quail');
+        if (hasQuailInCart) {
+            const hasOpenQuailBatches = getVisibleBatchesByTrack('quail').some((b) => b.isOpen);
+            const batchSelect = document.getElementById('user-batch-select');
+            if (hasOpenQuailBatches && (!batchSelect || !batchSelect.value)) {
+                showAlert('تنبيه مهم', 'برجاء تحديد ميعاد استلام دفعة السمان قبل إتمام الطلب.');
+                toggleCart();
+                setTimeout(() => window.scrollToBatch(), 300);
+                return;
+            }
         }
+        updateCartBatchBanner();
         document.getElementById('checkout-step-1').classList.add('hidden');
         document.getElementById('checkout-step-2').classList.remove('hidden');
         document.getElementById('btn-back-step').classList.remove('hidden');
@@ -2152,17 +2322,35 @@
             }
         }
 
-        let batchId = document.getElementById('user-batch-select')?.value || '';
-        let batchName = document.getElementById('selected-batch-name')?.value || '';
-        if (batchId && globalBatches[batchId]) {
-            batchName = globalBatches[batchId].name || batchName;
-        } else {
-            const firstOpenId = Object.keys(globalBatches).find((id) => globalBatches[id]?.isOpen && globalBatches[id]?.isVisible !== false);
-            if (firstOpenId) {
-                batchId = firstOpenId;
-                batchName = globalBatches[firstOpenId].name || '';
-            }
+        const cartIdsNow = Object.keys(cart);
+        const hasQuailInCart = cartIdsNow.some((id) => getProductTrackType(id) === 'quail');
+        const hasChicksInCart = cartIdsNow.some((id) => getProductTrackType(id) === 'chicks');
+
+        let quailBatchId = document.getElementById('user-batch-select')?.value || '';
+        let quailBatchName = (quailBatchId && globalBatches[quailBatchId]) ? (globalBatches[quailBatchId].name || '') : '';
+        if (hasQuailInCart && !quailBatchId) {
+            const firstOpenQ = getVisibleBatchesByTrack('quail').find((b) => b.isOpen);
+            if (firstOpenQ) { quailBatchId = firstOpenQ.id; quailBatchName = firstOpenQ.name || ''; }
         }
+
+        let chicksBatchId = document.getElementById('user-chicks-batch-select')?.value || '';
+        let chicksBatchName = (chicksBatchId && globalBatches[chicksBatchId]) ? (globalBatches[chicksBatchId].name || '') : '';
+        if (hasChicksInCart && !chicksBatchId) {
+            const firstOpenC = getVisibleBatchesByTrack('chicks').find((b) => b.isOpen);
+            if (firstOpenC) { chicksBatchId = firstOpenC.id; chicksBatchName = firstOpenC.name || ''; }
+        }
+
+        // السمان يرتبط بدفعة الذبح، والكتاكيت وحدها ترتبط بدورة التفريخ، والبيض/الفراخ وحدها طلب فوري مستقل
+        let batchId = '';
+        let batchName = '';
+        if (hasQuailInCart && quailBatchId) {
+            batchId = quailBatchId;
+            batchName = quailBatchName;
+        } else if (hasChicksInCart && chicksBatchId) {
+            batchId = chicksBatchId;
+            batchName = chicksBatchName;
+        }
+
 
         for (const id of Object.keys(cart)) {
             const p = productsInfo[id];
@@ -2345,20 +2533,35 @@
                 batchOps.set(db.collection('customers').doc(customerPhone), custUpdate, { merge: true });
 
                 const stockUpdates = {};
-                const bookedUpdates = {};
+                const quailBookedUpdates = {};
+                const chicksBookedUpdates = {};
+
                 orderItems.forEach((it) => {
-                    if (!it.isWeightBased) {
-                        stockUpdates[it.id] = firebase.firestore.FieldValue.increment(-it.quantity);
-                        bookedUpdates[it.id] = firebase.firestore.FieldValue.increment(it.quantity);
+                    if (it.isWeightBased) return;
+                    const trk = getProductTrackType(it.id);
+                    stockUpdates[it.id] = firebase.firestore.FieldValue.increment(-it.quantity);
+                    if (trk === 'quail' && quailBatchId) {
+                        quailBookedUpdates[it.id] = firebase.firestore.FieldValue.increment(it.quantity);
+                    } else if (trk === 'chicks' && chicksBatchId) {
+                        chicksBookedUpdates[it.id] = firebase.firestore.FieldValue.increment(it.quantity);
                     }
                 });
 
                 if (Object.keys(stockUpdates).length > 0) {
                     batchOps.set(db.collection('inventory').doc('stock'), stockUpdates, { merge: true });
                 }
-                if (batchId && Object.keys(bookedUpdates).length > 0) {
-                    batchOps.set(db.collection('inventory').doc('batches'), { [batchId]: { booked: bookedUpdates } }, { merge: true });
+
+                const batchesPayload = {};
+                if (quailBatchId && Object.keys(quailBookedUpdates).length > 0) {
+                    batchesPayload[quailBatchId] = { booked: quailBookedUpdates };
                 }
+                if (chicksBatchId && Object.keys(chicksBookedUpdates).length > 0) {
+                    batchesPayload[chicksBatchId] = { booked: chicksBookedUpdates };
+                }
+                if (Object.keys(batchesPayload).length > 0) {
+                    batchOps.set(db.collection('inventory').doc('batches'), batchesPayload, { merge: true });
+                }
+
                 if (promoUpdated) {
                     batchOps.set(db.collection('inventory').doc('settings'), {
                         promoCodes: globalSettings.promoCodes,
