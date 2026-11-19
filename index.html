@@ -184,7 +184,7 @@
                     <span class="text-[10px] font-black text-slate-700 text-center leading-tight">مناطقنا</span>
                 </button>
 
-                <button type="button" onclick="openStoryModal(4)" class="flex flex-col items-center gap-1.5 shrink-0 w-[64px]">
+                <a href="./kitchen/" class="flex flex-col items-center gap-1.5 shrink-0 w-[64px]">
                     <div class="story-ring rounded-full">
                         <div class="w-[52px] h-[52px] rounded-full bg-white p-0.5 flex items-center justify-center">
                             <div class="w-full h-full rounded-full bg-rose-50 flex items-center justify-center text-rose-600 text-lg">
@@ -193,7 +193,8 @@
                         </div>
                     </div>
                     <span class="text-[10px] font-black text-slate-700 text-center leading-tight">دليل الطهي</span>
-                </button>
+                </a>
+
             </div>
         </section>
 
@@ -817,7 +818,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="./js/config.js?v=8"></script>
-    <script src="./js/app.js?v=11"></script>
+    <script src="./js/app.js?v=12"></script>
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
