@@ -1,4 +1,4 @@
-// js/app.js - محرك متجر سمان ههيا المطور (متوافق 100% مع الـ CRM ومحصّن أمنياً)
+// js/app.js - محرك متجر سمان ههيا البريميوم (App Experience + توافق 100% مع الـ CRM والأمان)
 
 (function () {
     const U = window.SMAN_UTILS;
@@ -13,26 +13,20 @@
     let isSubmittingOrder = false;
     let activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
     let liveNotiStarted = false;
+    let lastCheckedCustomerPhone = '';
+    let activeProductFilter = 'all';
+    let toastTimer = null;
+    let currentQuickViewId = null;
+
+    // حالة عارض القصص وحاسبة العزومة
+    let currentStoryIdx = 0;
+    const TOTAL_STORIES = 5;
+    const feastState = { adults: 4, kids: 0, style: 'grill', includeEggs: false, plan: [] };
 
     // =========================================================================
-    // 1. نافذة الترحيب والتخزين المحلي الآمن
+    // 1. التشغيل الأولي والتخزين المحلي وإشعار Toast
     // =========================================================================
     document.addEventListener('DOMContentLoaded', () => {
-        const alreadySeen = sessionStorage.getItem('sman_welcome_seen') === '1';
-        const overlay = document.getElementById('smart-welcome-overlay');
-        if (overlay && !alreadySeen) {
-            overlay.classList.remove('hidden');
-            setTimeout(() => {
-                overlay.classList.remove('opacity-0');
-                const box = document.getElementById('smart-welcome-box');
-                if (box) {
-                    box.classList.remove('scale-90');
-                    box.classList.add('scale-100');
-                }
-            }, 40);
-            document.body.style.overflow = 'hidden';
-        }
-
         renderDeliveryZones();
         loadCart();
         loadSavedLocalProfile();
@@ -40,27 +34,24 @@
         initFirebase();
     });
 
-    window.closeSmartWelcome = function () {
-        sessionStorage.setItem('sman_welcome_seen', '1');
-        const overlay = document.getElementById('smart-welcome-overlay');
-        if (!overlay) return;
-        overlay.classList.add('opacity-0');
-        const box = document.getElementById('smart-welcome-box');
-        if (box) {
-            box.classList.remove('scale-100');
-            box.classList.add('scale-90');
-        }
-        setTimeout(() => {
-            overlay.classList.add('hidden');
-            document.body.style.overflow = '';
-            if (typeof window.scrollToBatch === 'function') window.scrollToBatch();
-        }, 300);
-    };
+    function showStoreToast(text, iconCls = 'fa-circle-check text-emerald-400') {
+        const el = document.getElementById('store-toast');
+        const txt = document.getElementById('store-toast-text');
+        const ico = document.getElementById('store-toast-icon');
+        if (!el || !txt) return;
+        txt.textContent = text;
+        if (ico) ico.className = `fa-solid ${iconCls} text-sm`;
+        el.classList.remove('opacity-0', '-translate-y-4');
+        el.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            el.classList.remove('opacity-100', 'translate-y-0');
+            el.classList.add('opacity-0', '-translate-y-4');
+        }, 2100);
+    }
 
     function saveCart() {
-        try {
-            localStorage.setItem('sman_cart_v2', JSON.stringify(cart));
-        } catch (e) {}
+        try { localStorage.setItem('sman_cart_v2', JSON.stringify(cart)); } catch (e) {}
     }
 
     function loadCart() {
@@ -77,7 +68,6 @@
         updateUI();
     }
 
-    // حفظ بيانات العميل على جهازه الشخصي فقط لتسهيل طلباته القادمة دون تسريب بيانات أي عميل آخر
     function saveLocalProfile(name, phone, zone, address) {
         try {
             localStorage.setItem('sman_my_profile', JSON.stringify({
@@ -115,7 +105,6 @@
             hasCloud = true;
             listenToDatabase();
 
-            // صمام أمان: فتح المتجر تلقائياً خلال 2.5 ثانية في حالة ضعف الشبكة
             setTimeout(() => {
                 if (!isStoreDataLoaded) {
                     isStoreDataLoaded = true;
@@ -152,7 +141,6 @@
                 if (data.productsData && typeof data.productsData === 'object') {
                     productsInfo = data.productsData;
                 }
-                // استبعاد أي حقول إدارية غير لازمة للمتجر
                 const safeSettings = { ...data };
                 delete safeSettings.drivers;
                 Object.assign(globalSettings, safeSettings);
@@ -187,24 +175,73 @@
             startLiveNotifications();
             updateUI();
 
-            // فحص رصيد المحفظة تلقائياً إذا كان رقم العميل محفوظاً على جهازه
             const phoneVal = document.getElementById('customer-phone')?.value || '';
             const norm = U.normalizePhone(phoneVal);
-            if (norm.length >= 10) checkCustomerWalletSafe(norm);
+            if (norm.length >= 10) checkCustomerWalletSafe(norm, phoneVal);
         } catch (e) {
             console.error('Firebase Fetch Error:', e);
         }
     }
 
     // =========================================================================
-    // 3. حسابات المخزون وسقف الدفعة بدقة متوافقة مع الـ CRM
+    // 3. حسابات المخزون وسقف الدفعة ونصائح الطهي لكل حجم
     // =========================================================================
     function isMainQuailItem(id) {
         const p = productsInfo[id];
         if (!p) return true;
-        const cat = U.getProductCategoryAndRank(id, p);
-        return cat.group === 'quail';
+        return U.getProductCategoryAndRank(id, p).group === 'quail';
     }
+
+    function getCookingTipForProduct(id, p) {
+        const sId = String(id || '').toLowerCase();
+        const sName = String(p?.name || '').toLowerCase();
+        if (p?.isWeightBased) return 'مذبوح ومنظف طازج بالوزن الدقيق — اختر الوزن المناسب لأسرتك.';
+        if (sId === 'eggs' || sName.includes('بيض')) return 'طبق طازج غني بالفيتامينات والحديد — مثالي للأطفال والرياضيين.';
+        if (sId === 'chicks' || sName.includes('كتكوت')) return 'كتاكيت سمان أبيض هجين بصحة ممتازة جاهزة للتربية.';
+        if (sId === 'superspecial' || (sName.includes('سوبر') && (sName.includes('سبشيال') || sName.includes('اسبيشيال')))) {
+            return 'حجم فاخر ممتلئ اللحم — الخيار الأول للعزومات الفخمة والحشو الملكي.';
+        }
+        if (sId === 'special' || sName.includes('سبشيال') || sName.includes('اسبيشيال')) {
+            return 'وزن ممتاز مثالي للحشو بالفريك أو الأرز بالخلطة والتحمير.';
+        }
+        if (sId === 'jumbo' || sName.includes('جامبو')) {
+            return 'الحجم المتوازن الأشهر — ممتاز للشوي على الفحم وللحشو معاً.';
+        }
+        if (sId === 'super' || sName.includes('سوبر')) {
+            return 'سريع التسوية ومثالي للشوي والتحمير السريع بطعم طازج رائع.';
+        }
+        return 'منتج طازج من مزرعة سمان ههيا — يُذبح ويُغلف بالطلب.';
+    }
+
+    function matchesStoreFilter(id, p, group) {
+        if (activeProductFilter === 'all') return true;
+        if (activeProductFilter === 'eggs_chicks') return group === 'eggs_chicks';
+        if (activeProductFilter === 'weight') return group === 'weight';
+        if (group !== 'quail') return false;
+
+        const sId = String(id || '').toLowerCase();
+        const sName = String(p?.name || '').toLowerCase();
+        if (activeProductFilter === 'grill') {
+            return sId === 'super' || sId === 'jumbo' || (sName.includes('سوبر') && !sName.includes('سبشيال')) || sName.includes('جامبو');
+        }
+        if (activeProductFilter === 'stuff') {
+            return sId === 'jumbo' || sId === 'special' || sId === 'superspecial' || sName.includes('جامبو') || sName.includes('سبشيال') || sName.includes('اسبيشيال');
+        }
+        return true;
+    }
+
+    window.setStoreProductFilter = function (filterKey) {
+        activeProductFilter = filterKey || 'all';
+        document.querySelectorAll('.store-filter-btn').forEach((btn) => {
+            const isAct = btn.getAttribute('data-filter') === activeProductFilter;
+            btn.className = `store-filter-btn whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-black transition-all ${
+                isAct
+                    ? 'bg-brand-navy text-white shadow-sm'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:border-brand-navy/40'
+            }`;
+        });
+        renderProducts();
+    };
 
     function getBatchRemainingCeilingPairs(batch) {
         if (!batch) return null;
@@ -214,29 +251,20 @@
         let bookedMain = 0;
         if (batch.booked && typeof batch.booked === 'object') {
             Object.keys(batch.booked).forEach((pId) => {
-                if (isMainQuailItem(pId)) {
-                    bookedMain += Number(batch.booked[pId]) || 0;
-                }
+                if (isMainQuailItem(pId)) bookedMain += Number(batch.booked[pId]) || 0;
             });
         }
-
         let inCartMain = 0;
         Object.keys(cart).forEach((pId) => {
-            if (isMainQuailItem(pId)) {
-                inCartMain += Number(cart[pId]?.quantity) || 0;
-            }
+            if (isMainQuailItem(pId)) inCartMain += Number(cart[pId]?.quantity) || 0;
         });
-
         return Math.max(0, cap - bookedMain - inCartMain);
     }
 
     function getPureAvailableStock(id) {
         const p = productsInfo[id];
         if (!p) return 0;
-
-        if (p.isWeightBased) {
-            return U.parseWeightsArray(p.weightsList).length;
-        }
+        if (p.isWeightBased) return U.parseWeightsArray(p.weightsList).length;
 
         const batchId = document.getElementById('user-batch-select')?.value || '';
         if (batchId && globalBatches[batchId]) {
@@ -247,7 +275,6 @@
             const bBooked = (batch.booked && batch.booked[id]) ? Number(batch.booked[id]) : 0;
             let rem = Math.max(0, bStock - bBooked);
 
-            // احترام سقف الدفعة العام للأصناف الأساسية (سمان بالجوز)
             if (isMainQuailItem(id)) {
                 const cap = Number(batch.publicPairs) || Number(batch.actualPairs) || 0;
                 if (cap > 0) {
@@ -300,9 +327,7 @@
             promoBtn: 'تفعيل',
             subtotalLabel: 'قيمة الطلبات:',
             deliveryLabel: 'مصاريف التوصيل:',
-            finalTotalLabel: 'الإجمالي النهائي:',
-            menuTitle: 'سمان مذبوح طازج (بالجوز)',
-            extrasTitle: 'بيض سمان وكتاكيت ومنتجات أخرى'
+            finalTotalLabel: 'الإجمالي النهائي:'
         };
         const setTxt = (id, key) => {
             const el = document.getElementById(id);
@@ -315,20 +340,6 @@
         setTxt('lbl-subtotal', 'subtotalLabel');
         setTxt('lbl-delivery-summary', 'deliveryLabel');
         setTxt('lbl-final-total', 'finalTotalLabel');
-        setTxt('lbl-menu-title', 'menuTitle');
-        setTxt('lbl-extras-title', 'extrasTitle');
-
-        if (Array.isArray(globalSettings.trustBadges) && globalSettings.trustBadges.length === 4) {
-            for (let i = 1; i <= 4; i++) {
-                const badge = globalSettings.trustBadges[i - 1];
-                const iconEl = document.getElementById(`badge-${i}-icon`);
-                const titleEl = document.getElementById(`badge-${i}-title`);
-                const descEl = document.getElementById(`badge-${i}-desc`);
-                if (iconEl && badge.icon) iconEl.className = `${badge.icon} text-brand-navy text-xl`;
-                if (titleEl) titleEl.textContent = badge.title || '';
-                if (descEl) descEl.textContent = badge.desc || '';
-            }
-        }
     }
 
     function applySettingsToUI() {
@@ -346,7 +357,6 @@
         if (footerPhone) footerPhone.textContent = phoneStr;
         if (footerPhoneLink) footerPhoneLink.href = `tel:${phoneStr}`;
 
-        // رسالة الإعلان الهام (تنظيف آمن ضد XSS)
         const card = document.getElementById('hero-announcement-card');
         const textEl = document.getElementById('hero-announcement-text');
         if (card && textEl) {
@@ -358,24 +368,30 @@
             }
         }
 
-        // حالة فتح/إغلاق المتجر
         const wrapper = document.getElementById('store-wrapper');
         const closedMsg = document.getElementById('store-closed-msg');
         const mainCartBtn = document.getElementById('main-cart-btn');
+        const navStatus = document.getElementById('nav-live-status');
         const isOpen = globalSettings.storeOpen !== false;
 
         if (!isOpen) {
             if (wrapper) wrapper.classList.add('opacity-50', 'pointer-events-none');
             if (closedMsg) {
                 closedMsg.classList.remove('hidden');
+                closedMsg.style.display = 'flex';
                 const innerDiv = closedMsg.querySelector('div');
                 if (innerDiv) innerDiv.textContent = globalSettings.closedMessage || 'المتجر مغلق حالياً، نعود قريباً!';
             }
             if (mainCartBtn) mainCartBtn.disabled = true;
+            if (navStatus) navStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span class="text-rose-300">مغلق مؤقتاً</span>';
         } else {
             if (wrapper) wrapper.classList.remove('opacity-50', 'pointer-events-none');
-            if (closedMsg) closedMsg.classList.add('hidden');
+            if (closedMsg) {
+                closedMsg.classList.add('hidden');
+                closedMsg.style.display = 'none';
+            }
             if (mainCartBtn) mainCartBtn.disabled = false;
+            if (navStatus) navStatus.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span><span>متاح للحجز الآن</span>';
         }
 
         const minWarn = document.getElementById('min-order-warning');
@@ -388,9 +404,7 @@
         }
 
         const promoToggle = document.getElementById('promo-toggle-btn');
-        if (promoToggle) {
-            promoToggle.classList.toggle('hidden', globalSettings.showPromoField === false);
-        }
+        if (promoToggle) promoToggle.classList.toggle('hidden', globalSettings.showPromoField === false);
 
         renderSlider();
         applyUITexts();
@@ -417,7 +431,7 @@
         }
     }
 
-    // --- السلايدر وعارض الصور المكبر ---
+    // --- السلايدر وعارض الصور ---
     window.moveSlider = function (direction) {
         if (!window.sliderImages || window.sliderImages.length <= 1) return;
         window.currentSlide = (window.currentSlide + direction + window.sliderImages.length) % window.sliderImages.length;
@@ -428,7 +442,7 @@
         const track = document.getElementById('slider-track');
         if (track) track.style.transform = `translateX(${window.currentSlide * 100}%)`;
         document.querySelectorAll('.slider-dot').forEach((dot, idx) => {
-            dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 shadow-sm cursor-pointer ${idx === window.currentSlide ? 'active' : 'bg-gray-300'}`;
+            dot.className = `slider-dot h-2 w-2 rounded-full transition-all duration-300 cursor-pointer ${idx === window.currentSlide ? 'active' : 'bg-white/50'}`;
         });
     };
 
@@ -446,13 +460,13 @@
         track.innerHTML = images.map((img) => {
             const safeImg = escAttr(img);
             return `
-            <div class="w-full shrink-0 max-h-[380px] bg-[#fdfbf7] overflow-hidden relative flex justify-center items-center p-2 cursor-zoom-in" onclick="openImageModal('${safeImg}')">
-                <img src="${esc(img)}" alt="دليل الأحجام" loading="lazy" class="max-w-full max-h-[360px] object-contain rounded-xl transition-transform duration-300 hover:scale-[1.02]" onerror="this.style.display='none'">
+            <div class="w-full shrink-0 max-h-[340px] bg-[#faf8f3] overflow-hidden relative flex justify-center items-center p-2 cursor-zoom-in" onclick="openImageModal('${safeImg}')">
+                <img src="${esc(img)}" alt="دليل الأحجام" loading="lazy" class="max-w-full max-h-[320px] object-contain rounded-xl transition-transform duration-300 hover:scale-[1.02]" onerror="this.style.display='none'">
             </div>`;
         }).join('');
 
         dots.innerHTML = images.length > 1
-            ? images.map((_, idx) => `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx === 0 ? 'active' : 'bg-gray-300'} cursor-pointer" onclick="event.stopPropagation(); window.currentSlide=${idx}; window.updateSliderView();"></div>`).join('')
+            ? images.map((_, idx) => `<div class="slider-dot h-2 w-2 rounded-full transition-all duration-300 ${idx === 0 ? 'active' : 'bg-white/50'} cursor-pointer" onclick="event.stopPropagation(); window.currentSlide=${idx}; window.updateSliderView();"></div>`).join('')
             : '';
 
         container.querySelectorAll('.slider-nav-btn').forEach((btn) => {
@@ -480,15 +494,15 @@
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'image-viewer-modal';
-            modal.className = 'fixed inset-0 z-[120] bg-brand-navy/95 flex items-center justify-center hidden opacity-0 transition-all duration-300 backdrop-blur-md p-4 cursor-zoom-out';
+            modal.className = 'fixed inset-0 z-[140] bg-[#071812]/95 flex items-center justify-center hidden opacity-0 transition-all duration-200 backdrop-blur-md p-4 cursor-zoom-out';
             modal.onclick = () => {
                 closeImageViewer();
                 if (window.location.hash === '#catalog') history.back();
             };
             modal.innerHTML = `
                 <div class="relative w-full max-w-3xl h-full flex items-center justify-center">
-                    <i class="fa-solid fa-spinner fa-spin absolute text-brand-yellow text-3xl z-0" id="img-loader"></i>
-                    <img id="image-viewer-img" src="" alt="" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl scale-95 transition-transform duration-300 relative z-10">
+                    <i class="fa-solid fa-spinner fa-spin absolute text-amber-400 text-3xl z-0" id="img-loader"></i>
+                    <img id="image-viewer-img" src="" alt="" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl scale-95 transition-transform duration-200 relative z-10">
                     <button type="button" class="absolute top-3 right-3 bg-white/20 hover:bg-white/40 text-white rounded-full w-10 h-10 flex items-center justify-center z-20">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
@@ -513,53 +527,358 @@
         const modal = document.getElementById('image-viewer-modal');
         if (modal && !modal.classList.contains('hidden')) {
             modal.classList.add('opacity-0');
-            setTimeout(() => modal.classList.add('hidden'), 250);
+            setTimeout(() => modal.classList.add('hidden'), 200);
         }
     }
     window.addEventListener('popstate', closeImageViewer);
 
     // =========================================================================
-    // 5. كروت الدفعات المتوافقة مع الـ CRM (العمر البيولوجي + التواريخ + السقف)
+    // 5. عارض القصص التفاعلي (Instagram Stories Viewer ببيانات حية من Firebase)
+    // =========================================================================
+    function renderStoryContent(idx) {
+        currentStoryIdx = ((idx % TOTAL_STORIES) + TOTAL_STORIES) % TOTAL_STORIES;
+
+        const bars = document.getElementById('story-progress-bars');
+        if (bars) {
+            bars.innerHTML = Array.from({ length: TOTAL_STORIES }).map((_, i) => `
+                <div class="story-progress-bar">
+                    <div class="story-progress-fill ${i < currentStoryIdx ? 'done' : (i === currentStoryIdx ? 'active' : '')}"></div>
+                </div>`).join('');
+        }
+
+        const titleEl = document.getElementById('story-header-title');
+        const iconEl = document.getElementById('story-header-icon');
+        const bodyEl = document.getElementById('story-body');
+        const counterEl = document.getElementById('story-counter');
+        if (counterEl) counterEl.textContent = `${currentStoryIdx + 1} / ${TOTAL_STORIES}`;
+
+        if (currentStoryIdx === 0) {
+            // قصة 1: دليل الأحجام والصور الحية
+            titleEl.textContent = 'دليل الأحجام على الطبيعة';
+            iconEl.innerHTML = '<i class="fa-solid fa-ruler-combined"></i>';
+            const imgs = (Array.isArray(globalSettings.galleryImages) && globalSettings.galleryImages.length > 0)
+                ? globalSettings.galleryImages : ['all-sizes.jpg'];
+            const imgsHtml = imgs.map((src) => `
+                <img src="${esc(src)}" alt="دليل الأحجام" onclick="openImageModal('${escAttr(src)}')" class="w-full rounded-2xl border border-white/15 bg-white/5 max-h-64 object-contain cursor-zoom-in">`).join('');
+
+            const quailSummary = Object.keys(productsInfo)
+                .filter((id) => productsInfo[id] && !productsInfo[id].isHidden && isMainQuailItem(id))
+                .sort((a, b) => U.getProductCategoryAndRank(a, productsInfo[a]).rank - U.getProductCategoryAndRank(b, productsInfo[b]).rank)
+                .map((id) => {
+                    const p = productsInfo[id];
+                    const pr = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
+                    return `<div class="flex items-center justify-between bg-white/10 px-3 py-2 rounded-xl text-xs">
+                        <span class="font-black text-white">${esc(p.name)} <span class="text-emerald-200/80 font-bold">(${esc(p.weight || '')})</span></span>
+                        <span class="font-black text-amber-300">${pr} ج.م</span>
+                    </div>`;
+                }).join('');
+
+            bodyEl.innerHTML = `
+                <div class="space-y-2.5">${imgsHtml}</div>
+                <div class="space-y-1.5 pt-1">${quailSummary}</div>
+                <p class="text-[11px] text-emerald-200/80 text-center font-bold">اضغط على أي صورة لتكبيرها ومشاهدة التفاصيل</p>
+            `;
+        } else if (currentStoryIdx === 1) {
+            // قصة 2: طازج بالطلب بدون تجميد
+            titleEl.textContent = 'ليه سمان ههيا طعمه مختلف؟';
+            iconEl.innerHTML = '<i class="fa-solid fa-leaf"></i>';
+            const badges = (Array.isArray(globalSettings.trustBadges) && globalSettings.trustBadges.length > 0)
+                ? globalSettings.trustBadges
+                : [
+                    { icon: 'fa-regular fa-circle-check', title: 'أوزان دقيقة', desc: 'زي ما طلبت بالظبط بدون مبالغة' },
+                    { icon: 'fa-solid fa-snowflake', title: 'صفر تجميد', desc: 'بنذبح بالطلب فقط لكل دفعة محجوزة' },
+                    { icon: 'fa-regular fa-star', title: 'طلبك باسمك', desc: 'بوليصة مطبوعة وتغليف خاص بطلبك' },
+                    { icon: 'fa-solid fa-shield-halved', title: 'نظافة فائقة', desc: 'تنظيف دقيق وتغليف محكم آمن صحياً' }
+                ];
+            bodyEl.innerHTML = `
+                <div class="bg-amber-400/15 border border-amber-400/30 rounded-2xl p-3.5 text-center">
+                    <p class="text-sm font-black text-amber-300">🌿 "أصل الطعم يبدأ من التربية"</p>
+                    <p class="text-xs font-bold text-emerald-100 mt-1 leading-relaxed">نعمل بنظام الحجز المسبق بالدفعات؛ لا نحتفظ بأي مخزون مجمد، فيصلك السمان مذبوحاً في يومه طازجاً 100%.</p>
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    ${badges.map((b) => `
+                        <div class="bg-white/10 border border-white/10 rounded-2xl p-3 text-center">
+                            <i class="${esc(b.icon || 'fa-solid fa-check')} text-amber-400 text-xl mb-1.5"></i>
+                            <h4 class="text-xs font-black text-white">${esc(b.title)}</h4>
+                            <p class="text-[10px] font-bold text-emerald-100/80 mt-0.5">${esc(b.desc)}</p>
+                        </div>`).join('')}
+                </div>
+            `;
+        } else if (currentStoryIdx === 2) {
+            // قصة 3: نظام النقاط والهدايا
+            titleEl.textContent = 'نظام نقاط الولاء والهدايا 🎁';
+            iconEl.innerHTML = '<i class="fa-solid fa-gift"></i>';
+            bodyEl.innerHTML = `
+                <div class="bg-white/10 border border-white/15 rounded-2xl p-4 space-y-3">
+                    <div class="flex items-start gap-3">
+                        <span class="w-8 h-8 rounded-xl bg-amber-400 text-[#0b261c] font-black flex items-center justify-center shrink-0">1</span>
+                        <div>
+                            <h4 class="text-xs font-black text-white">اكسب نقاط مع كل طلب مكتمل</h4>
+                            <p class="text-[11px] font-bold text-emerald-100/80 mt-0.5">بمجرد استلام طلبك تتحول قيمة مشترياتك تلقائياً لنقاط محفوظة على رقم موبايلك.</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="w-8 h-8 rounded-xl bg-amber-400 text-[#0b261c] font-black flex items-center justify-center shrink-0">2</span>
+                        <div>
+                            <h4 class="text-xs font-black text-white">استبدلها بخصم أو أطباق هدية مجاناً</h4>
+                            <p class="text-[11px] font-bold text-emerald-100/80 mt-0.5">تقدر تفعل الخصم مباشرة من السلة أثناء الطلب أو تستبدل نقاطك بأطباق مجانية من صفحة تتبع الطلب.</p>
+                        </div>
+                    </div>
+                </div>
+                <a href="track.html" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-crown"></i> اعرف رصيد نقاطك الآن
+                </a>
+            `;
+        } else if (currentStoryIdx === 3) {
+            // قصة 4: مناطق التوصيل الحية من Firebase
+            titleEl.textContent = 'مناطق التوصيل ورسوم الشحن';
+            iconEl.innerHTML = '<i class="fa-solid fa-truck-fast"></i>';
+            const zonesHtml = globalDeliveryZones.map((z) => `
+                <div class="flex items-center justify-between bg-white/10 border border-white/10 px-3.5 py-2.5 rounded-xl text-xs">
+                    <span class="font-black text-white"><i class="fa-solid fa-location-dot text-amber-400 ml-1.5"></i>${esc(z.name)}</span>
+                    <span class="font-black ${Number(z.price) === 0 ? 'text-emerald-300' : 'text-amber-300'}">${Number(z.price) === 0 ? 'يحدد لاحقاً' : `${z.price} ج.م`}</span>
+                </div>`).join('');
+            bodyEl.innerHTML = `
+                <p class="text-xs font-bold text-emerald-100/85 leading-relaxed">التوصيل المباشر في الشرقية عبر مناديبنا حتى باب البيت في الميعاد المحدد للدفعة:</p>
+                <div class="space-y-2">${zonesHtml}</div>
+                ${globalSettings.freeDeliveryActive ? `<div class="bg-emerald-500/20 border border-emerald-400/30 p-2.5 rounded-xl text-center text-xs font-black text-emerald-200">🎉 التوصيل مجاني للطلبات فوق ${globalSettings.freeDeliveryThreshold} ج.م</div>` : ''}
+            `;
+        } else {
+            // قصة 5: دليل الطهي لكل حجم
+            titleEl.textContent = 'دليل اختيار الحجم حسب الأكلة 🍳';
+            iconEl.innerHTML = '<i class="fa-solid fa-fire-burner"></i>';
+            bodyEl.innerHTML = `
+                <div class="space-y-2.5">
+                    <div class="bg-white/10 border border-white/10 p-3 rounded-2xl">
+                        <h4 class="text-xs font-black text-amber-300">🔥 طبق سوبر (300–350 جم للجوز)</h4>
+                        <p class="text-[11px] font-bold text-emerald-100/85 mt-1">مثالي للشوي السريع على الفحم أو الجريل، يستوي بسرعة ويطلع طري ومقرمش.</p>
+                    </div>
+                    <div class="bg-white/10 border border-white/10 p-3 rounded-2xl">
+                        <h4 class="text-xs font-black text-amber-300">⭐ طبق جامبو (350–400 جم للجوز)</h4>
+                        <p class="text-[11px] font-bold text-emerald-100/85 mt-1">الحجم الأكثر طلباً للعائلات؛ يمشي ممتاز شوي وحشو فريك أو أرز.</p>
+                    </div>
+                    <div class="bg-white/10 border border-white/10 p-3 rounded-2xl">
+                        <h4 class="text-xs font-black text-amber-300">👑 سبشيال وسوبر سبشيال (400–500 جم للجوز)</h4>
+                        <p class="text-[11px] font-bold text-emerald-100/85 mt-1">لحم وفير جداً — الأفضل للحشو الملكي والعزومات اللي بتشرّف قدام الضيوف.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeStoryModal(); openFeastCalculator();" class="w-full bg-amber-400 text-[#0b261c] font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
+                    <i class="fa-solid fa-calculator"></i> احسب الكمية المناسبة لأسرتك الآن
+                </button>
+            `;
+        }
+    }
+
+    window.openStoryModal = function (idx) {
+        const md = document.getElementById('story-modal');
+        if (!md) return;
+        renderStoryContent(idx || 0);
+        md.classList.remove('hidden');
+        setTimeout(() => md.classList.remove('opacity-0'), 15);
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeStoryModal = function () {
+        const md = document.getElementById('story-modal');
+        if (!md) return;
+        md.classList.add('opacity-0');
+        setTimeout(() => md.classList.add('hidden'), 200);
+        document.body.style.overflow = '';
+    };
+
+    window.stepStoryModal = function (delta) {
+        if (currentStoryIdx + delta >= TOTAL_STORIES) {
+            closeStoryModal();
+            return;
+        }
+        renderStoryContent(currentStoryIdx + delta);
+    };
+
+    // =========================================================================
+    // 6. حاسبة العزومة الذكية (مربوطة بالأسعار والمخزون الحي في Firebase)
+    // =========================================================================
+    window.openFeastCalculator = function () {
+        const md = document.getElementById('feast-calc-modal');
+        if (!md) return;
+        recalcFeastRecommendation();
+        md.classList.remove('hidden');
+        setTimeout(() => md.classList.remove('opacity-0'), 15);
+        document.body.style.overflow = 'hidden';
+    };
+
+    window.closeFeastCalculator = function () {
+        const md = document.getElementById('feast-calc-modal');
+        if (!md) return;
+        md.classList.add('opacity-0');
+        setTimeout(() => md.classList.add('hidden'), 200);
+        document.body.style.overflow = '';
+    };
+
+    window.stepFeastCount = function (key, delta) {
+        if (key === 'adults') {
+            feastState.adults = Math.max(1, Math.min(25, feastState.adults + delta));
+            document.getElementById('feast-adults-val').textContent = feastState.adults;
+        } else {
+            feastState.kids = Math.max(0, Math.min(15, feastState.kids + delta));
+            document.getElementById('feast-kids-val').textContent = feastState.kids;
+        }
+        recalcFeastRecommendation();
+    };
+
+    window.setFeastStyle = function (style) {
+        feastState.style = style;
+        document.querySelectorAll('.feast-style-btn').forEach((btn) => {
+            const act = btn.getAttribute('data-style') === style;
+            btn.className = `feast-style-btn p-2.5 rounded-2xl border-2 text-center transition-all ${
+                act ? 'border-brand-navy bg-emerald-50 text-brand-navy shadow-sm' : 'border-slate-200 bg-white text-slate-600'
+            }`;
+        });
+        recalcFeastRecommendation();
+    };
+
+    function findBestAvailableQuailId(preferredOrder) {
+        const quailIds = Object.keys(productsInfo).filter((id) => productsInfo[id] && !productsInfo[id].isHidden && isMainQuailItem(id));
+        for (const pref of preferredOrder) {
+            const match = quailIds.find((id) => {
+                const sId = id.toLowerCase();
+                const sName = String(productsInfo[id].name || '').toLowerCase();
+                if (pref === 'superspecial') return sId === 'superspecial' || (sName.includes('سوبر') && (sName.includes('سبشيال') || sName.includes('اسبيشيال')));
+                if (pref === 'special') return sId === 'special' || ((sName.includes('سبشيال') || sName.includes('اسبيشيال')) && !sName.includes('سوبر'));
+                if (pref === 'jumbo') return sId === 'jumbo' || sName.includes('جامبو');
+                if (pref === 'super') return sId === 'super' || (sName.includes('سوبر') && !sName.includes('سبشيال'));
+                return false;
+            });
+            if (match && getPureAvailableStock(match) > 0) return match;
+        }
+        return quailIds.find((id) => getPureAvailableStock(id) > 0) || quailIds[0] || null;
+    }
+
+    window.recalcFeastRecommendation = function () {
+        feastState.includeEggs = Boolean(document.getElementById('feast-include-eggs')?.checked);
+
+        // كل طبق = جوز (فردتين سمان). للشوي الفرد البالغ يأخذ جوز كامل، للحشو أو العزومة القوية جوز كامل مع حجم أكبر، والطفل نصف جوز
+        const basePlates = Math.max(1, Math.ceil(feastState.adults + (feastState.kids * 0.5)));
+        const prefMap = {
+            grill: ['super', 'jumbo', 'special', 'superspecial'],
+            stuff: ['jumbo', 'special', 'superspecial', 'super'],
+            vip: ['superspecial', 'special', 'jumbo', 'super']
+        };
+
+        const mainId = findBestAvailableQuailId(prefMap[feastState.style] || prefMap.grill);
+        const eggsId = Object.keys(productsInfo).find((id) => id === 'eggs' || String(productsInfo[id]?.name || '').includes('بيض'));
+
+        const plan = [];
+        if (mainId && productsInfo[mainId]) {
+            const avail = getPureAvailableStock(mainId);
+            const qty = avail > 0 ? Math.min(basePlates, avail) : basePlates;
+            const unitPrice = Number(globalPrices[mainId] !== undefined ? globalPrices[mainId] : productsInfo[mainId].basePrice) || 0;
+            plan.push({ id: mainId, name: productsInfo[mainId].name, weight: productsInfo[mainId].weight || '', qty, unitPrice, avail });
+        }
+
+        if (feastState.includeEggs && eggsId && productsInfo[eggsId] && !productsInfo[eggsId].isHidden) {
+            const eAvail = getPureAvailableStock(eggsId);
+            const ePrice = Number(globalPrices[eggsId] !== undefined ? globalPrices[eggsId] : productsInfo[eggsId].basePrice) || 0;
+            if (eAvail > 0) {
+                plan.push({ id: eggsId, name: productsInfo[eggsId].name, weight: productsInfo[eggsId].weight || '', qty: 1, unitPrice: ePrice, avail: eAvail });
+            }
+        }
+
+        feastState.plan = plan;
+        const resultEl = document.getElementById('feast-result-card');
+        const applyBtn = document.getElementById('feast-apply-btn');
+        if (!resultEl) return;
+
+        if (plan.length === 0) {
+            resultEl.innerHTML = '<p class="text-xs font-bold text-slate-500 text-center py-2">لا توجد أصناف متاحة حالياً في هذه الدفعة.</p>';
+            if (applyBtn) applyBtn.disabled = true;
+            return;
+        }
+
+        const totalEst = plan.reduce((s, x) => s + (x.qty * x.unitPrice), 0);
+        const totalBirds = plan.filter((x) => isMainQuailItem(x.id)).reduce((s, x) => s + (x.qty * 2), 0);
+
+        resultEl.innerHTML = `
+            <div class="flex items-center justify-between border-b border-emerald-200 pb-2">
+                <span class="text-xs font-black text-brand-navy"><i class="fa-solid fa-sparkles text-amber-500 ml-1"></i> التشكيلة المقترحة لك:</span>
+                <span class="text-[11px] font-black bg-white text-emerald-800 px-2.5 py-0.5 rounded-lg border border-emerald-200">${totalBirds} فردة سمان</span>
+            </div>
+            <div class="space-y-1.5">
+                ${plan.map((item) => `
+                    <div class="flex items-center justify-between text-xs bg-white px-3 py-2 rounded-xl border border-emerald-100">
+                        <div>
+                            <strong class="text-brand-navy">${item.qty} × ${esc(item.name)}</strong>
+                            ${item.weight ? `<span class="text-[10px] text-slate-400 block">${esc(item.weight)}</span>` : ''}
+                        </div>
+                        <strong class="text-emerald-700">${item.qty * item.unitPrice} ج.م</strong>
+                    </div>`).join('')}
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-emerald-200 text-sm font-black text-brand-navy">
+                <span>الإجمالي التقديري:</span>
+                <span class="text-lg text-emerald-700">${totalEst} ج.م</span>
+            </div>
+        `;
+        if (applyBtn) applyBtn.disabled = false;
+    };
+
+    window.applyFeastRecommendationToCart = function () {
+        if (globalSettings.storeOpen === false) return showAlert('المتجر مغلق', 'المتجر مغلق مؤقتاً حالياً.');
+        let addedAny = false;
+        feastState.plan.forEach((item) => {
+            const avail = getAvailableStock(item.id);
+            const toAdd = Math.min(item.qty, avail);
+            if (toAdd > 0) {
+                if (cart[item.id]) cart[item.id].quantity += toAdd;
+                else cart[item.id] = { quantity: toAdd, price: item.unitPrice, name: item.name };
+                addedAny = true;
+            }
+        });
+
+        closeFeastCalculator();
+        if (addedAny) {
+            if (navigator.vibrate) navigator.vibrate([40, 30, 50]);
+            saveCart();
+            renderProducts();
+            updateUI();
+            showStoreToast('تمت إضافة التشكيلة المقترحة لسلتك بنجاح 🎉');
+        } else {
+            showAlert('تنبيه المخزون', 'الكمية المتاحة في هذه الدفعة غير كافية حالياً، يمكنك اختيار دفعة أخرى.');
+        }
+    };
+
+    // =========================================================================
+    // 7. كروت الدفعات المدمجة (Smart Batch Switcher)
     // =========================================================================
     window.getFriendlyBatchDatePhrase = function (startDateStr, endDateStr) {
         if (!startDateStr) return 'قريباً فور التجهيز';
         const startDate = new Date(startDateStr);
-        if (isNaN(startDate.getTime())) return esc(startDateStr);
+        if (isNaN(startDate.getTime())) return String(startDateStr);
         const day = startDate.getDate();
         const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
         const mText = months[startDate.getMonth()];
-        const part = day <= 10 ? `أول شهر ${mText}` : (day <= 20 ? `منتصف شهر ${mText}` : `أواخر شهر ${mText}`);
         if (endDateStr) {
             const endD = new Date(endDateStr);
             if (!isNaN(endD.getTime()) && endD.getDate() !== day) {
-                return `${part} (من يوم ${day} إلى ${endD.getDate()} ${mText})`;
+                return `من ${day} إلى ${endD.getDate()} ${mText}`;
             }
         }
-        return `${part} (بداية من يوم ${day} ${mText})`;
+        return `بداية من ${day} ${mText}`;
     };
 
     function getBatchSmartCustomerNote(batch) {
-        if (batch.urgentNote && batch.urgentNote.trim()) {
-            return { isUrgent: true, text: batch.urgentNote.trim() };
-        }
-        if (batch.customerMsg && batch.customerMsg.trim()) {
-            return { isUrgent: false, text: batch.customerMsg.trim() };
-        }
+        if (batch.urgentNote && batch.urgentNote.trim()) return { isUrgent: true, text: batch.urgentNote.trim() };
+        if (batch.customerMsg && batch.customerMsg.trim()) return { isUrgent: false, text: batch.customerMsg.trim() };
         if (batch.slaughteredAt) {
             const days = (Date.now() - batch.slaughteredAt) / (1000 * 60 * 60 * 24);
-            return {
-                isUrgent: false,
-                text: days >= 3 ? 'تم التسليم بالكامل للعملاء.. بالهنا والشفا!' : 'تم الذبح طازج وجاري التوزيع مع المناديب الآن!'
-            };
+            return { isUrgent: false, text: days >= 3 ? 'تم التسليم بالكامل' : 'تم الذبح وجاري التوزيع 🛵' };
         }
         if (batch.hatchDate && batch.slaughterAge) {
             const age = Math.max(0, Math.floor((Date.now() - batch.hatchDate) / (1000 * 60 * 60 * 24)));
             const rem = (Number(batch.slaughterAge) || 40) - age;
-            if (!batch.isOpen) return { isUrgent: false, text: 'اكتفينا بالحجز والسمان الآن في مرحلة التجهيز للذبح.' };
-            if (rem <= 0) return { isUrgent: false, text: 'السمان وصل لمرحلة النضج وجاهز فريش للتسليم قريباً!' };
-            if (rem <= 5) return { isUrgent: false, text: 'أيام بسيطة جداً والسمان يكون جاهز طازج للتسليم!' };
-            if (age <= 15) return { isUrgent: false, text: 'السمان حالياً في مرحلة التحضين والرعاية الأولية.' };
-            return { isUrgent: false, text: 'السمان في مرحلة التسمين وبناء اللحم الممتاز.' };
+            if (!batch.isOpen) return { isUrgent: false, text: 'مكتملة الحجز وجاري التجهيز' };
+            if (rem <= 0) return { isUrgent: false, text: 'جاهز فريش للتسليم قريباً 🔪' };
+            if (rem <= 5) return { isUrgent: false, text: `باقي ${rem} أيام تقريباً على الجاهزية` };
+            if (age <= 15) return { isUrgent: false, text: 'مرحلة التحضين والرعاية 🐣' };
+            return { isUrgent: false, text: 'مرحلة التسمين وبناء اللحم 📈' };
         }
         return null;
     }
@@ -569,6 +888,8 @@
         const batchNameHidden = document.getElementById('selected-batch-name');
         const batchContainer = document.getElementById('batch-selection-container');
         const cardsWrapper = document.getElementById('batch-cards-wrapper');
+        const heroPillName = document.getElementById('hero-batch-pill-name');
+        const heroPillLabel = document.getElementById('hero-batch-pill-label');
         if (!batchSelect || !batchContainer || !cardsWrapper) return;
 
         let batchesArr = Object.keys(globalBatches)
@@ -581,7 +902,7 @@
 
         if (toShow.length === 0) {
             batchContainer.classList.add('hidden');
-            updateWelcomeModalBatches([], []);
+            if (heroPillName) heroPillName.textContent = 'اطلب مباشرة من المنيو';
             return;
         }
 
@@ -592,6 +913,17 @@
             currentVal = openBatches[0].id;
             batchSelect.value = currentVal;
             if (batchNameHidden) batchNameHidden.value = openBatches[0].name || '';
+        }
+
+        // تحديث كبسولة الهيدر العلوية باسم الدفعة النشطة
+        const activeObj = globalBatches[currentVal] || openBatches[0] || toShow[0];
+        if (heroPillName && activeObj) {
+            heroPillName.textContent = activeObj.name;
+            if (heroPillLabel) {
+                heroPillLabel.textContent = activeObj.isOpen
+                    ? `التسليم: ${window.getFriendlyBatchDatePhrase(activeObj.deliveryStart, activeObj.deliveryEnd)}`
+                    : 'آخر دفعة (مكتملة الحجز)';
+            }
         }
 
         cardsWrapper.innerHTML = toShow.map((batch) => {
@@ -614,86 +946,55 @@
                 const pct = totalStock > 0 ? Math.min(100, Math.round((totalBooked / totalStock) * 100)) : 0;
                 const isSelected = currentVal === bId;
 
-                let statusChip = '';
-                if (pct >= 80) {
-                    statusChip = `<div class="mt-2 bg-orange-50 border border-orange-200 text-orange-700 text-[11px] font-black py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1.5"><i class="fa-solid fa-fire animate-pulse text-orange-500"></i> العدد قرب يكتمل.. الحق احجز!</div>`;
-                } else if (pct >= 45) {
-                    statusChip = `<div class="mt-2 bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-black py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1.5"><i class="fa-solid fa-spinner fa-spin text-blue-500"></i> جاري استقبال الحجوزات والتجهيز</div>`;
-                } else {
-                    statusChip = `<div class="mt-2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-black py-1.5 px-2.5 rounded-xl flex items-center justify-center gap-1.5"><i class="fa-solid fa-door-open text-emerald-600"></i> باب الحجز مفتوح.. اطلب براحتك</div>`;
-                }
-
                 return `
-                <div id="card-${esc(bId)}" onclick="selectBatchAndScroll('${safeId}')" class="batch-card-item cursor-pointer border-2 ${isSelected ? 'border-brand-navy bg-brand-light shadow-md ring-2 ring-brand-navy/15' : 'border-gray-200 bg-white hover:border-brand-navy/50'} rounded-2xl p-3.5 transition-all flex flex-col justify-between">
-                    <div class="flex justify-between items-start gap-2 mb-1.5">
+                <div id="card-${esc(bId)}" onclick="selectBatchAndScroll('${safeId}')" class="cursor-pointer shrink-0 min-w-[235px] sm:min-w-[260px] rounded-2xl p-3 border-2 transition-all flex flex-col justify-between gap-2 ${
+                    isSelected
+                        ? 'bg-gradient-to-l from-[#0f3426] to-[#1b4332] text-white border-amber-400 shadow-md'
+                        : 'bg-white text-slate-800 border-slate-200 hover:border-brand-navy/50'
+                }">
+                    <div class="flex items-start justify-between gap-2">
                         <div class="min-w-0">
-                            <h4 class="font-black text-brand-navy text-sm sm:text-base truncate">${esc(batch.name)}</h4>
-                            <p class="text-[11px] font-bold text-gray-600 mt-0.5"><i class="fa-regular fa-calendar-check text-brand-cyanDark ml-1"></i> ${esc(dateText)}</p>
+                            <h4 class="font-black text-xs sm:text-sm truncate ${isSelected ? 'text-white' : 'text-brand-navy'}">${esc(batch.name)}</h4>
+                            <p class="text-[10px] font-bold mt-0.5 ${isSelected ? 'text-emerald-200' : 'text-slate-500'}">
+                                <i class="fa-regular fa-calendar-check ${isSelected ? 'text-amber-400' : 'text-emerald-600'} ml-1"></i>${esc(dateText)}
+                            </p>
                         </div>
-                        <div class="check-icon-container shrink-0">
-                            ${isSelected ? '<i class="fa-solid fa-circle-check text-brand-navy text-xl"></i>' : '<i class="fa-regular fa-circle text-gray-300 text-xl"></i>'}
+                        <span class="shrink-0 text-lg ${isSelected ? 'text-amber-400' : 'text-slate-300'}">
+                            <i class="fa-solid ${isSelected ? 'fa-circle-check' : 'fa-circle'}"></i>
+                        </span>
+                    </div>
+
+                    ${smartNote ? `<p class="text-[10px] font-bold px-2 py-1 rounded-lg truncate ${
+                        isSelected ? 'bg-white/10 text-amber-200' : (smartNote.isUrgent ? 'bg-amber-50 text-amber-800' : 'bg-slate-50 text-slate-600')
+                    }">${smartNote.isUrgent ? '📌 ' : ''}${esc(smartNote.text)}</p>` : ''}
+
+                    <div class="space-y-1">
+                        <div class="flex items-center justify-between text-[10px] font-black">
+                            <span class="${isSelected ? 'text-emerald-200' : 'text-emerald-700'}">${pct >= 80 ? '🔥 قرب يكتمل!' : '🟢 مفتوح للحجز'}</span>
+                            <span class="${isSelected ? 'text-amber-300' : 'text-slate-400'}">${pct}% محجوز</span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full overflow-hidden ${isSelected ? 'bg-white/15' : 'bg-slate-100'}">
+                            <div class="h-full rounded-full ${pct >= 80 ? 'bg-amber-400' : 'bg-emerald-500'}" style="width: ${Math.max(8, pct)}%"></div>
                         </div>
                     </div>
-                    ${smartNote ? `<div class="${smartNote.isUrgent ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-gray-50 border-gray-100 text-gray-600'} border px-2.5 py-1.5 rounded-xl text-[11px] font-bold leading-snug mt-1">${smartNote.isUrgent ? '📌 ' : ''}${esc(smartNote.text)}</div>` : ''}
-                    ${statusChip}
                 </div>`;
             }
 
-            // الدفعة المغلقة
             const isPast = Boolean(batch.slaughteredAt) || (batch.deliveryStart && new Date(batch.deliveryStart).getTime() <= Date.now());
             return `
-            <div class="border-2 border-gray-200 bg-gray-50 rounded-2xl p-3.5 opacity-80 flex flex-col justify-between">
-                <div class="flex justify-between items-start gap-2 mb-1.5">
-                    <div>
-                        <h4 class="font-black text-gray-600 text-sm sm:text-base">${esc(batch.name)}</h4>
-                        <p class="text-[11px] font-bold text-gray-400 ${isPast ? 'line-through' : ''}">${esc(dateText)}</p>
+            <div class="shrink-0 min-w-[205px] rounded-2xl p-3 border border-slate-200 bg-slate-100/80 opacity-75 flex flex-col justify-between gap-2">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="min-w-0">
+                        <h4 class="font-black text-xs text-slate-600 truncate">${esc(batch.name)}</h4>
+                        <p class="text-[10px] font-bold text-slate-400 mt-0.5 ${isPast ? 'line-through' : ''}">${esc(dateText)}</p>
                     </div>
-                    <i class="fa-solid ${isPast ? 'fa-medal text-amber-500' : 'fa-seedling text-emerald-600'} text-xl shrink-0"></i>
+                    <i class="fa-solid ${isPast ? 'fa-medal text-amber-500' : 'fa-hourglass-half text-slate-400'} text-sm"></i>
                 </div>
-                <div class="mt-2 bg-white py-1.5 px-2.5 rounded-xl border border-gray-200 text-[11px] font-black text-gray-600 text-center">
-                    ${isPast ? '✅ اكتملت وتم التسليم بنجاح' : '⏳ اكتفينا بالحجز وجاري التجهيز'}
-                </div>
+                <span class="text-[10px] font-black text-slate-600 bg-white px-2 py-1 rounded-lg border border-slate-200 text-center">
+                    ${isPast ? '✅ اكتملت وتم التسليم' : '🔒 اكتفينا وجاري التجهيز'}
+                </span>
             </div>`;
         }).join('');
-
-        updateWelcomeModalBatches(openBatches, toShow);
-    }
-
-    function updateWelcomeModalBatches(openBatches, toShow) {
-        const wSpinner = document.getElementById('welcome-spinner');
-        const infoBox = document.getElementById('welcome-batch-info');
-        const listDiv = document.getElementById('welcome-batches-list');
-        const wBtn = document.getElementById('btn-welcome-continue');
-        const wDesc = document.getElementById('welcome-modal-desc');
-
-        if (wSpinner) wSpinner.classList.add('hidden');
-
-        if (toShow.length > 0 && listDiv) {
-            listDiv.innerHTML = toShow.map((batch) => {
-                if (batch.isOpen) {
-                    return `<div class="flex items-center gap-2 text-[11px] font-bold text-emerald-800 bg-emerald-50 p-2 rounded-xl border border-emerald-100"><i class="fa-solid fa-door-open text-emerald-600"></i> <span><strong class="text-brand-navy">${esc(batch.name)}:</strong> مفتوح للحجز الآن</span></div>`;
-                }
-                const isPast = Boolean(batch.slaughteredAt) || (batch.deliveryStart && new Date(batch.deliveryStart).getTime() <= Date.now());
-                return `<div class="flex items-center gap-2 text-[11px] font-bold ${isPast ? 'text-gray-500 bg-gray-50 border-gray-200' : 'text-amber-800 bg-amber-50 border-amber-200'} p-2 rounded-xl border"><i class="fa-solid ${isPast ? 'fa-check-double text-gray-400' : 'fa-hourglass-half text-amber-500'}"></i> <span><strong>${esc(batch.name)}:</strong> ${isPast ? 'تم التسليم بنجاح' : 'اكتفينا بالحجز وجاري التجهيز'}</span></div>`;
-            }).join('');
-
-            if (infoBox) {
-                infoBox.classList.remove('hidden');
-                setTimeout(() => infoBox.classList.remove('translate-y-3', 'opacity-0'), 60);
-            }
-        }
-
-        if (wBtn) {
-            wBtn.disabled = false;
-            if (openBatches.length > 0) {
-                wBtn.innerHTML = 'تصفح المنيو واطلب براحتك <i class="fa-solid fa-cart-shopping"></i>';
-                wBtn.className = 'w-full bg-brand-navy hover:opacity-95 text-white font-black py-3.5 rounded-xl shadow-lg transition-all flex justify-center items-center gap-2 pulse-animation cursor-pointer text-sm';
-            } else {
-                if (wDesc && toShow.length === 0) wDesc.textContent = 'مرحباً بك في سمان ههيا! تصفح الأصناف والأسعار المتاحة الآن.';
-                wBtn.innerHTML = 'الدخول للمتجر <i class="fa-solid fa-arrow-left"></i>';
-                wBtn.className = 'w-full bg-brand-navy text-white font-black py-3.5 rounded-xl shadow-md transition-all flex justify-center items-center gap-2 cursor-pointer text-sm';
-            }
-        }
     }
 
     window.selectBatchAndScroll = function (bId) {
@@ -706,7 +1007,6 @@
         if (batchNameInput) batchNameInput.value = batch.name || '';
         document.getElementById('batch-error-msg')?.classList.add('hidden');
 
-        // ضبط السلة إذا كانت كمياتها تتخطى المتاح في الدفعة المختارة
         let adjusted = false;
         Object.keys(cart).forEach((id) => {
             if (!productsInfo[id] || productsInfo[id].isWeightBased) return;
@@ -720,99 +1020,77 @@
         window.nextBatchCart = {};
         if (adjusted) {
             saveCart();
-            showAlert('تنبيه المخزون', 'تم ضبط كميات السلة لتناسب المتاح في الدفعة التي اخترتها.');
+            showStoreToast('تم ضبط السلة لتناسب متاح هذه الدفعة', 'fa-circle-info text-amber-400');
+        } else {
+            showStoreToast(`تم اختيار: ${batch.name}`);
         }
 
         renderBatchesSelection();
         renderProducts();
         updateUI();
-
-        setTimeout(() => {
-            const target = document.getElementById('lbl-menu-title');
-            if (target) {
-                const y = target.getBoundingClientRect().top + window.scrollY - 70;
-                window.scrollTo({ top: y, behavior: 'smooth' });
-            }
-        }, 120);
     };
 
     window.scrollToBatch = function () {
         const batchBox = document.getElementById('batch-selection-container');
         if (batchBox && !batchBox.classList.contains('hidden')) {
             batchBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            batchBox.classList.add('ring-4', 'ring-brand-yellow', 'transition-all');
-            setTimeout(() => batchBox.classList.remove('ring-4', 'ring-brand-yellow'), 1400);
+            batchBox.classList.add('ring-4', 'ring-amber-400/60', 'rounded-2xl', 'p-1', 'transition-all');
+            setTimeout(() => batchBox.classList.remove('ring-4', 'ring-amber-400/60', 'p-1'), 1300);
         }
     };
 
     // =========================================================================
-    // 6. محرك عرض المنتجات المرتب (سمان بالجوز / بيض وكتاكيت / طيور بالوزن)
+    // 8. شبكة المنتجات البريميوم (App Grid + المعاينة السريعة + الوزن)
     // =========================================================================
-    function buildStandardProductCard(id, item) {
+    function buildAppGridProductCard(id, item) {
         const available = getAvailableStock(id);
+        const inCart = Number(cart[id]?.quantity) || 0;
         const currentPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
         const oldPrice = Number(item.oldPrice || globalOldPrices[id]) || 0;
         const isDiscountActive = Boolean((item.isDisc || globalDiscounts[id]) && oldPrice > currentPrice);
+        const savePct = isDiscountActive ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
         const isBestSeller = Boolean(item.isBest || (Array.isArray(globalSettings.bestSellers) && globalSettings.bestSellers.includes(id)));
-
-        const stockBadgeClass = available === 0
-            ? 'bg-red-50 text-red-600 border-red-200'
-            : (available <= 10 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200');
-
-        let cardGlowClass = 'border-gray-100';
-        if (available === 0) cardGlowClass = 'border-red-200 opacity-90';
-        else if (available <= 10) cardGlowClass = 'border-orange-300 ring-2 ring-orange-100';
-        else if (isDiscountActive) cardGlowClass = 'border-red-200';
-
-        const priceHtml = isDiscountActive
-            ? `<div class="flex items-center gap-1.5">
-                   <span class="text-[10px] text-gray-400 line-through font-bold">${oldPrice} ج</span>
-                   <div class="bg-red-50 border border-red-200 px-2 py-0.5 rounded-lg"><span class="font-black text-red-600 text-base sm:text-lg">${currentPrice} <span class="text-[9px]">ج.م</span></span></div>
-               </div>`
-            : `<div class="bg-brand-light border border-brand-cyan/30 px-2.5 py-0.5 rounded-lg"><span class="font-black text-brand-navy text-base sm:text-lg">${currentPrice} <span class="text-[9px] text-brand-navy/70">ج.م</span></span></div>`;
-
-        const saleBadgeHtml = isDiscountActive
-            ? `<div class="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md sale-badge z-20"><i class="fa-solid fa-tag"></i> عرض</div>`
-            : '';
-
-        const bestSellerHtml = isBestSeller
-            ? `<div class="absolute bottom-2 right-2 bg-brand-navy text-brand-yellow text-[9px] font-black px-2 py-0.5 rounded-md shadow-md z-10 border border-brand-yellow/30"><i class="fa-solid fa-star text-[8px] ml-0.5"></i> الأكثر طلباً</div>`
-            : '';
 
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
-        const safeImg = escAttr(imgSrc);
+
+        const stockLine = available === 0
+            ? `<span class="text-[10px] font-black text-rose-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> نفذت الكمية</span>`
+            : (available <= 10
+                ? `<span class="text-[10px] font-black text-amber-700 flex items-center gap-1"><i class="fa-solid fa-fire text-orange-500 animate-pulse text-[9px]"></i> متبقي ${available} فقط!</span>`
+                : `<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متاح (${available})</span>`);
 
         return `
-        <div class="bg-white rounded-2xl shadow-sm border ${cardGlowClass} overflow-hidden flex flex-row min-h-[136px] relative transition-all duration-200 hover:shadow-md group">
-            ${saleBadgeHtml}
-            <div class="p-3 flex-1 flex flex-col justify-between min-w-0 z-10">
-                <div>
-                    <h3 class="text-sm sm:text-base font-black text-brand-navy truncate mb-1.5">${esc(item.name)}</h3>
-                    <div class="flex flex-wrap items-center justify-between gap-1.5 mb-2">
-                        ${priceHtml}
-                        ${item.weight ? `<span class="bg-gray-50 text-gray-500 text-[10px] px-2 py-0.5 rounded-lg border border-gray-100 font-bold whitespace-nowrap"><i class="fa-solid fa-scale-balanced ml-1 text-gray-400"></i>${esc(item.weight)}</span>` : ''}
-                    </div>
-                </div>
-                <div class="flex items-center justify-between gap-2 mt-auto">
-                    <div class="text-[10px] font-black px-2 py-1 rounded-lg border ${stockBadgeClass} shrink-0 flex items-center gap-1">
-                        ${available <= 10 && available > 0 ? '<i class="fa-solid fa-fire text-orange-500 animate-pulse"></i>' : ''}
-                        <span>المتاح: <strong id="stock-display-${esc(id)}">${available}</strong></span>
-                    </div>
-                    <div class="w-28 shrink-0" id="card-action-${esc(id)}">${getCardActionHTML(id)}</div>
-                </div>
-            </div>
-
-            <div class="w-28 sm:w-36 shrink-0 relative border-r border-gray-100 overflow-hidden bg-gray-50 cursor-zoom-in" onclick="openImageModal('${safeImg}')">
-                ${bestSellerHtml}
+        <div class="product-app-card ${inCart > 0 ? 'in-cart' : ''} ${available === 0 && inCart === 0 ? 'opacity-85' : ''} rounded-3xl p-2 flex flex-col justify-between relative overflow-hidden">
+            <!-- صورة الطبق + الشارات العائمة -->
+            <div onclick="openProductQuickView('${safeId}')" class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-[#f4f1ea] cursor-pointer group">
                 ${imgSrc
                     ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" onerror="this.style.display='none'">`
-                    : `<div class="w-full h-full flex items-center justify-center text-gray-300"><i class="fa-solid fa-kiwi-bird text-3xl"></i></div>`}
+                    : `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-kiwi-bird text-3xl"></i></div>`}
+
+                ${isDiscountActive ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md sale-badge">وفر ${savePct}%</span>` : ''}
+                ${isBestSeller ? `<span class="absolute top-2 right-2 bg-[#0b261c]/90 text-amber-300 text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md backdrop-blur-sm border border-amber-400/30">👑 الأكثر طلباً</span>` : ''}
+                ${item.weight ? `<span class="absolute bottom-2 right-2 bg-black/65 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+            </div>
+
+            <!-- التفاصيل والسعر والتحكم -->
+            <div class="pt-2.5 px-1 pb-1 flex-1 flex flex-col justify-between gap-2">
+                <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer">
+                    <h3 class="text-xs sm:text-sm font-black text-brand-navy leading-snug line-clamp-1">${esc(item.name)}</h3>
+                    <div class="mt-0.5">${stockLine}</div>
+                </div>
+
+                <div class="flex items-end justify-between gap-1.5 pt-1 border-t border-slate-100">
+                    <div>
+                        ${isDiscountActive ? `<span class="block text-[10px] text-slate-400 line-through font-bold leading-none">${oldPrice} ج</span>` : ''}
+                        <span class="font-black text-base sm:text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'} leading-none">${currentPrice} <span class="text-[10px] font-bold text-slate-400">ج.م</span></span>
+                    </div>
+                    <div id="card-action-${esc(id)}" class="shrink-0">${getCardActionHTML(id)}</div>
+                </div>
             </div>
         </div>`;
     }
 
-    // كارت خاص للأصناف المباعة بالوزن (فراخ تسمين / رومي)
     function buildWeightProductCard(id, item) {
         const kiloPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
         const weightsArr = U.parseWeightsArray(item.weightsList);
@@ -826,32 +1104,110 @@
                 const estPrice = Math.round((grams / 1000) * kiloPrice);
                 const isPicked = pickedIndices.includes(idx);
                 return `
-                    <button type="button" onclick="toggleWeightBirdInCart('${safeId}', ${idx}, ${grams})" class="px-2.5 py-1.5 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1.5 ${isPicked ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'}">
+                    <button type="button" onclick="toggleWeightBirdInCart('${safeId}', ${idx}, ${grams})" class="px-2.5 py-1.5 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1.5 ${
+                        isPicked ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
+                    }">
                         <i class="fa-solid ${isPicked ? 'fa-check-circle text-amber-300' : 'fa-plus text-indigo-500'} text-[10px]"></i>
                         <span>${kg} كجم (${estPrice} ج)</span>
                     </button>`;
             }).join('')
-            : `<span class="text-xs font-bold text-gray-400">نفذت الأوزان المتاحة حالياً — تابعنا في الدفعة القادمة</span>`;
+            : `<span class="text-xs font-bold text-slate-400">نفذت الأوزان المتاحة حالياً — تابعنا في الدفعة القادمة</span>`;
 
         return `
-        <div class="bg-white rounded-2xl shadow-sm border-2 ${pickedIndices.length > 0 ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-indigo-100'} p-3.5 space-y-2.5">
+        <div class="bg-white rounded-3xl shadow-sm border-2 ${pickedIndices.length > 0 ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-indigo-100'} p-3.5 space-y-2.5">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5 min-w-0">
-                    ${imgSrc ? `<img src="${esc(imgSrc)}" alt="${esc(item.name)}" onclick="openImageModal('${escAttr(imgSrc)}')" class="w-12 h-12 rounded-xl object-cover border border-indigo-100 cursor-zoom-in shrink-0">` : `<div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-scale-balanced text-lg"></i></div>`}
+                    ${imgSrc
+                        ? `<img src="${esc(imgSrc)}" alt="${esc(item.name)}" onclick="openImageModal('${escAttr(imgSrc)}')" class="w-12 h-12 rounded-2xl object-cover border border-indigo-100 cursor-zoom-in shrink-0">`
+                        : `<div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-scale-balanced text-lg"></i></div>`}
                     <div class="min-w-0">
-                        <h3 class="text-sm sm:text-base font-black text-indigo-950 truncate">${esc(item.name)}</h3>
-                        <p class="text-[11px] font-bold text-gray-500">سعر الكيلو: <strong class="text-indigo-700">${kiloPrice} ج.م</strong> • متاح (${weightsArr.length})</p>
+                        <h3 class="text-sm font-black text-indigo-950 truncate">${esc(item.name)}</h3>
+                        <p class="text-[11px] font-bold text-slate-500">سعر الكيلو: <strong class="text-indigo-700">${kiloPrice} ج.م</strong> • متاح (${weightsArr.length})</p>
                     </div>
                 </div>
-                ${pickedIndices.length > 0 ? `<span class="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-lg shrink-0">بالسلة: ${pickedIndices.length}</span>` : ''}
+                ${pickedIndices.length > 0 ? `<span class="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0">بالسلة: ${pickedIndices.length}</span>` : ''}
             </div>
-
-            <div class="bg-indigo-50/50 p-2.5 rounded-xl border border-indigo-100">
+            <div class="bg-indigo-50/50 p-2.5 rounded-2xl border border-indigo-100">
                 <p class="text-[10px] font-black text-indigo-900 mb-2"><i class="fa-solid fa-hand-pointer ml-1 text-indigo-500"></i> اضغط على الوزن المناسب لإضافته لسلتك:</p>
                 <div class="flex flex-wrap gap-1.5">${chipsHtml}</div>
             </div>
         </div>`;
     }
+
+    window.openProductQuickView = function (id) {
+        const item = productsInfo[id];
+        if (!item) return;
+        currentQuickViewId = id;
+        const imgSrc = (Array.isArray(item.images) && item.images[0]) ? item.images[0] : '';
+        const price = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
+        const oldPrice = Number(item.oldPrice || globalOldPrices[id]) || 0;
+        const isDisc = Boolean((item.isDisc || globalDiscounts[id]) && oldPrice > price);
+        const avail = getAvailableStock(id);
+
+        const imgEl = document.getElementById('pq-img');
+        imgEl.src = imgSrc || '';
+        imgEl.style.display = imgSrc ? 'block' : 'none';
+        document.getElementById('pq-weight-badge').textContent = item.weight || 'طازج بالطلب';
+        document.getElementById('pq-name').textContent = item.name;
+        document.getElementById('pq-tip').textContent = getCookingTipForProduct(id, item);
+        document.getElementById('pq-price-wrap').innerHTML = isDisc
+            ? `<span class="block text-xs text-slate-400 line-through font-bold">${oldPrice} ج.م</span><span class="text-xl font-black text-rose-600">${price} <span class="text-xs">ج.م</span></span>`
+            : `<span class="text-xl font-black text-brand-navy">${price} <span class="text-xs">ج.م</span></span>`;
+
+        document.getElementById('pq-stock-line').innerHTML = avail > 0
+            ? `<span class="text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl inline-block">🟢 متاح للحجز الآن: ${avail}</span>`
+            : `<span class="text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl inline-block">🔴 نفذت الكمية في هذه الدفعة</span>`;
+
+        updateQuickViewActionButton();
+
+        const md = document.getElementById('product-quick-modal');
+        const box = document.getElementById('product-quick-box');
+        md.classList.remove('hidden');
+        setTimeout(() => {
+            md.classList.remove('opacity-0');
+            box.classList.remove('translate-y-6');
+        }, 15);
+    };
+
+    function updateQuickViewActionButton() {
+        const wrap = document.getElementById('pq-action-wrap');
+        if (!wrap || !currentQuickViewId || !productsInfo[currentQuickViewId]) return;
+        const id = currentQuickViewId;
+        const safeId = escAttr(id);
+        const inCart = Number(cart[id]?.quantity) || 0;
+        const avail = getAvailableStock(id);
+
+        if (globalSettings.storeOpen === false) {
+            wrap.innerHTML = '<div class="w-full py-3 rounded-xl bg-slate-100 text-slate-400 text-center text-sm font-black">المتجر مغلق حالياً</div>';
+            return;
+        }
+        if (avail === 0 && inCart === 0) {
+            wrap.innerHTML = `<button type="button" onclick="closeProductQuickView(); scrollToBatch();" class="w-full py-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 font-black text-sm">نفذت الكمية — اختر دفعة أخرى ↑</button>`;
+            return;
+        }
+        if (inCart > 0) {
+            wrap.innerHTML = `
+                <div class="flex items-center gap-3">
+                    <div class="flex-1 flex items-center justify-between bg-emerald-50 border-2 border-brand-navy/20 rounded-xl p-1.5">
+                        <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-10 h-10 bg-brand-navy text-white rounded-lg font-black text-lg">+</button>
+                        <span class="font-black text-lg text-brand-navy">${inCart}</span>
+                        <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-10 h-10 bg-white text-rose-600 rounded-lg font-black text-lg shadow-sm">-</button>
+                    </div>
+                    <button type="button" onclick="closeProductQuickView(); toggleCart();" class="bg-amber-400 text-[#0b261c] font-black px-5 py-3.5 rounded-xl text-xs shadow-md shrink-0">عرض السلة</button>
+                </div>`;
+        } else {
+            wrap.innerHTML = `<button type="button" onclick="addToCart('${safeId}')" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3.5 rounded-xl text-sm shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-plus text-amber-400"></i> إضافة للسلة</button>`;
+        }
+    }
+
+    window.closeProductQuickView = function () {
+        const md = document.getElementById('product-quick-modal');
+        const box = document.getElementById('product-quick-box');
+        if (!md) return;
+        md.classList.add('opacity-0');
+        if (box) box.classList.add('translate-y-6');
+        setTimeout(() => { md.classList.add('hidden'); currentQuickViewId = null; }, 200);
+    };
 
     window.toggleWeightBirdInCart = function (id, idx, grams) {
         if (globalSettings.storeOpen === false) return;
@@ -878,14 +1234,14 @@
             existing.selectedIndices.push(idx);
             existing.selectedWeightsGrams.push(grams);
             if (navigator.vibrate) navigator.vibrate(45);
+            showStoreToast(`تمت إضافة ${(grams / 1000).toFixed(2)} كجم من ${p.name}`);
         }
 
         if (existing.selectedWeightsGrams.length === 0) {
             delete cart[id];
         } else {
             const totalGrams = existing.selectedWeightsGrams.reduce((s, v) => s + v, 0);
-            const totalKg = Number((totalGrams / 1000).toFixed(3));
-            existing.quantity = totalKg;
+            existing.quantity = Number((totalGrams / 1000).toFixed(3));
             existing.price = kiloPrice;
             existing.name = `${p.name} [${existing.selectedWeightsGrams.join('+')}جم]`;
             cart[id] = existing;
@@ -899,32 +1255,48 @@
     window.renderProducts = function () {
         if (!isStoreDataLoaded) return;
         const container = document.getElementById('products-container');
+        const quailWrap = document.getElementById('quail-section-wrap');
         const extrasContainer = document.getElementById('extras-container');
         const extrasWrap = document.getElementById('extras-section-wrap');
         const weightContainer = document.getElementById('weight-products-container');
         const weightWrap = document.getElementById('weight-section-wrap');
-        const tabsBar = document.getElementById('store-category-tabs');
         if (!container) return;
 
         const groups = { quail: [], eggs_chicks: [], weight: [] };
+        let hasAnyWeightProduct = false;
+
         Object.keys(productsInfo).forEach((id) => {
             const item = productsInfo[id];
             if (!item || item.isVisible === false || item.isHidden === true) return;
             const meta = U.getProductCategoryAndRank(id, item);
+            if (meta.group === 'weight') hasAnyWeightProduct = true;
+            if (!matchesStoreFilter(id, item, meta.group)) return;
             groups[meta.group].push({ id, item, rank: meta.rank });
         });
+
+        // إظهار فلتر الطيور بالوزن فقط إذا وُجدت أصناف بالوزن
+        const weightFilterBtn = document.querySelector('.store-filter-btn[data-filter="weight"]');
+        if (weightFilterBtn) weightFilterBtn.classList.toggle('hidden', !hasAnyWeightProduct);
 
         groups.quail.sort((a, b) => a.rank - b.rank);
         groups.eggs_chicks.sort((a, b) => a.rank - b.rank);
         groups.weight.sort((a, b) => a.rank - b.rank);
 
-        container.innerHTML = groups.quail.length > 0
-            ? groups.quail.map((g) => buildStandardProductCard(g.id, g.item)).join('')
-            : `<div class="text-center py-8 text-gray-400 font-bold bg-white rounded-2xl border border-dashed border-gray-200">${esc(globalSettings.uiTexts?.emptyMenuMsg || 'لا توجد منتجات متاحة حالياً')}</div>`;
+        if (quailWrap) {
+            if (groups.quail.length > 0) {
+                container.innerHTML = groups.quail.map((g) => buildAppGridProductCard(g.id, g.item)).join('');
+                quailWrap.classList.remove('hidden');
+            } else if (activeProductFilter === 'all') {
+                container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-200">${esc(globalSettings.uiTexts?.emptyMenuMsg || 'لا توجد منتجات متاحة حالياً')}</div>`;
+                quailWrap.classList.remove('hidden');
+            } else {
+                quailWrap.classList.add('hidden');
+            }
+        }
 
         if (extrasContainer && extrasWrap) {
             if (groups.eggs_chicks.length > 0) {
-                extrasContainer.innerHTML = groups.eggs_chicks.map((g) => buildStandardProductCard(g.id, g.item)).join('');
+                extrasContainer.innerHTML = groups.eggs_chicks.map((g) => buildAppGridProductCard(g.id, g.item)).join('');
                 extrasWrap.classList.remove('hidden');
             } else {
                 extrasWrap.classList.add('hidden');
@@ -940,28 +1312,12 @@
             }
         }
 
-        // شريط التنقل السريع بين الأقسام إذا وُجد أكثر من قسم
-        if (tabsBar) {
-            const activeSecs = [];
-            if (groups.quail.length > 0) activeSecs.push({ target: 'quail-section-wrap', label: `🥩 سمان بالجوز (${groups.quail.length})` });
-            if (groups.eggs_chicks.length > 0) activeSecs.push({ target: 'extras-section-wrap', label: `🥚 بيض وكتاكيت (${groups.eggs_chicks.length})` });
-            if (groups.weight.length > 0) activeSecs.push({ target: 'weight-section-wrap', label: `⚖️ طيور بالوزن (${groups.weight.length})` });
-
-            if (activeSecs.length > 1) {
-                tabsBar.innerHTML = activeSecs.map((s) => `
-                    <button type="button" onclick="document.getElementById('${s.target}').scrollIntoView({behavior:'smooth', block:'start'})" class="whitespace-nowrap bg-white hover:bg-brand-navy text-brand-navy hover:text-white border border-gray-200 px-3 py-1.5 rounded-xl text-xs font-black shadow-sm transition-colors">
-                        ${s.label}
-                    </button>`).join('');
-                tabsBar.classList.remove('hidden');
-            } else {
-                tabsBar.classList.add('hidden');
-            }
-        }
+        updateQuickViewActionButton();
     };
 
     window.getCardActionHTML = function (id) {
         if (globalSettings.storeOpen === false) {
-            return `<div class="w-full bg-gray-100 text-gray-400 font-black py-2 rounded-xl text-xs text-center">مغلق</div>`;
+            return `<span class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-[10px] font-black">مغلق</span>`;
         }
         const inCart = Number(cart[id]?.quantity) || 0;
         const available = getAvailableStock(id);
@@ -969,23 +1325,19 @@
 
         if (available === 0 && inCart === 0) {
             const hasOpenBatch = Object.values(globalBatches).some((b) => b && b.isOpen && b.isVisible !== false);
-            return `
-            <button type="button" onclick="${hasOpenBatch ? 'scrollToBatch()' : `updateNextBatch('${safeId}', 1)`}" class="w-full bg-red-50 hover:bg-red-100 border border-red-200 rounded-xl py-1 px-1.5 flex flex-col items-center justify-center transition-colors">
-                <span class="text-[10px] font-black text-red-600 leading-tight">نفذت الكمية</span>
-                <span class="text-[9px] font-black text-white bg-red-500 px-1.5 py-0.5 rounded mt-0.5">${hasOpenBatch ? 'غيّر الدفعة ↑' : 'حجز للقادمة'}</span>
-            </button>`;
+            return `<button type="button" onclick="${hasOpenBatch ? 'scrollToBatch()' : `updateNextBatch('${safeId}', 1)`}" class="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black transition-colors">${hasOpenBatch ? 'غيّر الدفعة' : 'للقادمة'}</button>`;
         }
 
         if (inCart > 0) {
             return `
-            <div class="flex items-center justify-between bg-brand-light border border-brand-navy/15 rounded-xl p-1 h-[36px]">
-                <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-8 h-full bg-white text-brand-navy rounded-lg shadow-sm font-black text-base flex items-center justify-center active:scale-90">+</button>
-                <span id="qty-num-${esc(id)}" class="font-black text-brand-navy text-sm min-w-[20px] text-center">${inCart}</span>
-                <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-8 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-lg flex items-center justify-center active:scale-90">-</button>
+            <div class="flex items-center gap-1 bg-emerald-50 border border-brand-navy/20 rounded-xl p-0.5">
+                <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-7 bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center active:scale-90">+</button>
+                <span id="qty-num-${esc(id)}" class="font-black text-brand-navy text-xs min-w-[18px] text-center">${inCart}</span>
+                <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-7 bg-white text-rose-600 rounded-lg font-black text-sm shadow-sm flex items-center justify-center active:scale-90">-</button>
             </div>`;
         }
 
-        return `<button type="button" onclick="addToCart('${safeId}')" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-2 rounded-xl text-xs flex justify-center items-center gap-1.5 shadow-sm active:scale-95 transition-transform"><i class="fa-solid fa-plus text-brand-yellow"></i> إضافة</button>`;
+        return `<button type="button" onclick="addToCart('${safeId}')" aria-label="إضافة للسلة" class="w-9 h-9 rounded-xl bg-brand-navy hover:bg-emerald-800 text-amber-400 shadow-md flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-plus text-sm"></i></button>`;
     };
 
     window.updateNextBatch = function (id, delta) {
@@ -1021,6 +1373,7 @@
         saveCart();
         renderProducts();
         updateUI();
+        showStoreToast(`تمت إضافة ${productsInfo[id].name} للسلة`);
 
         const qtyEl = document.getElementById(`qty-num-${id}`);
         if (qtyEl) {
@@ -1044,9 +1397,9 @@
         if (delta > 0) {
             if (getAvailableStock(id) > 0) {
                 cart[id].quantity++;
-                if (navigator.vibrate) navigator.vibrate(45);
+                if (navigator.vibrate) navigator.vibrate(40);
             } else {
-                showAlert('عذراً', 'وصلت للحد الأقصى المتاح في هذه الدفعة.');
+                showStoreToast('وصلت للحد الأقصى المتاح بهذه الدفعة', 'fa-circle-exclamation text-amber-400');
                 return;
             }
         } else {
@@ -1061,7 +1414,7 @@
     };
 
     // =========================================================================
-    // 7. السلة، الكوبونات، ومحفظة النقاط
+    // 9. السلة، الكوبونات، ومحفظة النقاط
     // =========================================================================
     window.applyPromoCode = function () {
         const inputEl = document.getElementById('promo-code-input');
@@ -1070,7 +1423,7 @@
         const code = inputEl.value.trim().toUpperCase();
         if (!code) return;
 
-        let subTotal = calculateCartSubtotal();
+        const subTotal = calculateCartSubtotal();
         const promo = (Array.isArray(globalSettings.promoCodes) ? globalSettings.promoCodes : [])
             .find((p) => p && String(p.code || '').toUpperCase() === code);
 
@@ -1130,23 +1483,23 @@
                 const safeId = escAttr(id);
                 cartItemsContainer.innerHTML += item.isWeightBased
                     ? `
-                    <div class="bg-white p-3 rounded-xl border border-indigo-100 flex justify-between items-center gap-2 shadow-sm">
+                    <div class="bg-white p-3 rounded-2xl border border-indigo-100 flex justify-between items-center gap-2 shadow-sm">
                         <div class="min-w-0 flex-1">
                             <h4 class="font-black text-indigo-950 text-xs truncate">${esc(item.name)}</h4>
                             <div class="text-indigo-700 font-black text-xs mt-0.5">${item.quantity} كجم × ${item.price} = ${lineTotal} ج.م</div>
                         </div>
-                        <button type="button" onclick="updateQuantity('${safeId}', -1)" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors" title="حذف"><i class="fa-solid fa-trash text-xs"></i></button>
+                        <button type="button" onclick="updateQuantity('${safeId}', -1)" class="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>`
                     : `
-                    <div class="bg-white p-3 rounded-xl border border-gray-100 flex justify-between items-center gap-2 shadow-sm">
+                    <div class="bg-white p-3 rounded-2xl border border-slate-200/70 flex justify-between items-center gap-2 shadow-sm">
                         <div class="min-w-0 flex-1">
                             <h4 class="font-black text-brand-navy text-xs truncate">${esc(item.name)}</h4>
-                            <div class="text-brand-cyanDark font-black text-xs mt-0.5">${item.price} ج.م للطبق</div>
+                            <div class="text-emerald-700 font-black text-xs mt-0.5">${item.price} ج.م للطبق</div>
                         </div>
-                        <div class="flex items-center gap-1.5 bg-gray-50 rounded-xl p-1 border border-gray-200 h-[34px] shrink-0">
-                            <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-full bg-white text-brand-navy rounded-lg shadow-sm font-black text-base flex items-center justify-center">+</button>
+                        <div class="flex items-center gap-1.5 bg-slate-50 rounded-xl p-1 border border-slate-200 h-[34px] shrink-0">
+                            <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-full bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center">+</button>
                             <span class="font-black text-brand-navy min-w-[22px] text-center text-xs">${item.quantity}</span>
-                            <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-full bg-white text-red-500 rounded-lg shadow-sm font-black text-base flex items-center justify-center">-</button>
+                            <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-full bg-white text-rose-500 rounded-lg shadow-sm font-black text-sm flex items-center justify-center">-</button>
                         </div>
                     </div>`;
             }
@@ -1158,17 +1511,17 @@
             if (!p) return;
             const safeId = escAttr(id);
             nextBatchHtml += `
-                <div class="flex justify-between items-center text-[11px] font-bold text-orange-800 bg-orange-50 p-2 rounded-xl border border-orange-200 mb-1">
+                <div class="flex justify-between items-center text-[11px] font-bold text-amber-900 bg-amber-50 p-2 rounded-xl border border-amber-200 mb-1">
                     <span>⏳ ${esc(p.name)}</span>
-                    <div class="flex items-center gap-2 bg-white rounded-lg border border-orange-200 px-1.5 py-0.5">
-                        <button type="button" class="text-orange-600 font-black px-1" onclick="updateNextBatch('${safeId}', 1)">+</button>
+                    <div class="flex items-center gap-2 bg-white rounded-lg border border-amber-200 px-1.5 py-0.5">
+                        <button type="button" class="text-amber-700 font-black px-1" onclick="updateNextBatch('${safeId}', 1)">+</button>
                         <span>${window.nextBatchCart[id]}</span>
-                        <button type="button" class="text-red-500 font-black px-1" onclick="updateNextBatch('${safeId}', -1)">-</button>
+                        <button type="button" class="text-rose-500 font-black px-1" onclick="updateNextBatch('${safeId}', -1)">-</button>
                     </div>
                 </div>`;
         });
         if (nextBatchHtml && cartItemsContainer) {
-            cartItemsContainer.innerHTML += `<div class="mt-3 pt-2 border-t border-gray-200"><h5 class="text-xs font-black text-brand-navy mb-2">مطلوب للدفعة القادمة (كملاحظة):</h5>${nextBatchHtml}</div>`;
+            cartItemsContainer.innerHTML += `<div class="mt-3 pt-2 border-t border-slate-200"><h5 class="text-xs font-black text-brand-navy mb-2">مطلوب للدفعة القادمة (كملاحظة):</h5>${nextBatchHtml}</div>`;
             if (totalItems === 0) totalItems = 1;
         }
 
@@ -1182,15 +1535,14 @@
                 bottomBar.classList.add('translate-y-full');
                 if (cartItemsContainer) {
                     cartItemsContainer.innerHTML = `
-                        <div class="flex flex-col items-center justify-center py-12 text-gray-400 gap-2.5">
-                            <i class="fa-solid fa-basket-shopping text-5xl text-gray-200"></i>
+                        <div class="flex flex-col items-center justify-center py-12 text-slate-400 gap-2.5">
+                            <i class="fa-solid fa-basket-shopping text-5xl text-slate-200"></i>
                             <p class="font-bold text-sm">${esc(globalSettings.uiTexts?.emptyCartMsg || 'السلة فارغة حالياً')}</p>
                         </div>`;
                 }
             }
         }
 
-        // شريط التوصيل المجاني
         let freeDelivery = Boolean(globalSettings.freeDeliveryActive && subTotalPrice >= (Number(globalSettings.freeDeliveryThreshold) || 0) && subTotalPrice > 0);
         const tracker = document.getElementById('free-delivery-tracker');
         if (tracker) {
@@ -1206,7 +1558,7 @@
                 }
                 if (txt) {
                     txt.innerHTML = rem > 0
-                        ? `<span class="text-gray-600">باقي <strong class="text-brand-cyanDark">${rem} ج.م</strong> وتاخد توصيل مجاني!</span><i class="fa-solid fa-gift text-brand-yellow"></i>`
+                        ? `<span class="text-slate-600">باقي <strong class="text-rose-600">${rem} ج.م</strong> وتاخد توصيل مجاني!</span><i class="fa-solid fa-gift text-amber-500"></i>`
                         : `<span class="text-emerald-600 font-black">مبروك! التوصيل مجاني 🎉</span><i class="fa-solid fa-circle-check text-emerald-500"></i>`;
                 }
             } else {
@@ -1214,7 +1566,6 @@
             }
         }
 
-        // حساب الخصم (الكوبون + محفظة النقاط)
         let promoDiscount = 0;
         const promoRow = document.getElementById('promo-discount-row');
         if (appliedPromo && subTotalPrice > 0) {
@@ -1343,10 +1694,8 @@
     };
 
     // =========================================================================
-    // 8. جلب بيانات العميل المسجل ورصيد محفظته (بكل صيغ الرقم + الرجوع لآخر طلب)
+    // 10. جلب بيانات العميل المسجل ورصيد محفظته (بكل صيغ الرقم + الرجوع لآخر طلب)
     // =========================================================================
-    let lastCheckedCustomerPhone = '';
-
     function setupEventListeners() {
         ['customer-name', 'customer-phone', 'customer-address'].forEach((id) => {
             const el = document.getElementById(id);
@@ -1374,11 +1723,8 @@
             const rawVal = phoneInput.value || '';
             const norm = U.normalizePhone(rawVal);
             if (norm.length >= 10) {
-                if (immediate) {
-                    checkCustomerWalletSafe(norm, rawVal);
-                } else {
-                    phoneTimer = setTimeout(() => checkCustomerWalletSafe(norm, rawVal), 500);
-                }
+                if (immediate) checkCustomerWalletSafe(norm, rawVal);
+                else phoneTimer = setTimeout(() => checkCustomerWalletSafe(norm, rawVal), 500);
             } else {
                 lastCheckedCustomerPhone = '';
                 resetWalletBanner();
@@ -1423,11 +1769,11 @@
         if (norm) set.add(norm);
         if (rawTrim && rawTrim.length >= 10) set.add(rawTrim);
         if (norm.startsWith('01') && norm.length === 11) {
-            set.add(norm.substring(1));      // بدون الصفر: 10XXXXXXXX
-            set.add('2' + norm);             // 2010XXXXXXXX
-            set.add('+2' + norm);            // +2010XXXXXXXX
-            set.add('002' + norm);           // 002010XXXXXXXX
-            set.add(toArabicDigitsStr(norm)); // أرقام عربية: ٠١٠...
+            set.add(norm.substring(1));
+            set.add('2' + norm);
+            set.add('+2' + norm);
+            set.add('002' + norm);
+            set.add(toArabicDigitsStr(norm));
         }
         return Array.from(set);
     }
@@ -1437,7 +1783,6 @@
         const norm = U.normalizePhone(cleanPhone);
         if (norm.length < 10) return;
 
-        // منع تكرار نفس البحث بدون داعي إذا كان نفس الرقم تم جلبه للتو
         if (lastCheckedCustomerPhone === norm && document.getElementById('customer-name')?.value.trim()) {
             return;
         }
@@ -1457,8 +1802,6 @@
 
         try {
             const candidates = buildCustomerPhoneCandidates(norm, rawPhone);
-
-            // 1. البحث في جدول العملاء بكل الصيغ المحتملة للرقم (باستخدام get المتوافق مع قواعد الحماية)
             const custSnaps = await Promise.all(
                 candidates.map((docId) => db.collection('customers').doc(docId).get().catch(() => null))
             );
@@ -1478,7 +1821,6 @@
             let finalAddress = (custData?.address && custData.address !== 'غير محدد') ? custData.address : '';
             let finalZone = custData?.zone || '';
 
-            // 2. خطة إنقاذ للداتا القديمة: إذا لم يوجد في customers أو ناقص منه الاسم/العنوان/المنطقة نجلبه من آخر طلب له في orders
             if (!custData || !finalName || !finalAddress || !finalZone) {
                 const orderSnaps = await Promise.all(
                     candidates.slice(0, 4).map((pVal) =>
@@ -1510,12 +1852,8 @@
 
             if (foundAnyRecord) {
                 const hasValidName = Boolean(finalName && isCustomerNameValid(finalName));
-                if (nameInput && hasValidName) {
-                    nameInput.value = finalName;
-                }
-                if (addrInput && finalAddress) {
-                    addrInput.value = finalAddress;
-                }
+                if (nameInput && hasValidName) nameInput.value = finalName;
+                if (addrInput && finalAddress) addrInput.value = finalAddress;
                 if (zoneSelect && finalZone) {
                     const targetZone = String(finalZone).trim();
                     for (let i = 0; i < zoneSelect.options.length; i++) {
@@ -1568,8 +1906,9 @@
             if (msgEl) msgEl.classList.add('hidden');
         }
     }
+
     // =========================================================================
-    // 9. إتمام وتسجيل الطلب في Firebase (متوافق 100% مع الـ CRM وبدون Web3Forms)
+    // 11. إتمام وتسجيل الطلب في Firebase (متوافق 100% مع الـ CRM وبدون Web3Forms)
     // =========================================================================
     window.initiateCheckout = function () {
         if (isSubmittingOrder) return;
@@ -1617,7 +1956,6 @@
     window.finalCheckoutStep = async function () {
         if (isSubmittingOrder) return;
 
-        // حماية ضد التكرار العشوائي السريع (Cooldown 10 ثواني)
         const lastSubmitMs = Number(sessionStorage.getItem('sman_last_order_ms')) || 0;
         if (Date.now() - lastSubmitMs < 10000) {
             showAlert('تم تسجيل طلبك بالفعل', 'برجاء الانتظار ثوانٍ قليلة قبل تسجيل طلب جديد.');
@@ -1634,19 +1972,14 @@
         const deliverySelect = document.getElementById('delivery-zone');
         const selectedZone = globalDeliveryZones.find((z) => z.id === deliverySelect?.value || z.name === deliverySelect?.value);
 
-        // التحقق من المدخلات
-        if (Object.keys(cart).length === 0) {
-            return showAlert('السلة فارغة', 'اختر صنفاً واحداً على الأقل قبل تأكيد الطلب.');
-        }
+        if (Object.keys(cart).length === 0) return showAlert('السلة فارغة', 'اختر صنفاً واحداً على الأقل قبل تأكيد الطلب.');
         if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z.]+$/.test(customerName)) {
             return showAlert('الاسم غير مكتمل', 'يرجى كتابة الاسم الصحيح (3 أحرف على الأقل وبدون أرقام أو رموز).');
         }
         if (!/^01[0125][0-9]{8}$/.test(customerPhone)) {
             return showAlert('رقم الموبايل غير صحيح', 'يرجى كتابة رقم موبايل مصري صحيح مكون من 11 رقم (يبدأ بـ 010 أو 011 أو 012 أو 015).');
         }
-        if (!selectedZone) {
-            return showAlert('منطقة التوصيل مطلوبة', 'يرجى اختيار منطقة التوصيل لحساب إجمالي الطلب.');
-        }
+        if (!selectedZone) return showAlert('منطقة التوصيل مطلوبة', 'يرجى اختيار منطقة التوصيل لحساب إجمالي الطلب.');
 
         if (appliedPromo && appliedPromo.customerPhone) {
             const locked = U.normalizePhone(appliedPromo.customerPhone).slice(-10);
@@ -1655,7 +1988,6 @@
             }
         }
 
-        // التحقق من الدفعة
         let batchId = document.getElementById('user-batch-select')?.value || '';
         let batchName = document.getElementById('selected-batch-name')?.value || '';
         if (batchId && globalBatches[batchId]) {
@@ -1668,7 +2000,6 @@
             }
         }
 
-        // فحص نهائي للمخزون
         for (const id of Object.keys(cart)) {
             const p = productsInfo[id];
             if (!p || p.isWeightBased) continue;
@@ -1710,7 +2041,12 @@
         }
 
         const totalAfterPromo = Math.max(0, subTotal - promoDiscount);
-        const walletUsed = Boolean(activeCustomerWallet.useWallet && activeCustomerWallet.phone === customerPhone && activeCustomerWallet.points > 0 && totalAfterPromo > 0);
+        const walletUsed = Boolean(
+            activeCustomerWallet.useWallet &&
+            activeCustomerWallet.points > 0 &&
+            totalAfterPromo > 0 &&
+            U.normalizePhone(activeCustomerWallet.phone) === customerPhone
+        );
         const walletDiscount = walletUsed ? Math.min(activeCustomerWallet.discountEGP, totalAfterPromo) : 0;
         const walletPtsToDeduct = walletUsed ? activeCustomerWallet.points : 0;
         if (walletDiscount > 0) discountText += `🎁 خصم محفظة النقاط: -${walletDiscount} ج\n`;
@@ -1720,13 +2056,11 @@
         const finalDelivery = freeDelivery ? 0 : deliveryFee;
         const finalTotal = Math.max(0, subTotal - totalDiscount + finalDelivery);
 
-        // تنسيق التواريخ متوافق 100% مع تقارير الـ CRM (en-US)
         const now = new Date();
         const orderDateEn = now.toLocaleDateString('en-US');
         const orderDateAr = now.toLocaleDateString('ar-EG');
         const orderTime = now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' });
 
-        // كود خصم تلقائي للطلب القادم إذا كان مفعلاً من الإعدادات
         let promoUpdated = false;
         if (appliedPromo && Array.isArray(globalSettings.promoCodes)) {
             const pIdx = globalSettings.promoCodes.findIndex((p) => p && p.code === appliedPromo.code);
@@ -1758,19 +2092,13 @@
             promoUpdated = true;
         }
 
-        // تجهيز مصفوفة الأصناف ورسالة الواتساب والملاحظات
         const orderItems = [];
         let itemsWaStr = '';
         Object.keys(cart).forEach((id) => {
             if (!productsInfo[id]) return;
             const item = cart[id];
             const lineTotal = Math.round(item.quantity * item.price);
-            const cleanItemObj = {
-                id: id,
-                name: item.name,
-                quantity: item.quantity,
-                price: item.price
-            };
+            const cleanItemObj = { id, name: item.name, quantity: item.quantity, price: item.price };
             if (item.isWeightBased && Array.isArray(item.selectedWeightsGrams)) {
                 cleanItemObj.isWeightBased = true;
                 cleanItemObj.selectedWeightsGrams = item.selectedWeightsGrams;
@@ -1779,7 +2107,7 @@
             itemsWaStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${lineTotal} ج.م\n`;
         });
 
-        let notesChunks = [];
+        const notesChunks = [];
         if (walletUsed) notesChunks.push(`🎁 العميل فعّل خصم المحفظة (${walletDiscount} ج.م) بـ ${walletPtsToDeduct} نقطة.`);
         if (earnedLoyalty) notesChunks.push(`🎟 كود الخصم للطلب القادم: ${newPromoCode}`);
         const nextBatchKeys = Object.keys(window.nextBatchCart);
@@ -1826,13 +2154,12 @@
                     orderTime: orderTime,
                     isRead: false,
                     adminNote: finalAdminNote,
-                    source: 'storefront_v2',
+                    source: 'storefront_v3',
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
                 await db.collection('orders').add(orderData);
 
-                // تحديث الإحصائيات وملف العميل والدفعة والمخزون
                 const batchOps = db.batch();
                 batchOps.set(db.collection('inventory').doc('stats'), {
                     sales: firebase.firestore.FieldValue.increment(finalTotal),
@@ -1843,11 +2170,11 @@
                     name: customerName,
                     phone: customerPhone,
                     zone: zoneName,
-                    address: customerAddress || '',
                     ordersCount: firebase.firestore.FieldValue.increment(1),
                     totalSpent: firebase.firestore.FieldValue.increment(finalTotal),
                     lastOrder: firebase.firestore.FieldValue.serverTimestamp()
                 };
+                if (customerAddress) custUpdate.address = customerAddress;
                 if (walletUsed && walletPtsToDeduct > 0) {
                     custUpdate.walletPoints = firebase.firestore.FieldValue.increment(-walletPtsToDeduct);
                 }
@@ -1878,11 +2205,9 @@
                 await batchOps.commit();
             }
 
-            // حفظ بيانات العميل محلياً على جهازه للطلب القادم
             saveLocalProfile(customerName, customerPhone, zoneName, customerAddress);
             sessionStorage.setItem('sman_last_order_ms', String(Date.now()));
 
-            // تفريغ السلة
             cart = {};
             window.nextBatchCart = {};
             appliedPromo = null;
@@ -1895,21 +2220,13 @@
             updateUI();
             toggleCart();
 
-            // عرض شاشة النجاح وروابط التتبع والواتساب الصحيحة
             const waStoreNum = U.formatWaPhone(globalSettings.storePhone);
             window.currentOrderWaLink = `https://api.whatsapp.com/send?phone=${waStoreNum}&text=${encodeURIComponent(waMsg)}`;
             const interactiveTime = (batchId && globalBatches[batchId])
                 ? window.getFriendlyBatchDatePhrase(globalBatches[batchId].deliveryStart, globalBatches[batchId].deliveryEnd)
                 : '';
 
-            showOrderSuccessModal({
-                customerName,
-                customerPhone,
-                batchName,
-                interactiveTime,
-                earnedLoyalty,
-                newPromoCode
-            });
+            showOrderSuccessModal({ customerName, customerPhone, batchName, interactiveTime, earnedLoyalty, newPromoCode });
         } catch (e) {
             console.error('Order Submit Error:', e);
             showAlert('تعذر إرسال الطلب', 'حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة مرة أخرى بعد ثوانٍ.');
@@ -1926,20 +2243,17 @@
         const safePhone = encodeURIComponent(info.customerPhone);
         const titleText = esc(uiTexts.successTitle || 'تم تأكيد أوردرك بنجاح! 🎉');
 
-        let bodyHtml = info.batchName
-            ? `أوردرك اتسجل بنجاح في <strong class="text-brand-navy">${esc(info.batchName)}</strong>.<br>📦 موعد الاستلام المتوقع: <strong class="text-red-600">${esc(info.interactiveTime)}</strong>.<br>هنتواصل معاك للتأكيد قبل التحرك!`
+        const bodyHtml = info.batchName
+            ? `أوردرك اتسجل بنجاح في <strong class="text-brand-navy">${esc(info.batchName)}</strong>.<br>📦 موعد الاستلام المتوقع: <strong class="text-rose-600">${esc(info.interactiveTime)}</strong>.<br>هنتواصل معاك للتأكيد قبل التحرك!`
             : esc(uiTexts.successMsgTemplate || 'أوردرك اتسجل في السيستم عندنا خلاص وهيتم التجهيز والتواصل معاك للتأكيد.');
 
-        let rewardHtml = '';
-        if (info.earnedLoyalty && info.newPromoCode) {
-            const safeCode = esc(info.newPromoCode);
-            rewardHtml = `
-                <div class="bg-amber-50 border-2 border-dashed border-amber-300 p-3 rounded-xl my-3 text-center">
-                    <span class="text-[11px] font-black text-amber-800 block">🎁 هديتك لطلبك القادم (كود خصم خاص بك):</span>
-                    <span class="font-black text-2xl text-brand-navy tracking-wider select-all block my-1">${safeCode}</span>
-                    <button type="button" onclick="navigator.clipboard.writeText('${escAttr(info.newPromoCode)}'); this.textContent='✅ تم نسخ الكود';" class="bg-brand-navy text-white text-xs font-black px-4 py-1.5 rounded-lg">نسخ الكود</button>
-                </div>`;
-        }
+        const rewardHtml = (info.earnedLoyalty && info.newPromoCode)
+            ? `<div class="bg-amber-50 border-2 border-dashed border-amber-300 p-3 rounded-xl my-2 text-center">
+                   <span class="text-[11px] font-black text-amber-800 block">🎁 هديتك لطلبك القادم:</span>
+                   <span class="font-black text-2xl text-brand-navy tracking-wider select-all block my-1">${esc(info.newPromoCode)}</span>
+                   <button type="button" onclick="navigator.clipboard.writeText('${escAttr(info.newPromoCode)}'); this.textContent='✅ تم نسخ الكود';" class="bg-brand-navy text-white text-xs font-black px-4 py-1.5 rounded-lg">نسخ الكود</button>
+               </div>`
+            : '';
 
         const msgHTML = `
             <div dir="rtl" class="text-right space-y-3">
@@ -1948,18 +2262,18 @@
                         <i class="fa-solid fa-check"></i>
                     </div>
                     <h3 class="font-black text-brand-navy mt-2 text-base">${titleText}</h3>
-                    <p class="text-xs font-bold text-gray-500">شكراً لثقتك في سمان ههيا يا ${firstName} 🌿</p>
+                    <p class="text-xs font-bold text-slate-500">شكراً لثقتك في سمان ههيا يا ${firstName} 🌿</p>
                 </div>
                 <div class="text-xs font-bold text-emerald-900 leading-relaxed bg-emerald-50 p-3 rounded-xl border border-emerald-200">${bodyHtml}</div>
                 ${rewardHtml}
                 <div class="flex flex-col gap-2">
                     <button type="button" onclick="closeAlert(); window.location.href='track.html?phone=${safePhone}';" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm">
-                        <i class="fa-solid fa-route text-brand-yellow"></i> تتبع حالة طلبك الآن
+                        <i class="fa-solid fa-route text-amber-400"></i> تتبع حالة طلبك الآن
                     </button>
                     <button type="button" onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm">
                         <i class="fa-brands fa-whatsapp text-lg"></i> ${esc(uiTexts.waFollowUpBtn || 'تأكيد ومتابعة عبر واتساب')}
                     </button>
-                    <button type="button" onclick="closeAlert()" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-2.5 rounded-xl text-xs">
+                    <button type="button" onclick="closeAlert()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs">
                         ${esc(uiTexts.closeFollowUpBtn || 'تمام، شكراً 👍')}
                     </button>
                 </div>
@@ -1981,7 +2295,7 @@
     }
 
     // =========================================================================
-    // 10. التنبيهات وإشعارات المبيعات الحية
+    // 12. التنبيهات وإشعارات المبيعات الحية
     // =========================================================================
     window.showAlert = function (title, message) {
         const iconCont = document.getElementById('alert-icon-container');
@@ -1994,7 +2308,7 @@
             titleEl.classList.remove('hidden');
         }
         if (msgEl) {
-            msgEl.className = 'text-gray-600 mb-5 font-bold text-sm leading-relaxed whitespace-pre-wrap';
+            msgEl.className = 'text-slate-600 mb-5 font-bold text-sm leading-relaxed whitespace-pre-wrap';
             msgEl.textContent = message || '';
         }
         if (btn) {
