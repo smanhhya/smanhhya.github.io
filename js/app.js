@@ -1,4 +1,3 @@
-
 // js/app.js - محرك متجر سمان ههيا البريميوم (معرض Filmstrip + كروت متوازنة + تجربة سلة وإتمام طلب فاخرة)
 
 (function () {
@@ -769,11 +768,11 @@
                 <button type="button" onclick="closeStoryModal(); openFeastCalculator();" class="w-full bg-amber-400 text-[#0b261c] font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2 shadow-lg">
                     <i class="fa-solid fa-calculator"></i> احسب الكمية المناسبة لأسرتك الآن
                 </button>
-                 <a href="./kitchen/" class="w-full bg-white/15 hover:bg-white/25 text-white border border-white/20 font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2">
+                <a href="./kitchen/" class="w-full bg-white/15 hover:bg-white/25 text-white border border-white/20 font-black py-3 rounded-xl text-xs flex items-center justify-center gap-2">
                     <i class="fa-solid fa-fire-burner text-amber-400"></i> افتح مطبخ سمان ههيا الكامل (الوصفات)
                 </a>
-               
             `;
+
         }
     }
 
