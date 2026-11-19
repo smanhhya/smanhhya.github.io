@@ -1665,14 +1665,17 @@
         }
 
         const bottomBar = document.getElementById('bottom-cart-bar');
+        const storeFooter = document.getElementById('store-footer');
         if (bottomBar) {
             document.getElementById('bottom-cart-total').textContent = subTotalPrice;
             document.getElementById('bottom-cart-count').textContent = totalItems;
             if (totalItems > 0) {
                 bottomBar.classList.remove('translate-y-full');
+                if (storeFooter) storeFooter.style.paddingBottom = '6.5rem';
             } else {
                 bottomBar.classList.add('translate-y-full');
-                if (cartItemsContainer) {
+                if (storeFooter) storeFooter.style.paddingBottom = '';
+               if (cartItemsContainer) {
                     cartItemsContainer.innerHTML = `
                         <div class="flex flex-col items-center justify-center py-12 text-slate-400 gap-2.5">
                             <i class="fa-solid fa-basket-shopping text-5xl text-slate-200"></i>
