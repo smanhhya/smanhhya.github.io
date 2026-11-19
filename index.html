@@ -327,7 +327,7 @@
     </main>
 
     <!-- الفوتر الزمردي الممتد حتى آخر بكسل في الشاشة (صفر مساحة بيضاء بالأسفل) -->
-    <footer class="luxury-hero-bg text-emerald-100/80 pt-7 pb-28 border-t border-white/10 mt-auto">
+    <footer id="store-footer" class="luxury-hero-bg text-emerald-100/80 pt-7 pb-7 border-t border-white/10 mt-auto transition-all duration-300">
         <div class="max-w-4xl mx-auto px-4 flex flex-wrap justify-between items-center gap-3">
             <div>
                 <p class="font-black text-white text-base flex items-center gap-2" id="footer-store-name">
@@ -803,7 +803,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="./js/config.js?v=8"></script>
-    <script src="./js/app.js?v=8"></script>
+    <script src="./js/app.js?v=9"></script>
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
