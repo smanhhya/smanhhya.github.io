@@ -230,17 +230,41 @@
                 throw new Error('لم يتم العثور على مصفوفة recipes داخل الملف المختار.');
             }
 
-            const existingIds = new Set(adminRecipes.map((r) => r.id));
+            const existingMap = new Map(adminRecipes.map((r) => [r.id, r]));
             const batch = kDb.batch();
             let addedCount = 0;
+            let imagesLinkedCount = 0;
             let skippedCount = 0;
             const nowStr = new Date().toLocaleString('ar-EG');
             const actor = currentAdminUser?.email || 'Admin';
 
+            function normalizeRecipeImgUrl(raw) {
+                const s = String(raw || '').trim();
+                if (!s) return '';
+                if (/^(https?:\/\/|\/|\.\/|\.\.\/)/i.test(s)) return s;
+                return './' + s;
+            }
+
             recipesArr.forEach((rec, idx) => {
                 const docId = String(rec.id || `SHK-${String(idx + 1).padStart(3, '0')}`).trim();
-                if (existingIds.has(docId)) {
-                    skippedCount++;
+                const resolvedImg = normalizeRecipeImgUrl(rec.image_url || rec.image_path || '');
+                const existingRec = existingMap.get(docId);
+
+                if (existingRec) {
+                    const hasCurrentImg = Boolean(existingRec.image_url && String(existingRec.image_url).trim());
+                    if (!hasCurrentImg && resolvedImg) {
+                        const audit = Array.isArray(existingRec.auditLog) ? [...existingRec.auditLog] : [];
+                        audit.unshift({ at: nowStr, by: actor, action: 'ربط صورة الوصفة تلقائياً من حزمة الصور' });
+                        batch.set(kDb.collection('kitchen_recipes').doc(docId), {
+                            image_url: resolvedImg,
+                            image_status: rec.image_status || 'صورة توضيحية مولّدة؛ ليست توثيقاً لتجربة فعلية',
+                            auditLog: audit.slice(0, 25),
+                            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                        }, { merge: true });
+                        imagesLinkedCount++;
+                    } else {
+                        skippedCount++;
+                    }
                     return;
                 }
 
@@ -249,14 +273,15 @@
                     id: docId,
                     number: Number(rec.number) || (idx + 1),
                     slug: makeSlug(docId, rec.title),
-                    image_url: rec.image_url || '',
+                    image_url: resolvedImg,
+                    image_status: rec.image_status || '',
                     recommendedProductIds: Array.isArray(rec.recommendedProductIds) ? rec.recommendedProductIds : [],
                     publishStatus: 'draft',
                     verificationStatus: 'needs_practical_test',
                     practicalTestLog: null,
                     ratingAvg: 0,
                     ratingCount: 0,
-                    auditLog: [{ at: nowStr, by: actor, action: 'استيراد تأسيسي من ملف الـ 50 وصفة (مسودة)' }],
+                    auditLog: [{ at: nowStr, by: actor, action: 'استيراد تأسيسي من ملف الـ 50 وصفة مع ربط الصورة (مسودة)' }],
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
@@ -279,11 +304,11 @@
 
             if (logEl) {
                 logEl.className = 'text-xs font-black p-3.5 rounded-xl border bg-emerald-50 border-emerald-200 text-emerald-900';
-                logEl.innerHTML = `✅ اكتمل الاستيراد بنجاح!<br>• وصفات جديدة أُضيفت (كمسودات): ${addedCount}<br>• وصفات موجودة مسبقاً (لم تُمس): ${skippedCount}<br>• بطاقات سلامة الغذاء: ${guidesArr.length}`;
+                logEl.innerHTML = `✅ اكتمل الاستيراد وربط الصور بنجاح!<br>• وصفات جديدة أُضيفت (كمسودات): ${addedCount}<br>• وصفات موجودة تم ربط صورها تلقائياً (دون لمس نصوصها أو نشرها): ${imagesLinkedCount}<br>• وصفات مكتملة مسبقاً لم تُمس: ${skippedCount}<br>• بطاقات سلامة الغذاء: ${guidesArr.length}`;
             }
 
             await loadAllAdminData();
-            showToast(`🎉 تم استيراد ${addedCount} وصفة بنجاح!`);
+            showToast(`🎉 تم إضافة ${addedCount} وصفة وربط ${imagesLinkedCount} صورة بنجاح!`);
         } catch (err) {
             console.error('Import JSON Error:', err);
             if (logEl) {
