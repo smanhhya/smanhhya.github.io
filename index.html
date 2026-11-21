@@ -13,7 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./css/style.css?v=8">
+    <link rel="stylesheet" href="./css/style.css?v=9">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -314,23 +314,29 @@
                 <div id="custom-sections-wrap" class="space-y-5 hidden"></div>
 
 
-                <!-- 8. معرض الكتالوج الفاخر على الطبيعة (Luxury Filmstrip بدون أي فراغات بيضاء جانبية) -->
-                <div id="main-slider-container" class="luxury-hero-bg rounded-3xl p-3.5 sm:p-4 shadow-md border border-amber-400/20 text-white space-y-3">
+                <!-- 8. معرض الكتالوج التفاعلي الفاخر (مسرح عرض رئيسي + مصغّرات + تكبير بملء الشاشة) -->
+                <div id="main-slider-container" class="luxury-hero-bg rounded-3xl p-3.5 sm:p-5 shadow-xl border border-amber-400/25 text-white space-y-3.5 relative overflow-hidden">
                     <div class="flex items-center justify-between gap-2">
-                        <div class="flex items-center gap-2">
-                            <span class="w-8 h-8 rounded-xl bg-amber-400/20 text-amber-300 flex items-center justify-center text-sm shrink-0">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <span class="w-9 h-9 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b261c] flex items-center justify-center text-sm shadow-md shrink-0">
                                 <i class="fa-solid fa-camera-retro"></i>
                             </span>
-                            <div>
-                                <h3 class="text-xs sm:text-sm font-black text-white leading-tight">من مزرعتنا على الطبيعة</h3>
-                                <p class="text-[10px] font-bold text-emerald-200/80">اسحب لمشاهدة صور الأطباق واضغط للتكبير</p>
+                            <div class="min-w-0">
+                                <h3 class="text-sm sm:text-base font-black text-white leading-tight truncate">من مزرعتنا على الطبيعة</h3>
+                                <p class="text-[10px] sm:text-[11px] font-bold text-emerald-200/80 truncate">صور حقيقية للأطباق والأوزان — اسحب أو اضغط للتكبير</p>
                             </div>
                         </div>
-                        <span id="catalog-count-badge" class="text-[10px] font-black bg-white/10 text-amber-300 border border-white/15 px-2.5 py-1 rounded-xl shrink-0">1 صور</span>
+                        <div class="flex items-center gap-1.5 shrink-0">
+                            <span id="catalog-count-badge" class="text-[10px] font-black bg-white/10 text-amber-300 border border-white/15 px-2.5 py-1 rounded-xl">1 صورة</span>
+                            <button type="button" onclick="openCurrentCatalogFullscreen()" title="عرض المعرض بملء الشاشة" class="w-8 h-8 rounded-xl bg-amber-400/20 hover:bg-amber-400 text-amber-300 hover:text-[#0b261c] border border-amber-400/30 flex items-center justify-center transition-all active:scale-90">
+                                <i class="fa-solid fa-expand text-xs"></i>
+                            </button>
+                        </div>
                     </div>
 
-                    <div id="catalog-filmstrip" class="catalog-filmstrip no-scrollbar"></div>
+                    <div id="catalog-filmstrip" class="catalog-showcase"></div>
                 </div>
+
 
             </div>
 
@@ -818,7 +824,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="./js/config.js?v=8"></script>
-    <script src="./js/app.js?v=13"></script>
+    <script src="./js/app.js?v=14"></script>
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
