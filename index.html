@@ -924,7 +924,7 @@
 
     <!-- نافذة التنبيهات والنجاح -->
     <div id="alert-modal" class="fixed inset-0 bg-[#0b261c]/80 z-[120] hidden opacity-0 transition-opacity duration-300 flex items-center justify-center backdrop-blur-sm px-4">
-        <div id="alert-box" class="bg-white rounded-3xl p-6 w-full max-w-sm text-center shadow-2xl transform scale-95 transition-transform duration-300">
+        <div id="alert-box" class="bg-white rounded-3xl p-4 sm:p-5 w-full max-w-md max-h-[90vh] overflow-y-auto cart-scroll text-center shadow-2xl transform scale-95 transition-transform duration-300">
             <div id="alert-icon-container" class="w-14 h-14 bg-emerald-50 text-brand-navy rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
                 <i id="alert-icon" class="fa-solid fa-bell"></i>
             </div>
@@ -938,7 +938,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="./js/config.js?v=8"></script>
-    <script src="./js/app.js?v=16"></script>
+    <script src="./js/app.js?v=17"></script>
     <script>
         document.getElementById('footer-year').textContent = new Date().getFullYear();
         if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
