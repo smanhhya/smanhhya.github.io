@@ -658,83 +658,287 @@
         showStoreToast('تمت إضافة الملاحظة للطلب');
     };
 
-    // --- معرض الكتالوج الفاخر (Luxury Filmstrip Cards — صفر مساحات بيضاء جانبية) ---
+    // --- معرض الكتالوج التفاعلي الفاخر (مسرح العرض + المصغّرات + التكبير بملء الشاشة) ---
+    let catalogTouchStartX = 0;
+    let lightboxGalleryList = [];
+    let lightboxCurrentIdx = 0;
+    let lightboxTouchStartX = 0;
+
     function renderCatalogFilmstrip() {
-        const strip = document.getElementById('catalog-filmstrip');
+        const container = document.getElementById('catalog-filmstrip');
         const badge = document.getElementById('catalog-count-badge');
-        if (!strip) return;
+        if (!container) return;
 
         const images = (Array.isArray(globalSettings.galleryImages) && globalSettings.galleryImages.length > 0)
             ? globalSettings.galleryImages.filter((x) => x && String(x).trim() !== '')
             : ['all-sizes.jpg'];
         window.sliderImages = images;
+        if (window.currentSlide >= images.length || window.currentSlide < 0) {
+            window.currentSlide = 0;
+        }
 
-        if (badge) badge.textContent = `${images.length} ${images.length === 1 ? 'صورة' : 'صور'}`;
+        if (badge) {
+            badge.textContent = images.length === 1 ? 'صورة واحدة' : `${images.length} صور`;
+        }
 
-        const isSingle = images.length === 1;
-        strip.innerHTML = images.map((img, idx) => {
-            const safeImg = escAttr(img);
-            const widthCls = isSingle ? 'w-full h-[300px] sm:h-[340px]' : 'w-[74%] sm:w-[44%] h-[280px] sm:h-[310px]';
-            return `
-                <div onclick="openImageModal('${safeImg}')" class="catalog-slide-card ${widthCls} cursor-zoom-in border border-white/15 shadow-lg group">
-                    <img src="${esc(img)}" alt="" aria-hidden="true" class="catalog-blur-bg">
-                    <img src="${esc(img)}" alt="صورة من مزرعة سمان ههيا ${idx + 1}" loading="lazy" class="relative z-10 w-full h-full object-contain p-1.5 transition-transform duration-300 group-hover:scale-[1.03]" onerror="this.style.display='none'">
-                    <div class="absolute bottom-2.5 right-2.5 z-20 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full border border-white/15 flex items-center gap-1">
-                        <i class="fa-solid fa-magnifying-glass-plus text-amber-400 text-[9px]"></i>
-                        <span>${idx + 1} / ${images.length}</span>
-                    </div>
-                </div>`;
-        }).join('');
+        const hasMulti = images.length > 1;
+        const activeImg = images[window.currentSlide] || images[0];
+
+        const thumbsHtml = hasMulti
+            ? `<div class="space-y-2">
+                   <div id="catalog-thumbs-strip" class="catalog-thumbs-strip no-scrollbar">
+                       ${images.map((img, idx) => `
+                           <button type="button" data-thumb-idx="${idx}" onclick="goToCatalogSlide(${idx})" class="catalog-thumb-btn ${idx === window.currentSlide ? 'active' : ''}" aria-label="عرض الصورة ${idx + 1}">
+                               <img src="${esc(img)}" alt="معاينة ${idx + 1}" loading="lazy" class="w-full h-full object-cover" onerror="this.style.opacity='0.25'">
+                               <span class="absolute bottom-1 right-1 bg-black/65 text-white text-[9px] font-black px-1.5 rounded">${idx + 1}</span>
+                           </button>`).join('')}
+                   </div>
+                   <div id="catalog-dots-wrap" class="flex items-center justify-center gap-1.5">
+                       ${images.map((_, idx) => `<span data-dot-idx="${idx}" onclick="goToCatalogSlide(${idx})" class="catalog-dot ${idx === window.currentSlide ? 'active' : ''}"></span>`).join('')}
+                   </div>
+               </div>`
+            : '';
+
+        container.innerHTML = `
+            <div id="catalog-main-stage" class="catalog-stage cursor-zoom-in group" onclick="openCurrentCatalogFullscreen()">
+                <img id="catalog-stage-blur" src="${esc(activeImg)}" alt="" aria-hidden="true" class="catalog-blur-bg">
+                <img id="catalog-stage-img" src="${esc(activeImg)}" alt="صورة من مزرعة سمان ههيا" class="catalog-stage-img catalog-img-enter" onerror="this.style.display='none'">
+
+                <div class="absolute top-3 right-3 z-20 bg-black/60 backdrop-blur-md text-white text-[11px] font-black px-3 py-1 rounded-full border border-white/15 flex items-center gap-1.5 pointer-events-none">
+                    <i class="fa-solid fa-layer-group text-amber-400 text-[10px]"></i>
+                    <span id="catalog-stage-counter">${window.currentSlide + 1} / ${images.length}</span>
+                </div>
+
+                <div class="absolute bottom-3 left-3 z-20 bg-black/60 backdrop-blur-md text-white text-[10px] font-black px-3 py-1.5 rounded-full border border-white/15 flex items-center gap-1.5 pointer-events-none">
+                    <i class="fa-solid fa-magnifying-glass-plus text-amber-400 text-[11px]"></i>
+                    <span>اضغط للتكبير</span>
+                </div>
+
+                ${hasMulti ? `
+                    <button type="button" onclick="event.stopPropagation(); moveSlider(-1)" aria-label="الصورة السابقة" class="catalog-nav-btn right-2.5">
+                        <i class="fa-solid fa-chevron-right text-sm"></i>
+                    </button>
+                    <button type="button" onclick="event.stopPropagation(); moveSlider(1)" aria-label="الصورة التالية" class="catalog-nav-btn left-2.5">
+                        <i class="fa-solid fa-chevron-left text-sm"></i>
+                    </button>
+                ` : ''}
+            </div>
+            ${thumbsHtml}
+        `;
+
+        const stageEl = document.getElementById('catalog-main-stage');
+        if (stageEl && hasMulti) {
+            stageEl.addEventListener('touchstart', (e) => {
+                catalogTouchStartX = e.changedTouches[0]?.clientX || 0;
+            }, { passive: true });
+            stageEl.addEventListener('touchend', (e) => {
+                const endX = e.changedTouches[0]?.clientX || 0;
+                const diff = endX - catalogTouchStartX;
+                if (Math.abs(diff) > 40) {
+                    window.moveSlider(diff > 0 ? 1 : -1);
+                }
+            }, { passive: true });
+        }
     }
 
-    window.moveSlider = function (dir) {
-        const strip = document.getElementById('catalog-filmstrip');
-        if (strip) strip.scrollBy({ left: dir * -260, behavior: 'smooth' });
+    window.updateSliderView = function () {
+        const images = Array.isArray(window.sliderImages) ? window.sliderImages : [];
+        if (images.length === 0) return;
+
+        window.currentSlide = ((window.currentSlide % images.length) + images.length) % images.length;
+        const activeImg = images[window.currentSlide];
+
+        const stageImg = document.getElementById('catalog-stage-img');
+        const stageBlur = document.getElementById('catalog-stage-blur');
+        const counterEl = document.getElementById('catalog-stage-counter');
+
+        if (stageBlur) stageBlur.src = activeImg;
+        if (stageImg) {
+            stageImg.style.display = 'block';
+            stageImg.classList.remove('catalog-img-enter');
+            void stageImg.offsetWidth;
+            stageImg.src = activeImg;
+            stageImg.classList.add('catalog-img-enter');
+        }
+        if (counterEl) counterEl.textContent = `${window.currentSlide + 1} / ${images.length}`;
+
+        document.querySelectorAll('#catalog-thumbs-strip .catalog-thumb-btn').forEach((btn) => {
+            const idx = Number(btn.getAttribute('data-thumb-idx'));
+            const isAct = idx === window.currentSlide;
+            btn.classList.toggle('active', isAct);
+            if (isAct) {
+                btn.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        });
+
+        document.querySelectorAll('#catalog-dots-wrap .catalog-dot').forEach((dot) => {
+            const idx = Number(dot.getAttribute('data-dot-idx'));
+            dot.classList.toggle('active', idx === window.currentSlide);
+        });
     };
-    window.updateSliderView = function () {};
+
+    window.goToCatalogSlide = function (idx) {
+        if (!Array.isArray(window.sliderImages) || window.sliderImages.length === 0) return;
+        window.currentSlide = idx;
+        if (navigator.vibrate) navigator.vibrate(15);
+        window.updateSliderView();
+    };
+
+    window.moveSlider = function (dir) {
+        if (!Array.isArray(window.sliderImages) || window.sliderImages.length <= 1) return;
+        window.currentSlide += Number(dir) || 1;
+        if (navigator.vibrate) navigator.vibrate(15);
+        window.updateSliderView();
+    };
+
+    window.openCurrentCatalogFullscreen = function () {
+        const images = Array.isArray(window.sliderImages) ? window.sliderImages : [];
+        if (images.length === 0) return;
+        const targetSrc = images[window.currentSlide] || images[0];
+        window.openImageModal(targetSrc);
+    };
+
+    function renderLightboxFrame() {
+        const imgEl = document.getElementById('image-viewer-img');
+        const loader = document.getElementById('img-loader');
+        const counterEl = document.getElementById('img-viewer-counter');
+        const prevBtn = document.getElementById('img-viewer-prev');
+        const nextBtn = document.getElementById('img-viewer-next');
+        const thumbsEl = document.getElementById('img-viewer-thumbs');
+        if (!imgEl || lightboxGalleryList.length === 0) return;
+
+        lightboxCurrentIdx = ((lightboxCurrentIdx % lightboxGalleryList.length) + lightboxGalleryList.length) % lightboxGalleryList.length;
+        const curSrc = lightboxGalleryList[lightboxCurrentIdx];
+        const hasMulti = lightboxGalleryList.length > 1;
+
+        if (loader) loader.style.display = 'block';
+        imgEl.src = curSrc;
+
+        if (counterEl) {
+            counterEl.textContent = `${lightboxCurrentIdx + 1} / ${lightboxGalleryList.length}`;
+            counterEl.classList.toggle('hidden', !hasMulti);
+        }
+        if (prevBtn) prevBtn.classList.toggle('hidden', !hasMulti);
+        if (nextBtn) nextBtn.classList.toggle('hidden', !hasMulti);
+
+        if (thumbsEl) {
+            if (hasMulti) {
+                thumbsEl.classList.remove('hidden');
+                thumbsEl.innerHTML = lightboxGalleryList.map((src, i) => `
+                    <button type="button" onclick="event.stopPropagation(); stepLightboxTo(${i})" class="w-12 h-12 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${i === lightboxCurrentIdx ? 'border-amber-400 scale-105 opacity-100' : 'border-white/20 opacity-55 hover:opacity-90'}">
+                        <img src="${esc(src)}" alt="" class="w-full h-full object-cover">
+                    </button>`).join('');
+            } else {
+                thumbsEl.classList.add('hidden');
+                thumbsEl.innerHTML = '';
+            }
+        }
+    }
+
+    window.stepLightboxImage = function (delta) {
+        if (lightboxGalleryList.length <= 1) return;
+        lightboxCurrentIdx += Number(delta) || 1;
+        renderLightboxFrame();
+    };
+
+    window.stepLightboxTo = function (idx) {
+        if (lightboxGalleryList.length <= 1) return;
+        lightboxCurrentIdx = idx;
+        renderLightboxFrame();
+    };
 
     window.openImageModal = function (imgSrc) {
         if (!imgSrc || !String(imgSrc).trim()) return;
+        const cleanSrc = String(imgSrc).trim();
+        const catalogList = Array.isArray(window.sliderImages) ? window.sliderImages : [];
+        const matchedIdx = catalogList.indexOf(cleanSrc);
+
+        if (matchedIdx > -1 && catalogList.length > 0) {
+            lightboxGalleryList = [...catalogList];
+            lightboxCurrentIdx = matchedIdx;
+        } else {
+            lightboxGalleryList = [cleanSrc];
+            lightboxCurrentIdx = 0;
+        }
+
         let modal = document.getElementById('image-viewer-modal');
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'image-viewer-modal';
-            modal.className = 'fixed inset-0 z-[140] bg-[#071812]/95 flex items-center justify-center hidden opacity-0 transition-all duration-200 backdrop-blur-md p-4 cursor-zoom-out';
+            modal.className = 'fixed inset-0 z-[140] bg-[#06150f]/95 flex flex-col items-center justify-between hidden opacity-0 transition-all duration-200 backdrop-blur-md p-3 sm:p-5';
             modal.onclick = () => {
                 closeImageViewer();
                 if (window.location.hash === '#catalog') history.back();
             };
             modal.innerHTML = `
-                <div class="relative w-full max-w-3xl h-full flex items-center justify-center">
-                    <i class="fa-solid fa-spinner fa-spin absolute text-amber-400 text-3xl z-0" id="img-loader"></i>
-                    <img id="image-viewer-img" src="" alt="" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl scale-95 transition-transform duration-200 relative z-10">
-                    <button type="button" class="absolute top-3 right-3 bg-white/20 hover:bg-white/40 text-white rounded-full w-10 h-10 flex items-center justify-center z-20">
+                <div class="w-full max-w-4xl flex items-center justify-between gap-2 z-20 shrink-0" onclick="event.stopPropagation()">
+                    <span id="img-viewer-counter" class="bg-white/15 text-amber-300 border border-white/15 text-xs font-black px-3 py-1.5 rounded-full">1 / 1</span>
+                    <button type="button" onclick="closeImageViewer(); if (window.location.hash === '#catalog') history.back();" aria-label="إغلاق المعرض" class="bg-white/15 hover:bg-rose-500 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
-                </div>`;
+                </div>
+
+                <div id="img-viewer-stage" class="relative w-full max-w-4xl flex-1 flex items-center justify-center my-2 min-h-0" onclick="event.stopPropagation()">
+                    <i class="fa-solid fa-spinner fa-spin absolute text-amber-400 text-3xl z-0" id="img-loader"></i>
+                    <img id="image-viewer-img" src="" alt="" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl scale-95 transition-transform duration-200 relative z-10">
+
+                    <button type="button" id="img-viewer-prev" onclick="event.stopPropagation(); stepLightboxImage(-1)" aria-label="السابق" class="catalog-nav-btn right-1 sm:right-3">
+                        <i class="fa-solid fa-chevron-right text-base"></i>
+                    </button>
+                    <button type="button" id="img-viewer-next" onclick="event.stopPropagation(); stepLightboxImage(1)" aria-label="التالي" class="catalog-nav-btn left-1 sm:left-3">
+                        <i class="fa-solid fa-chevron-left text-base"></i>
+                    </button>
+                </div>
+
+                <div id="img-viewer-thumbs" class="w-full max-w-2xl flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1 z-20 shrink-0" onclick="event.stopPropagation()"></div>`;
             document.body.appendChild(modal);
+
+            const lbStage = document.getElementById('img-viewer-stage');
+            if (lbStage) {
+                lbStage.addEventListener('touchstart', (e) => {
+                    lightboxTouchStartX = e.changedTouches[0]?.clientX || 0;
+                }, { passive: true });
+                lbStage.addEventListener('touchend', (e) => {
+                    const diff = (e.changedTouches[0]?.clientX || 0) - lightboxTouchStartX;
+                    if (Math.abs(diff) > 40) window.stepLightboxImage(diff > 0 ? 1 : -1);
+                }, { passive: true });
+            }
+
+            document.addEventListener('keydown', (e) => {
+                const m = document.getElementById('image-viewer-modal');
+                if (!m || m.classList.contains('hidden')) return;
+                if (e.key === 'Escape') {
+                    closeImageViewer();
+                    if (window.location.hash === '#catalog') history.back();
+                } else if (e.key === 'ArrowLeft') {
+                    window.stepLightboxImage(1);
+                } else if (e.key === 'ArrowRight') {
+                    window.stepLightboxImage(-1);
+                }
+            });
         }
 
+        renderLightboxFrame();
         const imgEl = document.getElementById('image-viewer-img');
-        const loader = document.getElementById('img-loader');
-        if (loader) loader.style.display = 'block';
-        imgEl.src = imgSrc;
         modal.classList.remove('hidden');
         setTimeout(() => {
             modal.classList.remove('opacity-0');
-            imgEl.classList.remove('scale-95');
-            imgEl.classList.add('scale-100');
+            if (imgEl) {
+                imgEl.classList.remove('scale-95');
+                imgEl.classList.add('scale-100');
+            }
         }, 10);
         try { history.pushState({ modalOpen: true }, '', '#catalog'); } catch (e) {}
     };
 
-    function closeImageViewer() {
+    window.closeImageViewer = function () {
         const modal = document.getElementById('image-viewer-modal');
         if (modal && !modal.classList.contains('hidden')) {
             modal.classList.add('opacity-0');
             setTimeout(() => modal.classList.add('hidden'), 200);
         }
-    }
+    };
+    const closeImageViewer = window.closeImageViewer;
     window.addEventListener('popstate', closeImageViewer);
 
     // =========================================================================
