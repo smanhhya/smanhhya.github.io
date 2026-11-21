@@ -2,360 +2,498 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>مراقب الجودة والآراء الحية | سمان ههيا</title>
-    <meta name="theme-color" content="#1e293b">
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>آراء عملائنا الموثّقة | سمان ههيا — أصل الطعم يبدأ من التربية</title>
+    <meta name="description" content="شاهد تجارب وآراء عملاء سمان ههيا الحقيقية الموثّقة في الشرقية عن الطعم الطازج والأوزان الدقيقة والنظافة.">
+    <meta name="theme-color" content="#0f3426">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="icon" type="image/png" href="./logo.png">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="./css/style.css?v=9">
+
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
     <script>
         tailwind.config = {
             theme: {
-                extend: { colors: { brand: { primary: '#166534', accent: '#f59e0b' } }, fontFamily: { cairo: ['Cairo', 'sans-serif'] } }
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#0f3426',
+                            navy: '#0f3426',
+                            emerald: '#1b4332',
+                            accent: '#d97706',
+                            yellow: '#f59e0b',
+                            light: '#f0fdf4'
+                        }
+                    },
+                    fontFamily: { cairo: ['Cairo', 'sans-serif'] }
+                }
             }
-        }
+        };
     </script>
     <style>
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
-        .glass-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 1); box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05); }
-        .custom-scroll::-webkit-scrollbar { width: 5px; }
-        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
-        .custom-scroll::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .trust-card {
+            background: #ffffff;
+            border: 1px solid rgba(15, 52, 38, 0.09);
+            box-shadow: 0 6px 20px -6px rgba(15, 52, 38, 0.08);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .trust-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 28px -8px rgba(15, 52, 38, 0.14);
+        }
     </style>
 </head>
-<body class="text-slate-800 flex flex-col min-h-screen">
+<body class="text-slate-800 flex flex-col min-h-screen bg-[#faf8f3] selection:bg-brand-navy selection:text-white">
 
-    <header class="bg-slate-900 text-white shadow-lg py-5 px-6 text-center sticky top-0 z-50 border-b-4 border-amber-500">
-        <div class="flex justify-center items-center gap-3 mb-1">
-            <i class="fa-solid fa-satellite-dish text-2xl text-amber-400 animate-pulse"></i>
-            <h1 class="text-xl font-black tracking-tight">رادار الجودة والتقييمات</h1>
+    <!-- إشعار Toast فوري -->
+    <div id="rev-toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-[150] pointer-events-none opacity-0 -translate-y-4 transition-all duration-300 w-max max-w-[92vw]">
+        <div class="bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-400/30 flex items-center gap-2 text-xs font-black">
+            <i class="fa-solid fa-cart-plus text-amber-400 text-sm"></i>
+            <span id="rev-toast-text">تم تجهيز السلة بنجاح</span>
         </div>
-        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-widest">سمان ههيا - السجل الحي لآراء العملاء</p>
-    </header>
+    </div>
 
-    <main class="flex-1 max-w-5xl w-full mx-auto p-5 flex flex-col mt-2">
-
-        <div class="grid grid-cols-3 gap-3 mb-6" id="stats-container">
-            <div class="glass-card p-4 rounded-2xl text-center border border-slate-200 shadow-sm transition-all duration-300" id="card-avg">
-                <p class="text-[10px] font-bold text-slate-500 mb-1">متوسط التقييم العام</p>
-                <p class="text-2xl font-black text-amber-500" id="stat-avg">0.0 <i class="fa-solid fa-star text-sm"></i></p>
-            </div>
-            <div class="glass-card p-4 rounded-2xl text-center border border-emerald-100 bg-emerald-50/30 shadow-sm transition-all duration-300" id="card-good">
-                <p class="text-[10px] font-bold text-emerald-600 mb-1">تقييمات ممتازة (4-5)</p>
-                <p class="text-2xl font-black text-emerald-600" id="stat-good">0</p>
-            </div>
-            <div class="glass-card p-4 rounded-2xl text-center border border-red-100 bg-red-50/30 shadow-sm transition-all duration-300" id="card-bad">
-                <p class="text-[10px] font-bold text-red-600 mb-1">شكاوى (1-3)</p>
-                <p class="text-2xl font-black text-red-600" id="stat-bad">0</p>
-            </div>
-        </div>
-        
-        <div class="glass-card p-4 rounded-2xl mb-6 flex flex-col md:flex-row gap-3 items-center bg-white shadow-sm border border-slate-200">
-            <div class="w-full relative">
-                <i class="fa-solid fa-search absolute right-4 top-3.5 text-slate-400 text-base"></i>
-                <input type="tel" id="search-phone" placeholder="استعلام برقم موبايل عميل محدد..." class="w-full border border-slate-200 bg-slate-50 rounded-xl p-2.5 pr-10 text-sm font-black outline-none focus:border-brand-primary focus:bg-white transition-all" dir="ltr" onkeypress="if(event.key === 'Enter') searchCustomerReview()">
-            </div>
-            <button onclick="searchCustomerReview()" id="btn-search" class="w-full md:w-auto px-6 bg-slate-800 hover:bg-slate-900 text-white font-black py-2.5 rounded-xl transition-all shadow-md active:scale-95 flex justify-center items-center gap-2 shrink-0 text-sm">
-                استعلام
-            </button>
-            <button onclick="loadLiveFeed()" class="w-full md:w-auto px-4 bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-2.5 rounded-xl transition-all shadow-sm active:scale-95 flex justify-center items-center gap-2 shrink-0 text-sm border border-slate-200" title="العودة للسجل الحي">
-                <i class="fa-solid fa-rotate-right"></i>
-            </button>
-        </div>
-
-        <div id="loading-spinner" class="text-center py-12">
-            <i class="fa-solid fa-spinner fa-spin text-4xl text-brand-primary mb-3"></i>
-            <p class="text-sm font-bold text-slate-500">جاري سحب التقييمات الحية...</p>
-        </div>
-
-        <div id="error-msg" class="hidden text-center py-8 bg-red-50 border border-red-200 rounded-2xl text-red-500 font-black text-sm mb-6"></div>
-
-        <div id="live-feed-container" class="hidden">
-            <h3 class="font-black text-slate-800 text-lg mb-4 flex items-center gap-2 border-b border-slate-200 pb-2">
-                <i class="fa-solid fa-tower-broadcast text-brand-primary"></i> أحدث التقييمات الواردة:
-            </h3>
-            <div id="reviews-list" class="space-y-4"></div>
-        </div>
-
-        <div id="results-container" class="hidden space-y-6">
-            <div class="bg-gradient-to-l from-slate-800 to-slate-700 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
-                <i class="fa-solid fa-id-card absolute -left-4 -bottom-4 text-8xl opacity-10"></i>
-                <div class="flex items-start gap-4 relative z-10">
-                    <div class="w-16 h-16 bg-white/10 border border-white/20 rounded-full flex items-center justify-center text-3xl shrink-0">
-                        <i class="fa-regular fa-circle-user text-amber-400"></i>
-                    </div>
-                    <div class="flex-1">
-                        <h2 id="c-name" class="text-2xl font-black mb-1">اسم العميل</h2>
-                        <p id="c-phone" class="text-sm font-bold text-slate-300 mb-3" dir="ltr">01000000000</p>
-                        <div class="flex items-center gap-2 text-xs font-bold bg-black/20 p-2 rounded-lg w-max border border-white/10">
-                            <i class="fa-solid fa-location-dot text-amber-400"></i> <span id="c-address">المنطقة - العنوان التفصيلي</span>
-                        </div>
-                    </div>
+    <!-- شريط التنقل الزجاجي الملكي المطابق للمتجر -->
+    <nav class="bg-[#0b261c]/95 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-white/10">
+        <div class="max-w-4xl mx-auto px-3.5 sm:px-5 h-14 flex items-center justify-between gap-2">
+            <a href="index.html" class="flex items-center gap-2.5 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#0b261c] flex items-center justify-center shadow-md shrink-0">
+                    <i class="fa-solid fa-kiwi-bird text-lg"></i>
                 </div>
-                
-                <div class="grid grid-cols-2 gap-4 mt-6 relative z-10 border-t border-white/10 pt-4">
-                    <div class="text-center">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">عدد الطلبات المكتملة</p>
-                        <p class="text-2xl font-black text-white" id="c-orders">0</p>
-                    </div>
-                    <div class="text-center border-r border-white/10">
-                        <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">إجمالي الدفع</p>
-                        <p class="text-2xl font-black text-amber-400"><span id="c-spent">0</span> <span class="text-sm">ج.م</span></p>
-                    </div>
+                <div class="min-w-0">
+                    <span class="font-black text-base sm:text-lg text-white leading-none block truncate">سمان <span class="text-amber-400">ههيا</span></span>
+                    <span class="text-[10px] font-bold text-emerald-300 flex items-center gap-1 mt-0.5">
+                        <i class="fa-solid fa-shield-check text-amber-400 text-[9px]"></i>
+                        <span>حائط ثقة عملائنا</span>
+                    </span>
                 </div>
-            </div>
+            </a>
 
-            <div>
-                <h3 class="font-black text-slate-800 text-lg mb-4 flex items-center gap-2">
-                    <i class="fa-solid fa-clock-rotate-left text-brand-primary"></i> سجل الطلبات والتقييمات للعميل:
-                </h3>
-                <div id="orders-list" class="space-y-4"></div>
+            <div class="flex items-center gap-1.5 shrink-0">
+                <a href="track.html" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-2.5 py-1.5 rounded-xl text-[11px] font-black transition-all flex items-center gap-1">
+                    <i class="fa-solid fa-star text-amber-400"></i>
+                    <span class="hidden sm:inline">قيّم طلبك</span>
+                    <span class="sm:hidden">تتبع</span>
+                </a>
+                <a href="index.html" class="bg-amber-400 hover:bg-amber-300 text-[#0b261c] px-3 py-1.5 rounded-xl text-xs font-black shadow-md flex items-center gap-1.5 transition-all active:scale-95">
+                    <i class="fa-solid fa-basket-shopping"></i>
+                    <span>اطلب الآن</span>
+                </a>
             </div>
         </div>
+    </nav>
 
-    </main>
-
-    <script>
-        const firebaseConfig = { apiKey: "AIzaSyD7ZJP8n8fhMewPfEsTBANn0h9To_q15BY", authDomain: "sman-ca8f8.firebaseapp.com", projectId: "sman-ca8f8", storageBucket: "sman-ca8f8.firebasestorage.app", messagingSenderId: "538778803310", appId: "1:538778803310:web:5eeff42bae534375a21a7f" };
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
-        let liveFeedUnsubscribe = null; 
-
-        function normalizePhone(phone) {
-            if (!phone) return '';
-            let normalized = phone.toString().replace(/[\u0660-\u0669\u06F0-\u06F9]/g, c => c.charCodeAt(0) - 0x0660).replace(/\D/g, '');
-            if (normalized.length >= 10) {
-                if (normalized.startsWith('0020')) normalized = '0' + normalized.substring(4);
-                else if (normalized.startsWith('201')) normalized = '0' + normalized.substring(2);
-                else if (normalized.length === 10 && normalized.startsWith('1')) normalized = '0' + normalized;
-            }
-            return normalized;
-        }
-
-        function generateStars(rating) {
-            if (!rating || rating === 0) return '<span class="text-[10px] text-slate-400 font-bold bg-slate-100 px-2 py-1 rounded-lg border border-slate-200">بدون تقييم</span>';
-            let starsHtml = '<div class="text-amber-400 text-base flex flex-row-reverse gap-0.5 drop-shadow-sm">';
-            for(let i = 1; i <= 5; i++) {
-                if(i <= rating) starsHtml += '<i class="fa-solid fa-star"></i>';
-                else starsHtml += '<i class="fa-regular fa-star text-slate-200"></i>';
-            }
-            starsHtml += '</div>';
-            return starsHtml;
-        }
-
-        function extractReviewText(adminNote) {
-            if (!adminNote) return null;
-            let lines = adminNote.split('\n---\n');
-            let reviewLines = lines.filter(l => l.includes('⭐️ تقييم'));
-            if (reviewLines.length === 0) return null;
-            
-            let latestReview = reviewLines[reviewLines.length - 1];
-            let cleanText = latestReview.replace(/\[.*?\]\s*⭐️ تقييم( العميل للمنصة)?:/g, '').trim();
-            return cleanText || "اكتفى بالتقييم بالنجوم ولم يكتب تعليقاً.";
-        }
-
-        function loadLiveFeed() {
-            let loader = document.getElementById('loading-spinner');
-            let feedContainer = document.getElementById('live-feed-container');
-            let reviewsList = document.getElementById('reviews-list');
-            let resultsContainer = document.getElementById('results-container');
-            let statsContainer = document.getElementById('stats-container');
-            let errBox = document.getElementById('error-msg');
-            
-            errBox.classList.add('hidden');
-            resultsContainer.classList.add('hidden');
-            document.getElementById('search-phone').value = '';
-            statsContainer.classList.remove('hidden');
-
-            if (!liveFeedUnsubscribe) {
-                loader.classList.remove('hidden');
-                feedContainer.classList.add('hidden');
-            }
-
-            // 🚀 التحديث الجذري: بيسحب "أي أوردر متقيم" في السيستم بغض النظر عن وقته 🚀
-            liveFeedUnsubscribe = db.collection('orders')
-                .where('rating', '>', 0)
-                .onSnapshot(snap => {
-                    let allRatedOrders = [];
-                    let totalStars = 0, goodCount = 0, badCount = 0;
-
-                    snap.forEach(doc => {
-                        let d = doc.data();
-                        allRatedOrders.push({id: doc.id, ...d});
-                        totalStars += d.rating;
-                        if(d.rating >= 4) goodCount++; else badCount++;
-                    });
-
-                    // ترتيب زمني من الأحدث للأقدم
-                    allRatedOrders.sort((a, b) => {
-                        let timeA = a.createdAt ? a.createdAt.toMillis() : 0;
-                        let timeB = b.createdAt ? b.createdAt.toMillis() : 0;
-                        return timeB - timeA;
-                    });
-
-                    let avg = allRatedOrders.length > 0 ? (totalStars / allRatedOrders.length).toFixed(1) : "0.0";
-                    document.getElementById('stat-avg').innerHTML = `${avg} <i class="fa-solid fa-star text-sm"></i>`;
-                    document.getElementById('stat-good').innerText = goodCount;
-                    document.getElementById('stat-bad').innerText = badCount;
-
-                    document.getElementById('card-avg').classList.add('scale-105');
-                    setTimeout(() => document.getElementById('card-avg').classList.remove('scale-105'), 300);
-
-                    if (allRatedOrders.length === 0) {
-                        reviewsList.innerHTML = '<div class="text-center py-10 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يتم العثور على أي تقييمات حتى الآن. جرب قيم أوردر من تليفونك!</div>';
-                    } else {
-                        reviewsList.innerHTML = allRatedOrders.map(o => createReviewCard(o)).join('');
-                    }
-
-                    loader.classList.add('hidden');
-                    feedContainer.classList.remove('hidden');
-
-                }, error => {
-                    console.error("خطأ: ", error);
-                    loader.classList.add('hidden');
-                    errBox.innerText = "حدث خطأ في الاتصال. تأكد من الإنترنت.";
-                    errBox.classList.remove('hidden');
-                });
-        }
-
-        async function searchCustomerReview() {
-            let phoneInput = document.getElementById('search-phone').value;
-            let phone = normalizePhone(phoneInput);
-            
-            let loader = document.getElementById('loading-spinner');
-            let feedContainer = document.getElementById('live-feed-container');
-            let resultsContainer = document.getElementById('results-container');
-            let statsContainer = document.getElementById('stats-container');
-            let errBox = document.getElementById('error-msg');
-
-            if (phone.length < 10) { errBox.innerText = "يرجى كتابة رقم موبايل صحيح!"; errBox.classList.remove('hidden'); return; }
-
-            loader.classList.remove('hidden');
-            feedContainer.classList.add('hidden');
-            resultsContainer.classList.add('hidden');
-            statsContainer.classList.add('hidden'); 
-            errBox.classList.add('hidden');
-
-            try {
-                let ordersSnap = await db.collection('orders').where('customerPhone', '==', phone).get();
-                let orders = [];
-                ordersSnap.forEach(doc => orders.push({id: doc.id, ...doc.data()}));
-                
-                let cleanPhoneDb = phone.startsWith('0') ? phone : '0' + phone;
-                let cSnap = await db.collection('customers').doc(cleanPhoneDb).get();
-                
-                if (orders.length === 0 && !cSnap.exists) {
-                    loader.classList.add('hidden');
-                    errBox.innerText = "هذا الرقم ليس له أي طلبات في النظام.";
-                    errBox.classList.remove('hidden'); return;
-                }
-
-                let customerData = cSnap.exists ? cSnap.data() : { name: "غير مسجل", zone: "", address: "" };
-                orders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-                let latestOrder = orders[0];
-                
-                document.getElementById('c-name').innerText = customerData.name || (latestOrder ? latestOrder.customerName : 'عميل غير مسجل');
-                document.getElementById('c-phone').innerText = phone;
-                document.getElementById('c-address').innerText = `${customerData.zone || (latestOrder?latestOrder.zone:'')} - ${customerData.address || (latestOrder?latestOrder.customerAddress:'')}`;
-                
-                let ordersListHtml = '';
-                let totalSpent = 0, completedCount = 0;
-
-                if(orders.length > 0) {
-                    orders.forEach(o => {
-                        if(o.status === 'completed') { totalSpent += (Number(o.total) || 0); completedCount++; }
-                        ordersListHtml += createReviewCard(o, true); 
-                    });
-                } else {
-                    ordersListHtml = '<div class="text-center py-8 text-slate-400 font-bold border-2 border-dashed border-slate-200 rounded-2xl">لم يقم هذا العميل بأي أوردرات.</div>';
-                }
-
-                document.getElementById('c-orders').innerText = completedCount;
-                document.getElementById('c-spent').innerText = totalSpent.toLocaleString();
-                document.getElementById('orders-list').innerHTML = ordersListHtml;
-
-                loader.classList.add('hidden');
-                resultsContainer.classList.remove('hidden');
-
-            } catch(e) {
-                loader.classList.add('hidden'); errBox.innerText = "حدث خطأ أثناء جلب بيانات العميل."; errBox.classList.remove('hidden');
-            }
-        }
-
-        function createReviewCard(o, showUnrated = false) {
-            let ratingStars = generateStars(o.rating);
-            let reviewText = extractReviewText(o.adminNote);
-            
-            if (!showUnrated && (!o.rating || o.rating === 0)) return '';
-
-            let reviewBoxHtml = '';
-            if (o.rating && o.rating > 0) {
-                let reviewColor = o.rating >= 4 ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-200 shadow-md shadow-red-500/10';
-                let textColor = o.rating >= 4 ? 'text-emerald-700' : 'text-red-700';
-                let iconFeedback = o.rating >= 4 ? '<i class="fa-regular fa-face-smile-beam text-emerald-500 text-xl"></i>' : '<i class="fa-solid fa-triangle-exclamation text-red-500 text-xl animate-pulse"></i>';
-                
-                reviewBoxHtml = `
-                <div class="mt-3 ${reviewColor} border rounded-xl p-4 relative overflow-hidden">
-                    ${o.rating <= 3 ? '<div class="absolute top-0 right-0 w-full h-1 bg-red-500"></div>' : ''}
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex items-center gap-2">
-                            ${iconFeedback}
-                            <span class="text-xs font-black text-slate-800">رأي العميل:</span>
-                        </div>
-                        ${ratingStars}
+    <!-- هيدر حائط الثقة ومؤشر الرضا العام -->
+    <header class="luxury-hero-bg text-white pt-6 pb-8 px-4 relative overflow-hidden">
+        <div class="max-w-4xl mx-auto space-y-5">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="space-y-2 text-right">
+                    <div class="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm border border-white/15 px-3 py-1 rounded-full text-[11px] font-black text-amber-300">
+                        <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                        <span>تقييمات حقيقية 100% من طلبات تم استلامها فعلياً</span>
                     </div>
-                    <p class="text-sm font-bold ${textColor} leading-relaxed bg-white/60 p-2.5 rounded-lg border border-white/50">${reviewText}</p>
-                </div>`;
-            } else if (showUnrated) {
-                reviewBoxHtml = `<div class="mt-3 bg-slate-50 border border-slate-100 rounded-xl p-3 flex justify-between items-center"><span class="text-xs font-bold text-slate-500">التقييم:</span>${ratingStars}</div>`;
-            }
+                    <h1 class="text-2xl sm:text-3xl font-black text-white leading-snug">كلام عملائنا هو شهادة الجودة الحقيقية 🌿</h1>
+                    <p class="text-xs sm:text-sm font-semibold text-emerald-100/85 max-w-xl leading-relaxed">
+                        كل رأي هنا من عميل حقيقي في الشرقية جرّب سمان ههيا المذبوح طازج بالطلب — نعرض الاسم الأول والمنطقة فقط حفاظاً تاماً على خصوصية عملائنا.
+                    </p>
+                </div>
 
-            let itemsStr = o.items ? o.items.map(i => `<span class="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-0.5 rounded text-[10px] font-black inline-block m-0.5">${i.quantity}x ${i.name}</span>`).join('') : 'بدون تفاصيل';
-            let dateStr = o.orderDate || (o.createdAt ? new Date(o.createdAt.toMillis()).toLocaleDateString('ar-EG') : 'غير مسجل');
-            let dispZone = o.zone || 'منطقة غير محددة';
-            
-            let statusBadge = '';
-            if(showUnrated) {
-                if(o.status === 'completed') statusBadge = '<span class="bg-emerald-50 text-emerald-600 px-2 py-0.5 rounded text-[10px] font-black border border-emerald-100">مكتمل</span>';
-                else if(o.status === 'canceled') statusBadge = '<span class="bg-red-50 text-red-600 px-2 py-0.5 rounded text-[10px] font-black border border-red-100">ملغي</span>';
-                else statusBadge = '<span class="bg-amber-50 text-amber-600 px-2 py-0.5 rounded text-[10px] font-black border border-amber-100">قيد التشغيل</span>';
-            }
-
-            return `
-            <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 hover:shadow-md transition-shadow fade-in">
-                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-3 pb-3 border-b border-slate-50">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-slate-50 rounded-full border border-slate-200 flex items-center justify-center text-slate-400 text-xl shrink-0">
-                            <i class="fa-solid fa-user-tag"></i>
-                        </div>
+                <!-- بطاقة متوسط التقييم والتوزيع -->
+                <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-4 sm:min-w-[270px] space-y-2.5 shrink-0">
+                    <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="font-black text-slate-800 text-base mb-0.5">${o.customerName || 'عميل غير مسجل'} ${statusBadge}</h4>
-                            <div class="flex items-center gap-2">
-                                <a href="tel:${o.customerPhone}" class="text-[10px] font-bold text-slate-500 hover:text-blue-500 transition-colors" dir="ltr"><i class="fa-solid fa-phone mr-0.5"></i> ${o.customerPhone}</a>
-                                <span class="text-slate-300">|</span>
-                                <span class="text-[10px] font-bold text-indigo-500"><i class="fa-solid fa-location-dot"></i> ${dispZone}</span>
+                            <div class="flex items-baseline gap-1">
+                                <span id="hero-avg-score" class="text-3xl sm:text-4xl font-black text-amber-300 leading-none">5.0</span>
+                                <span class="text-xs font-bold text-emerald-200">/ 5</span>
+                            </div>
+                            <div id="hero-avg-stars" class="flex items-center gap-0.5 text-amber-400 text-xs mt-1" dir="ltr">
+                                <i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i><i class="fa-solid fa-star"></i>
                             </div>
                         </div>
+                        <div class="text-left">
+                            <span id="hero-total-count" class="block text-sm font-black text-white">-- تقييم موثّق</span>
+                            <span id="hero-recommend-pct" class="block text-[11px] font-black text-emerald-300 mt-0.5">100% يرشحوننا</span>
+                        </div>
                     </div>
-                    <div class="text-left bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 min-w-[100px]">
-                        <p class="text-[9px] text-slate-400 font-bold mb-0.5"><i class="fa-regular fa-calendar"></i> ${dateStr}</p>
-                        <p class="font-black text-brand-primary text-sm">${o.total} <span class="text-[10px]">ج.م</span></p>
-                    </div>
+                    <div id="hero-stars-bars" class="space-y-1 pt-2 border-t border-white/10 text-[10px] font-bold"></div>
                 </div>
-                <div class="mb-1"><p class="text-[10px] text-slate-400 font-bold mb-1">الطلبات:</p>${itemsStr}</div>
-                ${reviewBoxHtml}
-            </div>`;
-        }
+            </div>
+        </div>
+    </header>
 
-        window.onload = () => { loadLiveFeed(); };
+    <!-- المحتوى الرئيسي -->
+    <main class="flex-1 max-w-4xl w-full mx-auto px-3.5 sm:px-5 pt-5 pb-10 space-y-5">
+
+        <!-- شريط الفلترة الذكي (الكل / 5 نجوم / حسب المنطقة) -->
+        <section id="filters-bar" class="hidden bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm space-y-2.5">
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-0.5" id="star-filter-pills">
+                <button type="button" data-rf="all" onclick="setPublicReviewFilter('all')" class="pub-rev-filter whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-black bg-brand-navy text-white shadow-sm transition-all">✨ كل الآراء</button>
+                <button type="button" data-rf="5" onclick="setPublicReviewFilter('5')" class="pub-rev-filter whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-black bg-slate-50 text-slate-600 border border-slate-200 hover:border-brand-navy/40 transition-all">👑 5 نجوم</button>
+                <button type="button" data-rf="with_text" onclick="setPublicReviewFilter('with_text')" class="pub-rev-filter whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-black bg-slate-50 text-slate-600 border border-slate-200 hover:border-brand-navy/40 transition-all">💬 بتعليق مفصّل</button>
+            </div>
+            <div id="zone-filter-pills" class="hidden flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1 border-t border-slate-100"></div>
+        </section>
+
+        <!-- مؤشر التحميل -->
+        <div id="reviews-loading" class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div class="bg-white rounded-3xl p-5 border border-slate-100 animate-pulse space-y-3">
+                <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-2xl bg-slate-200"></div><div class="space-y-1.5 flex-1"><div class="h-3.5 bg-slate-200 rounded w-1/3"></div><div class="h-2.5 bg-slate-100 rounded w-1/4"></div></div></div>
+                <div class="h-14 bg-slate-100 rounded-2xl"></div>
+            </div>
+            <div class="bg-white rounded-3xl p-5 border border-slate-100 animate-pulse space-y-3">
+                <div class="flex items-center gap-3"><div class="w-11 h-11 rounded-2xl bg-slate-200"></div><div class="space-y-1.5 flex-1"><div class="h-3.5 bg-slate-200 rounded w-1/3"></div><div class="h-2.5 bg-slate-100 rounded w-1/4"></div></div></div>
+                <div class="h-14 bg-slate-100 rounded-2xl"></div>
+            </div>
+        </div>
+
+        <!-- شبكة بطاقات آراء العملاء -->
+        <section id="public-reviews-grid" class="hidden grid grid-cols-1 md:grid-cols-2 gap-3.5"></section>
+
+        <!-- حالة فارغة أنيقة (قبل نشر أول تقييم) -->
+        <section id="reviews-empty-state" class="hidden bg-white rounded-3xl p-8 text-center border border-emerald-900/10 shadow-sm space-y-3">
+            <div class="w-16 h-16 rounded-2xl bg-emerald-50 text-brand-navy border border-emerald-200 flex items-center justify-center mx-auto text-3xl">
+                <i class="fa-solid fa-star text-amber-500"></i>
+            </div>
+            <h2 class="text-lg font-black text-brand-navy">كن أول من يشارك تجربته مع سمان ههيا! 🌿</h2>
+            <p class="text-xs sm:text-sm font-bold text-slate-500 max-w-md mx-auto leading-relaxed">
+                لو استلمت طلبك من سمان ههيا، تقدر تقيّم تجربتك في ثوانٍ من صفحة «تتبع طلبي» عشان رأيك يفيد باقي عملائنا في الشرقية.
+            </p>
+            <div class="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                <a href="track.html" class="bg-brand-navy hover:opacity-95 text-white font-black px-5 py-2.5 rounded-xl text-xs shadow-md flex items-center gap-1.5">
+                    <i class="fa-solid fa-star text-amber-400"></i> قيّم طلبك الآن
+                </a>
+                <a href="index.html" class="bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black px-5 py-2.5 rounded-xl text-xs shadow-md flex items-center gap-1.5">
+                    <i class="fa-solid fa-basket-shopping"></i> تصفح منيو المتجر
+                </a>
+            </div>
+        </section>
+
+        <!-- بطاقة دعوة للطلب وتقييم التجربة -->
+        <section class="luxury-hero-bg text-white rounded-3xl p-5 sm:p-6 shadow-lg border border-amber-400/25 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="text-center sm:text-right space-y-1">
+                <h2 class="text-base sm:text-lg font-black text-white">جاهز تجرّب الطعم الطازج بنفسك؟ 🌿</h2>
+                <p class="text-xs font-bold text-emerald-200/85">احجز من الدفعة المتاحة الآن — ذبح بالطلب، صفر تجميد، وتوصيل لباب البيت.</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <a href="index.html" class="bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black px-5 py-3 rounded-xl text-xs sm:text-sm shadow-lg transition-all active:scale-95">
+                    اطلب من المتجر الآن
+                </a>
+                <a href="track.html" class="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-black px-4 py-3 rounded-xl text-xs sm:text-sm transition-all">
+                    قيّم طلبك
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- فوتر مطابق للهوية الملكية -->
+    <footer class="luxury-hero-bg text-emerald-100/80 py-6 px-4 border-t border-white/10 mt-auto">
+        <div class="max-w-4xl mx-auto flex flex-wrap justify-between items-center gap-3 text-xs">
+            <div>
+                <p class="font-black text-white text-sm flex items-center gap-1.5"><i class="fa-solid fa-kiwi-bird text-amber-400"></i> سمان ههيا</p>
+                <p class="text-[11px] text-emerald-200/75 mt-0.5">أصل الطعم يبدأ من التربية &copy; <span id="rev-footer-year">2026</span></p>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="index.html" class="bg-white/10 hover:bg-white/20 text-white font-black px-3.5 py-2 rounded-xl border border-white/10">المتجر</a>
+                <a href="track.html" class="bg-white/10 hover:bg-white/20 text-white font-black px-3.5 py-2 rounded-xl border border-white/10">تتبع طلبي</a>
+                <a href="./kitchen/" class="bg-white/10 hover:bg-white/20 text-white font-black px-3.5 py-2 rounded-xl border border-white/10">المطبخ</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="./js/config.js?v=8"></script>
+    <script>
+        (function () {
+            const U = window.SMAN_UTILS;
+            const esc = U.escapeHtml;
+
+            if (!firebase.apps.length) {
+                firebase.initializeApp(FIREBASE_CONFIG);
+            }
+            const db = firebase.firestore();
+
+            let allPublicReviews = [];
+            let liveProductsMap = {};
+            let livePricesMap = {};
+            let activeStarFilter = 'all';
+            let activeZoneFilter = 'all';
+            let toastTimer = null;
+
+            function showRevToast(text) {
+                const el = document.getElementById('rev-toast');
+                const txt = document.getElementById('rev-toast-text');
+                if (!el || !txt) return;
+                txt.textContent = text;
+                el.classList.remove('opacity-0', '-translate-y-4');
+                el.classList.add('opacity-100', 'translate-y-0');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    el.classList.remove('opacity-100', 'translate-y-0');
+                    el.classList.add('opacity-0', '-translate-y-4');
+                }, 2200);
+            }
+
+            function getServerFirst(ref) {
+                return ref.get({ source: 'server' }).catch(() => ref.get().catch(() => null));
+            }
+
+            async function loadPublicReviews() {
+                const loader = document.getElementById('reviews-loading');
+                const grid = document.getElementById('public-reviews-grid');
+                const emptyBox = document.getElementById('reviews-empty-state');
+                const filtersBar = document.getElementById('filters-bar');
+
+                try {
+                    const [revSnap, setSnap, priceSnap] = await Promise.all([
+                        getServerFirst(db.collection('public_reviews').limit(100)),
+                        getServerFirst(db.collection('inventory').doc('settings')),
+                        getServerFirst(db.collection('inventory').doc('prices'))
+                    ]);
+
+                    if (setSnap && setSnap.exists && setSnap.data()?.productsData) {
+                        liveProductsMap = setSnap.data().productsData;
+                    }
+                    if (priceSnap && priceSnap.exists) {
+                        livePricesMap = priceSnap.data() || {};
+                    }
+
+                    const list = [];
+                    if (revSnap && !revSnap.empty) {
+                        revSnap.forEach((doc) => {
+                            const d = doc.data() || {};
+                            if (Number(d.rating) > 0) {
+                                list.push({ id: doc.id, ...d });
+                            }
+                        });
+                    }
+
+                    list.sort((a, b) => (Number(b.publishedAt || b.ratedAt) || 0) - (Number(a.publishedAt || a.ratedAt) || 0));
+                    allPublicReviews = list;
+
+                    updateHeroSummaryStats();
+                    renderZoneFilterPills();
+
+                    loader?.classList.add('hidden');
+                    if (allPublicReviews.length === 0) {
+                        grid?.classList.add('hidden');
+                        filtersBar?.classList.add('hidden');
+                        emptyBox?.classList.remove('hidden');
+                    } else {
+                        emptyBox?.classList.add('hidden');
+                        filtersBar?.classList.remove('hidden');
+                        grid?.classList.remove('hidden');
+                        renderReviewsGrid();
+                    }
+                } catch (err) {
+                    console.error('Public reviews fetch error:', err);
+                    loader?.classList.add('hidden');
+                    grid?.classList.add('hidden');
+                    emptyBox?.classList.remove('hidden');
+                }
+            }
+
+            function updateHeroSummaryStats() {
+                const total = allPublicReviews.length;
+                const avgEl = document.getElementById('hero-avg-score');
+                const cntEl = document.getElementById('hero-total-count');
+                const recEl = document.getElementById('hero-recommend-pct');
+                const barsEl = document.getElementById('hero-stars-bars');
+
+                if (total === 0) {
+                    if (avgEl) avgEl.textContent = '5.0';
+                    if (cntEl) cntEl.textContent = 'تقييمات موثّقة';
+                    if (recEl) recEl.textContent = 'جودة طازجة بالطلب';
+                    if (barsEl) barsEl.innerHTML = '';
+                    return;
+                }
+
+                const sum = allPublicReviews.reduce((s, r) => s + (Number(r.rating) || 0), 0);
+                const avg = (sum / total).toFixed(1);
+                const positive = allPublicReviews.filter((r) => Number(r.rating) >= 4).length;
+                const recPct = Math.round((positive / total) * 100);
+
+                if (avgEl) avgEl.textContent = avg;
+                if (cntEl) cntEl.textContent = `${total} ${total === 1 ? 'تقييم موثّق' : 'تقييمات موثّقة'}`;
+                if (recEl) recEl.textContent = `${recPct}% عملاء راضون عن الجودة`;
+
+                const counts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+                allPublicReviews.forEach((r) => {
+                    const st = Math.max(1, Math.min(5, Math.round(Number(r.rating) || 5)));
+                    counts[st]++;
+                });
+
+                if (barsEl) {
+                    barsEl.innerHTML = [5, 4, 3].map((star) => {
+                        const pct = Math.round((counts[star] / total) * 100);
+                        return `
+                        <div class="flex items-center gap-2">
+                            <span class="w-10 text-right text-amber-300 shrink-0">${star} ⭐️</span>
+                            <div class="flex-1 h-1.5 bg-white/15 rounded-full overflow-hidden">
+                                <div class="h-full bg-amber-400 rounded-full" style="width: ${pct}%"></div>
+                            </div>
+                            <span class="w-7 text-left text-emerald-200/80 shrink-0">${pct}%</span>
+                        </div>`;
+                    }).join('');
+                }
+            }
+
+            function renderZoneFilterPills() {
+                const wrap = document.getElementById('zone-filter-pills');
+                if (!wrap) return;
+                const zones = Array.from(new Set(allPublicReviews.map((r) => String(r.zone || '').trim()).filter(Boolean)));
+                if (zones.length <= 1) {
+                    wrap.classList.add('hidden');
+                    return;
+                }
+                wrap.classList.remove('hidden');
+                const btnCls = (z) => activeZoneFilter === z
+                    ? 'bg-emerald-700 text-white border-emerald-700'
+                    : 'bg-[#faf8f3] text-slate-600 border-slate-200 hover:border-emerald-400';
+
+                wrap.innerHTML = `
+                    <button type="button" onclick="setPublicZoneFilter('all')" class="whitespace-nowrap px-2.5 py-1 rounded-xl text-[11px] font-black border transition-all ${btnCls('all')}">📍 كل المناطق</button>
+                    ${zones.map((z) => `<button type="button" onclick="setPublicZoneFilter('${U.escapeJsAttr(z)}')" class="whitespace-nowrap px-2.5 py-1 rounded-xl text-[11px] font-black border transition-all ${btnCls(z)}">📍 ${esc(z)}</button>`).join('')}
+                `;
+            }
+
+            window.setPublicReviewFilter = function (key) {
+                activeStarFilter = key || 'all';
+                document.querySelectorAll('.pub-rev-filter').forEach((btn) => {
+                    const isAct = btn.getAttribute('data-rf') === activeStarFilter;
+                    btn.className = `pub-rev-filter whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-black transition-all ${
+                        isAct ? 'bg-brand-navy text-white shadow-sm' : 'bg-slate-50 text-slate-600 border border-slate-200 hover:border-brand-navy/40'
+                    }`;
+                });
+                renderReviewsGrid();
+            };
+
+            window.setPublicZoneFilter = function (z) {
+                activeZoneFilter = z || 'all';
+                renderZoneFilterPills();
+                renderReviewsGrid();
+            };
+
+            window.orderSameItemsFromReview = function (reviewId) {
+                const rev = allPublicReviews.find((r) => r.id === reviewId);
+                if (!rev || !Array.isArray(rev.items) || rev.items.length === 0) {
+                    window.location.href = 'index.html';
+                    return;
+                }
+
+                const newCart = {};
+                rev.items.forEach((it) => {
+                    if (!it || !it.id) return;
+                    const p = liveProductsMap[it.id];
+                    if (!p || p.isHidden || p.isWeightBased) return;
+                    const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+                    const price = Number(livePricesMap[it.id] !== undefined ? livePricesMap[it.id] : p.basePrice) || 0;
+                    newCart[it.id] = { quantity: qty, price, name: p.name || it.name };
+                });
+
+                if (Object.keys(newCart).length > 0) {
+                    try { localStorage.setItem('sman_cart_v2', JSON.stringify(newCart)); } catch (e) {}
+                    showRevToast('تمت إضافة نفس الأصناف لسلتك! جاري فتح المتجر 🛒');
+                    setTimeout(() => { window.location.href = 'index.html'; }, 550);
+                } else {
+                    window.location.href = 'index.html';
+                }
+            };
+
+            function renderReviewsGrid() {
+                const grid = document.getElementById('public-reviews-grid');
+                if (!grid) return;
+
+                const filtered = allPublicReviews.filter((r) => {
+                    if (activeStarFilter === '5' && Number(r.rating) < 5) return false;
+                    if (activeStarFilter === 'with_text' && !String(r.reviewText || '').trim()) return false;
+                    if (activeZoneFilter !== 'all' && String(r.zone || '').trim() !== activeZoneFilter) return false;
+                    return true;
+                });
+
+                if (filtered.length === 0) {
+                    grid.innerHTML = '<div class="col-span-full text-center py-10 bg-white rounded-3xl border border-dashed border-slate-200 text-xs font-bold text-slate-400">لا توجد آراء مطابقة لهذا الفلتر حالياً.</div>';
+                    return;
+                }
+
+                grid.innerHTML = filtered.map((r) => {
+                    const nameStr = String(r.displayName || 'عميل سمان ههيا');
+                    const initialChar = nameStr.replace(/^أ\.\s*/, '').charAt(0) || 'س';
+                    const rating = Math.max(1, Math.min(5, Number(r.rating) || 5));
+                    const starsHtml = Array.from({ length: 5 }, (_, i) =>
+                        `<i class="fa-${i < rating ? 'solid text-amber-400' : 'regular text-slate-200'} fa-star text-xs"></i>`
+                    ).join('');
+
+                    const tagsArr = Array.isArray(r.reviewTags) ? r.reviewTags.filter(Boolean) : [];
+                    const tagsHtml = tagsArr.length > 0
+                        ? `<div class="flex flex-wrap gap-1.5">${tagsArr.map((t) => `<span class="bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2.5 py-0.5 rounded-lg text-[10px] font-black">${esc(t)}</span>`).join('')}</div>`
+                        : '';
+
+                    const itemsArr = Array.isArray(r.items) ? r.items.filter((it) => it && it.name) : [];
+                    const canReorder = itemsArr.some((it) => it.id && liveProductsMap[it.id] && !liveProductsMap[it.id].isHidden && !liveProductsMap[it.id].isWeightBased);
+                    const itemsHtml = itemsArr.length > 0
+                        ? `<div class="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
+                               <span class="text-[10px] font-bold text-slate-400">جرّب:</span>
+                               ${itemsArr.slice(0, 4).map((it) => `<span class="bg-[#faf8f3] text-brand-navy border border-slate-200/80 px-2 py-0.5 rounded-lg text-[10px] font-black">${esc(it.quantity)}× ${esc(it.name)}</span>`).join('')}
+                           </div>`
+                        : '';
+
+                    const replyHtml = r.adminReply && String(r.adminReply).trim()
+                        ? `<div class="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-2.5 text-[11px] font-bold text-amber-950 leading-relaxed">
+                               <span class="text-[10px] font-black text-amber-700 block mb-0.5"><i class="fa-solid fa-kiwi-bird ml-1"></i> رد إدارة سمان ههيا:</span>
+                               ${esc(r.adminReply)}
+                           </div>`
+                        : '';
+
+                    return `
+                    <article class="trust-card rounded-3xl p-4 sm:p-5 flex flex-col justify-between gap-3 animate-slide">
+                        <div class="space-y-3">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#0f3426] to-[#1b4332] text-amber-300 font-black text-base flex items-center justify-center shrink-0 shadow-sm">
+                                        ${esc(initialChar)}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <h3 class="font-black text-brand-navy text-sm truncate">${esc(nameStr)}</h3>
+                                            <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded-md text-[9px] font-black">✅ طلب موثّق</span>
+                                        </div>
+                                        <p class="text-[10px] font-bold text-slate-400 mt-0.5">
+                                            <i class="fa-solid fa-location-dot text-emerald-600 ml-0.5"></i> ${esc(r.zone || 'الشرقية')} ${r.orderDate ? '• ' + esc(r.orderDate) : ''}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-0.5 bg-amber-50/70 border border-amber-200/70 px-2 py-1 rounded-xl shrink-0" dir="ltr">
+                                    ${starsHtml}
+                                </div>
+                            </div>
+
+                            ${tagsHtml}
+
+                            ${r.reviewText ? `<p class="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/60">“${esc(r.reviewText)}”</p>` : ''}
+
+                            ${replyHtml}
+                            ${itemsHtml}
+                        </div>
+
+                        ${canReorder ? `
+                        <button type="button" onclick="orderSameItemsFromReview('${U.escapeJsAttr(r.id)}')" class="w-full bg-emerald-50 hover:bg-brand-navy text-brand-navy hover:text-white border border-emerald-200 hover:border-brand-navy font-black py-2 px-3 rounded-xl text-[11px] transition-all flex items-center justify-center gap-1.5 active:scale-95">
+                            <i class="fa-solid fa-cart-plus text-amber-500"></i>
+                            <span>اطلب نفس الأصناف في السلة</span>
+                        </button>` : ''}
+                    </article>`;
+                }).join('');
+            }
+
+            document.getElementById('rev-footer-year').textContent = new Date().getFullYear();
+            window.addEventListener('DOMContentLoaded', loadPublicReviews);
+        })();
     </script>
 </body>
 </html>
