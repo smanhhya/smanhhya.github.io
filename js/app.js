@@ -126,18 +126,24 @@
         }
     }
 
+    function getDocServerFirst(docRef) {
+        return docRef.get({ source: 'server' }).catch(() => docRef.get().catch(() => ({ exists: false })));
+    }
+
     async function listenToDatabase() {
         if (!db) return;
         try {
+            const invCol = db.collection('inventory');
             const [settingsDoc, stockDoc, pricesDoc, oldPricesDoc, batchesDoc, discountsDoc, weightHoldsDoc] = await Promise.all([
-                db.collection('inventory').doc('settings').get(),
-                db.collection('inventory').doc('stock').get(),
-                db.collection('inventory').doc('prices').get(),
-                db.collection('inventory').doc('old_prices').get().catch(() => ({ exists: false })),
-                db.collection('inventory').doc('batches').get(),
-                db.collection('inventory').doc('discounts_status').get().catch(() => ({ exists: false })),
-                db.collection('inventory').doc('weight_holds').get().catch(() => ({ exists: false }))
+                getDocServerFirst(invCol.doc('settings')),
+                getDocServerFirst(invCol.doc('stock')),
+                getDocServerFirst(invCol.doc('prices')),
+                getDocServerFirst(invCol.doc('old_prices')),
+                getDocServerFirst(invCol.doc('batches')),
+                getDocServerFirst(invCol.doc('discounts_status')),
+                getDocServerFirst(invCol.doc('weight_holds'))
             ]);
+
 
             if (weightHoldsDoc && weightHoldsDoc.exists) {
                 globalWeightHolds = weightHoldsDoc.data() || {};
@@ -1810,6 +1816,96 @@
         renderProducts();
         updateUI();
     };
+    window.toggleQuailSizeCompare = function () {
+        const body = document.getElementById('quail-size-compare-body');
+        const chevron = document.getElementById('quail-compare-chevron');
+        const label = document.getElementById('quail-compare-toggle-label');
+        if (!body) return;
+        const willOpen = body.classList.contains('hidden');
+        body.classList.toggle('hidden', !willOpen);
+        if (chevron) chevron.classList.toggle('rotate-180', willOpen);
+        if (label) label.textContent = willOpen ? 'إخفاء المقارنة' : 'اعرض الجدول';
+        if (navigator.vibrate) navigator.vibrate(15);
+    };
+
+    function getCompareRowActionHTML(id) {
+        if (globalSettings.storeOpen === false) {
+            return `<span class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-400 text-[10px] font-black">مغلق</span>`;
+        }
+        const inCart = Number(cart[id]?.quantity) || 0;
+        const available = getAvailableStock(id);
+        const safeId = escAttr(id);
+
+        if (available === 0 && inCart === 0) {
+            const hasOpenQuailBatch = getVisibleBatchesByTrack('quail').some((b) => b.isOpen);
+            return `<button type="button" onclick="${hasOpenQuailBatch ? 'scrollToBatch()' : `updateNextBatch('${safeId}', 1)`}" class="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-[10px] font-black transition-colors whitespace-nowrap">${hasOpenQuailBatch ? 'غيّر الدفعة' : 'للقادمة'}</button>`;
+        }
+
+        if (inCart > 0) {
+            return `
+            <div class="flex items-center gap-1 bg-emerald-50 border border-brand-navy/20 rounded-xl p-0.5">
+                <button type="button" onclick="updateQuantity('${safeId}', 1)" class="w-7 h-7 bg-brand-navy text-white rounded-lg font-black text-xs flex items-center justify-center active:scale-90">+</button>
+                <span class="font-black text-brand-navy text-xs min-w-[18px] text-center">${inCart}</span>
+                <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-7 bg-white text-rose-600 rounded-lg font-black text-xs shadow-sm flex items-center justify-center active:scale-90">-</button>
+            </div>`;
+        }
+
+        return `<button type="button" onclick="addToCart('${safeId}')" class="px-3 py-1.5 rounded-xl bg-brand-navy hover:bg-emerald-800 text-amber-300 text-[11px] font-black shadow-sm flex items-center gap-1 active:scale-95 transition-all whitespace-nowrap"><i class="fa-solid fa-plus text-[10px]"></i> أضف</button>`;
+    }
+
+    function renderQuailSizeComparison() {
+        const card = document.getElementById('quail-size-compare-card');
+        const rowsCont = document.getElementById('quail-size-compare-rows');
+        if (!card || !rowsCont) return;
+
+        const allQuail = Object.keys(productsInfo)
+            .filter((id) => {
+                const p = productsInfo[id];
+                return p && p.isVisible !== false && p.isHidden !== true && classifyStoreProduct(id, p).group === 'quail';
+            })
+            .map((id) => ({ id, item: productsInfo[id], rank: classifyStoreProduct(id, productsInfo[id]).rank }))
+            .sort((a, b) => a.rank - b.rank);
+
+        if (allQuail.length < 2) {
+            card.classList.add('hidden');
+            return;
+        }
+
+        card.classList.remove('hidden');
+        rowsCont.innerHTML = allQuail.map(({ id, item }) => {
+            const safeId = escAttr(id);
+            const price = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
+            const oldPrice = Number(item.oldPrice || globalOldPrices[id]) || 0;
+            const isDisc = Boolean((item.isDisc || globalDiscounts[id]) && oldPrice > price);
+            const isBest = Boolean(item.isBest || (Array.isArray(globalSettings.bestSellers) && globalSettings.bestSellers.includes(id)));
+            const inCart = Number(cart[id]?.quantity) || 0;
+            const avail = getAvailableStock(id);
+            const usageTag = getShortUsageTag(id, item);
+
+            return `
+            <div class="px-3 py-2.5 flex items-center justify-between gap-2.5 transition-colors ${inCart > 0 ? 'bg-emerald-50/55' : 'bg-white hover:bg-slate-50/70'}">
+                <div onclick="openProductQuickView('${safeId}')" class="min-w-0 flex-1 cursor-pointer space-y-0.5">
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="font-black text-xs sm:text-sm text-brand-navy">${esc(item.name)}</span>
+                        ${isBest ? '<span class="bg-amber-100 text-amber-800 text-[9px] font-black px-1.5 py-0.5 rounded-md border border-amber-200">👑 الأكثر طلباً</span>' : ''}
+                        ${avail === 0 && inCart === 0 ? '<span class="bg-rose-50 text-rose-600 text-[9px] font-black px-1.5 py-0.5 rounded-md">نفذ</span>' : ''}
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap text-[10px] sm:text-[11px] font-bold text-slate-500">
+                        <span class="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded-md"><i class="fa-solid fa-weight-scale text-[9px] text-emerald-600 ml-0.5"></i>${esc(item.weight || 'بالجوز')}</span>
+                        <span class="text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded-md">${usageTag}</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <div class="text-left">
+                        ${isDisc ? `<span class="block text-[9px] text-slate-400 line-through font-bold leading-none">${oldPrice} ج</span>` : ''}
+                        <span class="font-black text-sm ${isDisc ? 'text-rose-600' : 'text-brand-navy'}">${price} <span class="text-[10px] font-bold text-slate-400">ج</span></span>
+                    </div>
+                    ${getCompareRowActionHTML(id)}
+                </div>
+            </div>`;
+        }).join('');
+    }
+
 
     window.renderProducts = function () {
         if (!isStoreDataLoaded) return;
@@ -1852,13 +1948,16 @@
             if (groups.quail.length > 0) {
                 container.innerHTML = groups.quail.map((g) => buildAppGridProductCard(g.id, g.item, false)).join('');
                 quailWrap.classList.remove('hidden');
+                renderQuailSizeComparison();
             } else if (activeProductFilter === 'all' && groups.eggs_chicks.length === 0 && groups.custom.length === 0) {
                 container.innerHTML = `<div class="col-span-full text-center py-8 text-slate-400 font-bold bg-white rounded-2xl border border-dashed border-slate-200">${esc(globalSettings.uiTexts?.emptyMenuMsg || 'لا توجد منتجات متاحة حالياً')}</div>`;
                 quailWrap.classList.remove('hidden');
+                renderQuailSizeComparison();
             } else {
                 quailWrap.classList.add('hidden');
             }
         }
+
 
         if (extrasContainer && extrasWrap) {
             if (groups.eggs_chicks.length > 0) {
