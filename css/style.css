@@ -105,34 +105,130 @@ input[type=number]::-webkit-outer-spin-button {
   border-color: rgba(15, 52, 38, 0.5);
   box-shadow: 0 8px 22px -6px rgba(15, 52, 38, 0.16);
 }
-
-/* معرض الكتالوج الفاخر (بدون فراغات بيضاء جانبية) */
-.catalog-filmstrip {
+/* معرض الكتالوج التفاعلي الفاخر (مسرح العرض + المصغّرات) */
+.catalog-showcase {
   display: flex;
+  flex-direction: column;
   gap: 0.75rem;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch;
-  padding: 0.25rem 0.25rem 0.5rem;
 }
-.catalog-slide-card {
-  scroll-snap-align: center;
+.catalog-stage {
   position: relative;
+  width: 100%;
+  height: 310px;
+  border-radius: 1.35rem;
   overflow: hidden;
-  border-radius: 1.25rem;
-  flex-shrink: 0;
-  background: #0b261c;
+  background: #071812;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 14px 32px -10px rgba(0, 0, 0, 0.55);
+  touch-action: pan-y;
+}
+@media (min-width: 640px) {
+  .catalog-stage {
+    height: 390px;
+  }
 }
 .catalog-blur-bg {
   position: absolute;
-  inset: -16px;
-  width: calc(100% + 32px);
-  height: calc(100% + 32px);
+  inset: -18px;
+  width: calc(100% + 36px);
+  height: calc(100% + 36px);
   object-fit: cover;
-  filter: blur(18px) brightness(0.5);
-  transform: scale(1.08);
+  filter: blur(22px) brightness(0.42) saturate(1.15);
+  transform: scale(1.1);
   pointer-events: none;
+  transition: opacity 0.28s ease;
 }
+.catalog-stage-img {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.5rem;
+  transition: transform 0.3s ease, opacity 0.25s ease;
+}
+.catalog-stage:hover .catalog-stage-img {
+  transform: scale(1.02);
+}
+@keyframes catalogImgFade {
+  from { opacity: 0.35; transform: scale(0.975); }
+  to { opacity: 1; transform: scale(1); }
+}
+.catalog-img-enter {
+  animation: catalogImgFade 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.catalog-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 25;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  background: rgba(7, 24, 18, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
+  cursor: pointer;
+}
+.catalog-nav-btn:hover {
+  background: #f59e0b;
+  color: #0b261c;
+  border-color: #f59e0b;
+}
+.catalog-nav-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+.catalog-thumbs-strip {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.2rem 0.15rem;
+}
+.catalog-thumb-btn {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  flex-shrink: 0;
+  border-radius: 0.9rem;
+  overflow: hidden;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  background: #071812;
+  opacity: 0.62;
+  transition: all 0.2s ease;
+  scroll-snap-align: center;
+  cursor: pointer;
+}
+.catalog-thumb-btn:hover {
+  opacity: 0.9;
+}
+.catalog-thumb-btn.active {
+  opacity: 1;
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.35);
+  transform: translateY(-2px);
+}
+.catalog-dot {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.28);
+  transition: all 0.25s ease;
+  cursor: pointer;
+}
+.catalog-dot.active {
+  width: 22px;
+  background: #f59e0b;
+}
+
 
 /* أزرار اختيار المناطق والملاحظات السريعة في إتمام الطلب */
 .zone-chip {
