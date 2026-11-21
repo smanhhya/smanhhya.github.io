@@ -3148,15 +3148,18 @@
         const finalAdminNote = notesChunks.join('\n---\n');
 
         const deliveryText = freeDelivery ? 'مجاني 🎉' : (deliveryFee === 0 ? 'يحدد لاحقاً' : `${deliveryFee} ج.م`);
-        const custDetailsWa = `👤 الاسم: ${customerName}\n📱 الموبايل: ${customerPhone}\n📍 المنطقة: ${zoneName}\n${customerAddress ? `🏠 العنوان: ${customerAddress}\n` : ''}${batchName ? `📅 الدفعة: ${batchName}\n` : ''}🕒 الوقت: ${orderDateAr} - ${orderTime}`;
-        let waMsg = (globalSettings.whatsappTemplate || '')
-            .replace('{تفاصيل_العميل}', custDetailsWa)
-            .replace('{الطلبات}', itemsWaStr.trim())
-            .replace('{الخصم}', discountText ? discountText + '\n' : '')
-            .replace('{قيمة_الطلبات}', subTotal)
-            .replace('{التوصيل}', deliveryText)
-            .replace('{الاجمالي}', finalTotal);
-        if (customerNotes) waMsg += `\n\n📌 *ملاحظة:* ${customerNotes}`;
+        const nextBatchSummaryText = nextBatchKeys.length > 0
+            ? nextBatchKeys.map((id) => `${window.nextBatchCart[id]}× ${productsInfo[id]?.name || id}`).join(' + ')
+            : '';
+        const deliverySchedule = buildSmartDeliverySchedule({
+            quailBatchId: hasQuailInCart ? quailBatchId : '',
+            chicksBatchId: hasChicksInCart ? chicksBatchId : '',
+            hasQuailInCart,
+            hasChicksInCart,
+            orderItems,
+            zoneName
+        });
+        let createdOrderShortCode = '';
 
         try {
             if (hasCloud && db) {
@@ -3188,6 +3191,7 @@
                 };
 
                 const newOrderRef = db.collection('orders').doc();
+                createdOrderShortCode = newOrderRef.id.slice(-5).toUpperCase();
                 const weightItems = orderItems.filter((it) => it.isWeightBased && Array.isArray(it.selectedWeightsGrams) && it.selectedWeightsGrams.length > 0);
                 let holdCreatedForOrder = false;
 
@@ -3319,13 +3323,51 @@
             updateUI();
             toggleCart();
 
+            const firstCookableItem = orderItems.find((it) => it && getProductTrackType(it.id) !== 'chicks');
+            const primaryProductId = firstCookableItem ? firstCookableItem.id : '';
+            const waMsg = buildSmartOrderWhatsAppMessage({
+                orderCode: createdOrderShortCode,
+                customerName,
+                customerPhone,
+                zoneName,
+                customerAddress,
+                orderDateAr,
+                orderTime,
+                itemsWaStr,
+                discountText,
+                totalDiscount,
+                subTotal,
+                deliveryText,
+                finalTotal,
+                customerNotes,
+                nextBatchSummaryText,
+                deliverySchedule
+            });
             const waStoreNum = U.formatWaPhone(globalSettings.storePhone);
             window.currentOrderWaLink = `https://api.whatsapp.com/send?phone=${waStoreNum}&text=${encodeURIComponent(waMsg)}`;
-            const interactiveTime = (batchId && globalBatches[batchId])
-                ? window.getFriendlyBatchDatePhrase(globalBatches[batchId].deliveryStart, globalBatches[batchId].deliveryEnd)
-                : '';
 
-            showOrderSuccessModal({ customerName, customerPhone, batchName, interactiveTime, earnedLoyalty, newPromoCode, primaryProductId });
+            showOrderSuccessModal({
+                orderCode: createdOrderShortCode,
+                customerName,
+                customerPhone,
+                zoneName,
+                orderDateAr,
+                orderTime,
+                orderItems,
+                subTotal,
+                totalDiscount,
+                finalDelivery,
+                freeDelivery,
+                deliveryText,
+                finalTotal,
+                batchName,
+                interactiveTime: deliverySchedule.primaryDateText,
+                deliverySchedule,
+                nextBatchSummaryText,
+                earnedLoyalty,
+                newPromoCode,
+                primaryProductId
+            });
         } catch (e) {
             console.error('Order Submit Error:', e);
             if (e && typeof e.message === 'string' && e.message.startsWith('WEIGHT_TAKEN:')) {
@@ -3346,52 +3388,301 @@
         }
     };
 
+    function getBatchRelativeCountdownText(batch) {
+        if (!batch) return '';
+        if (batch.slaughteredAt) {
+            const daysSince = (Date.now() - Number(batch.slaughteredAt)) / (1000 * 60 * 60 * 24);
+            return daysSince >= 3 ? 'مكتملة التسليم' : 'تم التجهيز وجاري التوزيع 🛵';
+        }
+        if (!batch.deliveryStart) return '';
+
+        const startD = new Date(batch.deliveryStart);
+        if (isNaN(startD.getTime())) return '';
+
+        const todayMid = new Date();
+        todayMid.setHours(0, 0, 0, 0);
+        const startMid = new Date(startD.getFullYear(), startD.getMonth(), startD.getDate());
+        const diffDays = Math.round((startMid.getTime() - todayMid.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (diffDays === 0) return 'اليوم بإذن الله ✨';
+        if (diffDays === 1) return 'غداً بإذن الله ✨';
+        if (diffDays === 2) return 'بعد يومين بإذن الله';
+        if (diffDays > 2 && diffDays <= 10) return `خلال ${diffDays} أيام تقريباً`;
+        if (diffDays > 10) return `خلال ${diffDays} يوماً تقريباً`;
+
+        if (batch.deliveryEnd) {
+            const endD = new Date(batch.deliveryEnd);
+            if (!isNaN(endD.getTime())) {
+                const endMid = new Date(endD.getFullYear(), endD.getMonth(), endD.getDate());
+                if (endMid.getTime() >= todayMid.getTime()) {
+                    return 'فترة التسليم جارية الآن 🛵';
+                }
+            }
+        }
+        return '';
+    }
+
+    function buildSmartDeliverySchedule(opts) {
+        const blocks = [];
+        const qBatch = (opts.quailBatchId && globalBatches[opts.quailBatchId]) ? globalBatches[opts.quailBatchId] : null;
+        const cBatch = (opts.chicksBatchId && globalBatches[opts.chicksBatchId]) ? globalBatches[opts.chicksBatchId] : null;
+
+        if (opts.hasQuailInCart && qBatch) {
+            const dateText = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
+            const countdown = getBatchRelativeCountdownText(qBatch);
+            const noteObj = getBatchSmartCustomerNote(qBatch);
+            blocks.push({
+                kind: 'quail',
+                icon: 'fa-drumstick-bite',
+                badgeLabel: 'دفعة السمان الطازج',
+                batchName: qBatch.name || 'دفعة السمان',
+                dateText,
+                countdown,
+                statusNote: noteObj ? noteObj.text : '',
+                isUrgentNote: Boolean(noteObj && noteObj.isUrgent)
+            });
+        }
+
+        if (opts.hasChicksInCart && cBatch) {
+            const dateText = window.getFriendlyBatchDatePhrase(cBatch.deliveryStart, cBatch.deliveryEnd);
+            const countdown = getBatchRelativeCountdownText(cBatch);
+            const noteObj = getBatchSmartCustomerNote(cBatch);
+            blocks.push({
+                kind: 'chicks',
+                icon: 'fa-egg',
+                badgeLabel: 'دورة تفريخ عمر يوم',
+                batchName: cBatch.name || 'دورة التفريخ',
+                dateText,
+                countdown,
+                statusNote: noteObj ? noteObj.text : '',
+                isUrgentNote: Boolean(noteObj && noteObj.isUrgent)
+            });
+        }
+
+        const hasImmediateItems = (Array.isArray(opts.orderItems) ? opts.orderItems : []).some((it) => {
+            const trk = getProductTrackType(it.id);
+            return trk === 'immediate' || trk === 'weight';
+        });
+
+        const isPureImmediate = blocks.length === 0;
+        const primaryDateText = blocks.length > 0 ? blocks[0].dateText : 'أقرب ميعاد توصيل متاح';
+
+        const waLines = [];
+        blocks.forEach((b) => {
+            waLines.push(`📅 ${b.badgeLabel}: *${b.batchName}*`);
+            waLines.push(`🗓️ موعد الاستلام المتوقع: *${b.dateText}*${b.countdown ? ` (${b.countdown})` : ''}`);
+        });
+        if (isPureImmediate) {
+            waLines.push(`⚡ نوع الطلب: *طلب فوري طازج* (سيتم التواصل لتحديد أقرب ميعاد توصيل لـ ${opts.zoneName || 'منطقتك'})`);
+        }
+
+        return {
+            blocks,
+            hasImmediateItems,
+            isPureImmediate,
+            primaryDateText,
+            waScheduleText: waLines.join('\n')
+        };
+    }
+
+    function buildSmartOrderWhatsAppMessage(d) {
+        const orderCodeLine = d.orderCode ? `🧾 كود الحجز: *#${d.orderCode}*\n` : '';
+        const scheduleLine = d.deliverySchedule?.waScheduleText ? `${d.deliverySchedule.waScheduleText}\n` : '';
+        const custDetailsWa = `${orderCodeLine}👤 الاسم: ${d.customerName}\n📱 الموبايل: ${d.customerPhone}\n📍 المنطقة: ${d.zoneName}\n${d.customerAddress ? `🏠 العنوان: ${d.customerAddress}\n` : ''}${scheduleLine}🕒 وقت التسجيل: ${d.orderDateAr} - ${d.orderTime}`;
+
+        const rawTpl = String(globalSettings.whatsappTemplate || '').trim();
+        let waMsg = '';
+
+        if (rawTpl && (rawTpl.includes('{تفاصيل_العميل}') || rawTpl.includes('{الطلبات}'))) {
+            waMsg = rawTpl
+                .replace(/\{تفاصيل_العميل\}/g, custDetailsWa)
+                .replace(/\{الطلبات\}/g, d.itemsWaStr.trim())
+                .replace(/\{الخصم\}/g, d.discountText ? d.discountText + '\n' : '')
+                .replace(/\{قيمة_الطلبات\}/g, d.subTotal)
+                .replace(/\{التوصيل\}/g, d.deliveryText)
+                .replace(/\{الاجمالي\}/g, d.finalTotal);
+        } else if (rawTpl && (rawTpl.includes('{اسم_العميل}') || rawTpl.includes('{تفاصيل_الطلبات}'))) {
+            waMsg = rawTpl
+                .replace(/\{اسم_العميل\}/g, d.customerName)
+                .replace(/\{رقم_العميل\}/g, d.customerPhone)
+                .replace(/\{المنطقة\}/g, d.zoneName)
+                .replace(/\{العنوان\}/g, d.customerAddress || 'غير محدد')
+                .replace(/\{تفاصيل_الطلبات\}/g, d.itemsWaStr.trim())
+                .replace(/\{إجمالي_الطلب\}/g, `${d.subTotal} ج.م`)
+                .replace(/\{التوصيل\}/g, d.deliveryText)
+                .replace(/\{الخصم\}/g, d.totalDiscount > 0 ? `${d.totalDiscount} ج.م` : '0 ج.م')
+                .replace(/\{الإجمالي_النهائي\}/g, `${d.finalTotal} ج.م`);
+            if (d.deliverySchedule?.waScheduleText) {
+                waMsg += `\n\n${d.deliverySchedule.waScheduleText}`;
+            }
+            if (d.orderCode) {
+                waMsg = `🧾 *كود الحجز: #${d.orderCode}*\n` + waMsg;
+            }
+        } else {
+            waMsg = `🌿 *طلب جديد — ${globalSettings.storeName || 'سمان ههيا'}*\n`
+                + `━━━━━━━━━━━━━━\n`
+                + `${custDetailsWa}\n`
+                + `━━━━━━━━━━━━━━\n`
+                + `📦 *الأصناف المطلوبة:*\n${d.itemsWaStr.trim()}\n`
+                + `━━━━━━━━━━━━━━\n`
+                + `💵 قيمة الطلبات: ${d.subTotal} ج.م\n`
+                + (d.discountText ? d.discountText : '')
+                + `🛵 التوصيل: ${d.deliveryText}\n`
+                + `💰 *الإجمالي النهائي: ${d.finalTotal} ج.م*`;
+        }
+
+        if (d.nextBatchSummaryText) {
+            waMsg += `\n\n⏳ *أولوية للدفعة القادمة:* ${d.nextBatchSummaryText}`;
+        }
+        if (d.customerNotes) {
+            waMsg += `\n\n📌 *ملاحظة العميل:* ${d.customerNotes}`;
+        }
+        return waMsg;
+    }
+
     function showOrderSuccessModal(info) {
         const uiTexts = globalSettings.uiTexts || {};
         const firstName = esc((info.customerName || '').split(' ')[0] || 'فندم');
-        const safePhone = encodeURIComponent(info.customerPhone);
-        const titleText = esc(uiTexts.successTitle || 'تم تأكيد أوردرك بنجاح! 🎉');
+        const safePhone = encodeURIComponent(info.customerPhone || '');
+        const titleText = esc(uiTexts.successTitle || 'تم تأكيد حجزك بنجاح! 🎉');
+        const sched = info.deliverySchedule || { blocks: [], isPureImmediate: !info.batchName };
+        const itemsList = Array.isArray(info.orderItems) ? info.orderItems : [];
 
-        const bodyHtml = info.batchName
-            ? `أوردرك اتسجل بنجاح في <strong class="text-brand-navy">${esc(info.batchName)}</strong>.<br>📦 موعد الاستلام المتوقع: <strong class="text-rose-600">${esc(info.interactiveTime)}</strong>.<br>هنتواصل معاك للتأكيد قبل التحرك!`
-            : esc(uiTexts.successMsgTemplate || 'أوردرك اتسجل في السيستم عندنا خلاص وهيتم التجهيز والتواصل معاك للتأكيد.');
+        // 1. بطاقة موعد الاستلام الذكية المرتبطة بالدفعات الفعلية
+        let scheduleCardsHtml = '';
+        if (sched.blocks && sched.blocks.length > 0) {
+            scheduleCardsHtml = sched.blocks.map((b) => `
+                <div class="bg-gradient-to-l from-emerald-50 via-white to-amber-50/50 border border-emerald-200 rounded-2xl p-3 space-y-1.5 shadow-sm">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg">
+                            <i class="fa-solid ${esc(b.icon)} text-amber-600"></i> ${esc(b.badgeLabel)}
+                        </span>
+                        ${b.countdown ? `<span class="text-[10px] font-black bg-amber-400/25 text-amber-950 border border-amber-300 px-2 py-0.5 rounded-lg">${esc(b.countdown)}</span>` : ''}
+                    </div>
+                    <div class="flex items-center justify-between gap-2 pt-0.5">
+                        <span class="text-xs sm:text-sm font-black text-brand-navy truncate">${esc(b.batchName)}</span>
+                        <span class="text-xs font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg shrink-0">
+                            <i class="fa-regular fa-calendar-check ml-1"></i>${esc(b.dateText)}
+                        </span>
+                    </div>
+                    ${b.statusNote ? `<p class="text-[10px] font-bold ${b.isUrgentNote ? 'text-amber-900 bg-amber-50 border-amber-200' : 'text-slate-600 bg-white border-slate-100'} border px-2.5 py-1 rounded-xl leading-snug"><i class="fa-solid fa-circle-info text-emerald-600 ml-1"></i>${esc(b.statusNote)}</p>` : ''}
+                </div>`).join('');
+        } else {
+            scheduleCardsHtml = `
+                <div class="bg-gradient-to-l from-emerald-50 to-white border border-emerald-200 rounded-2xl p-3 space-y-1 shadow-sm">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-[11px] font-black text-brand-navy flex items-center gap-1.5">
+                            <i class="fa-solid fa-bolt text-amber-500"></i> طلب فوري طازج
+                        </span>
+                        <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-lg">قيد المراجعة</span>
+                    </div>
+                    <p class="text-[11px] font-bold text-slate-600 leading-relaxed">
+                        تم تسجيل طلبك بنجاح! هنتواصل معاك قريباً لتأكيد أقرب ميعاد توصيل لـ <strong class="text-brand-navy">${esc(info.zoneName || 'منطقتك')}</strong>.
+                    </p>
+                </div>`;
+        }
 
-        const rewardHtml = (info.earnedLoyalty && info.newPromoCode)
-            ? `<div class="bg-amber-50 border-2 border-dashed border-amber-300 p-3 rounded-xl my-2 text-center">
-                   <span class="text-[11px] font-black text-amber-800 block">🎁 هديتك لطلبك القادم:</span>
-                   <span class="font-black text-2xl text-brand-navy tracking-wider select-all block my-1">${esc(info.newPromoCode)}</span>
-                   <button type="button" onclick="navigator.clipboard.writeText('${escAttr(info.newPromoCode)}'); this.textContent='✅ تم نسخ الكود';" class="bg-brand-navy text-white text-xs font-black px-4 py-1.5 rounded-lg">نسخ الكود</button>
+        // 2. خط زمني مصغّر يشرح للعميل الخطوات القادمة بوضوح
+        const step2Title = sched.isPureImmediate ? 'تجهيز طازج' : 'ذبح يوم التسليم';
+        const timelineHtml = `
+            <div class="bg-[#faf8f3] border border-slate-200/80 rounded-2xl p-2.5">
+                <div class="grid grid-cols-3 gap-1.5 text-center">
+                    <div class="bg-emerald-50 border border-emerald-200 rounded-xl py-1.5 px-1">
+                        <span class="w-5 h-5 mx-auto rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center mb-1"><i class="fa-solid fa-check"></i></span>
+                        <span class="block text-[10px] font-black text-emerald-900 leading-tight">1. تم الحجز</span>
+                    </div>
+                    <div class="bg-white border border-amber-200 rounded-xl py-1.5 px-1">
+                        <span class="w-5 h-5 mx-auto rounded-full bg-amber-400 text-[#0b261c] text-[10px] flex items-center justify-center mb-1"><i class="fa-solid fa-sparkles"></i></span>
+                        <span class="block text-[10px] font-black text-slate-800 leading-tight">2. ${step2Title}</span>
+                    </div>
+                    <div class="bg-white border border-slate-200 rounded-xl py-1.5 px-1">
+                        <span class="w-5 h-5 mx-auto rounded-full bg-brand-navy text-amber-300 text-[10px] flex items-center justify-center mb-1"><i class="fa-solid fa-motorcycle"></i></span>
+                        <span class="block text-[10px] font-black text-slate-700 leading-tight">3. اتصال وتوصيل</span>
+                    </div>
+                </div>
+            </div>`;
+
+        // 3. ملخص إيصال الطلب المختصر
+        const receiptRowsHtml = itemsList.map((it) => {
+            const lineTotal = Math.round((Number(it.quantity) || 0) * (Number(it.price) || 0));
+            return `<div class="flex items-center justify-between gap-2 text-[11px] font-bold text-slate-700">
+                <span class="truncate">${esc(it.quantity)} × ${esc(it.name)}</span>
+                <strong class="text-brand-navy shrink-0">${lineTotal} ج</strong>
+            </div>`;
+        }).join('');
+
+        const receiptHtml = itemsList.length > 0
+            ? `<div class="bg-white border border-slate-200/90 rounded-2xl p-3 space-y-1.5 shadow-sm">
+                   <div class="flex items-center justify-between pb-1.5 border-b border-slate-100 text-[10px] font-black text-slate-500">
+                       <span><i class="fa-solid fa-receipt text-amber-500 ml-1"></i> ملخص حجزك</span>
+                       <span><i class="fa-solid fa-location-dot text-emerald-600 ml-1"></i>${esc(info.zoneName || '')}</span>
+                   </div>
+                   <div class="space-y-1 max-h-28 overflow-y-auto cart-scroll">${receiptRowsHtml}</div>
+                   ${Number(info.totalDiscount) > 0 ? `<div class="flex items-center justify-between text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-1 rounded-lg"><span>🎉 وفّرت بالخصم/النقاط</span><span>- ${Math.round(info.totalDiscount)} ج.م</span></div>` : ''}
+                   <div class="flex items-center justify-between pt-1.5 border-t border-slate-100 text-xs font-black text-brand-navy">
+                       <span>الإجمالي عند الاستلام (${esc(info.deliveryText || '')}):</span>
+                       <span class="text-base text-emerald-700">${Math.round(Number(info.finalTotal) || 0)} <span class="text-[10px] text-slate-500">ج.م</span></span>
+                   </div>
                </div>`
             : '';
 
+        const nextBatchHtml = info.nextBatchSummaryText
+            ? `<div class="bg-amber-50/80 border border-amber-200 rounded-xl px-3 py-2 text-[10px] font-black text-amber-900">
+                   <i class="fa-solid fa-hourglass-half text-amber-600 ml-1"></i> مسجّل كأولوية للدفعة القادمة (خارج فاتورة اليوم): ${esc(info.nextBatchSummaryText)}
+               </div>`
+            : '';
+
+        const rewardHtml = (info.earnedLoyalty && info.newPromoCode)
+            ? `<div class="bg-amber-50 border-2 border-dashed border-amber-300 p-3 rounded-2xl text-center">
+                   <span class="text-[11px] font-black text-amber-800 block">🎁 هديتك لطلبك القادم:</span>
+                   <span class="font-black text-2xl text-brand-navy tracking-wider select-all block my-1" dir="ltr">${esc(info.newPromoCode)}</span>
+                   <button type="button" onclick="navigator.clipboard.writeText('${escAttr(info.newPromoCode)}'); this.textContent='✅ تم نسخ الكود';" class="bg-brand-navy text-white text-xs font-black px-4 py-1.5 rounded-xl">نسخ الكود</button>
+               </div>`
+            : '';
+
+        const kitchenHref = info.primaryProductId
+            ? `./kitchen/?product=${encodeURIComponent(info.primaryProductId)}`
+            : './kitchen/';
+
         const msgHTML = `
-            <div dir="rtl" class="text-right space-y-3">
-                <div class="text-center">
-                    <div class="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto text-2xl shadow-sm">
+            <div dir="rtl" class="text-right space-y-2.5">
+                <!-- رأس إيصال زمردي ملكي -->
+                <div class="luxury-hero-bg text-white rounded-2xl p-3.5 text-center relative overflow-hidden border border-amber-400/25 shadow-md">
+                    <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b261c] rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg mb-2">
                         <i class="fa-solid fa-check"></i>
                     </div>
-                    <h3 class="font-black text-brand-navy mt-2 text-base">${titleText}</h3>
-                    <p class="text-xs font-bold text-slate-500">شكراً لثقتك في سمان ههيا يا ${firstName} 🌿</p>
+                    <h3 class="font-black text-white text-base leading-snug">${titleText}</h3>
+                    <p class="text-[11px] font-bold text-emerald-200 mt-0.5">نورت سمان ههيا يا ${firstName} 🌿 — طلبك اتحجز باسمك</p>
+                    <div class="flex items-center justify-center flex-wrap gap-1.5 mt-2.5">
+                        ${info.orderCode ? `<span class="bg-white/15 border border-white/20 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full" dir="ltr">رقم الحجز: #${esc(info.orderCode)}</span>` : ''}
+                        ${info.orderTime ? `<span class="bg-white/10 border border-white/15 text-emerald-100 text-[10px] font-bold px-2.5 py-0.5 rounded-full">${esc(info.orderDateAr || '')} • ${esc(info.orderTime)}</span>` : ''}
+                    </div>
                 </div>
-                <div class="text-xs font-bold text-emerald-900 leading-relaxed bg-emerald-50 p-3 rounded-xl border border-emerald-200">${bodyHtml}</div>
+
+                ${scheduleCardsHtml}
+                ${timelineHtml}
+                ${receiptHtml}
+                ${nextBatchHtml}
                 ${rewardHtml}
-                <div class="flex flex-col gap-2">
-                    <button type="button" onclick="closeAlert(); window.location.href='track.html?phone=${safePhone}';" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm">
-                        <i class="fa-solid fa-route text-amber-400"></i> تتبع حالة طلبك الآن
+
+                <div class="flex flex-col gap-2 pt-1">
+                    <button type="button" onclick="closeAlert(); window.location.href='track.html?phone=${safePhone}';" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm active:scale-95 transition-transform">
+                        <i class="fa-solid fa-route text-amber-400"></i> تتبع حالة طلبك ورصيد نقاطك
                     </button>
-                    <button type="button" onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm">
+                    <button type="button" onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm active:scale-95 transition-transform">
                         <i class="fa-brands fa-whatsapp text-lg"></i> ${esc(uiTexts.waFollowUpBtn || 'تأكيد ومتابعة عبر واتساب')}
                     </button>
-                    <a href="${info.primaryProductId ? `./kitchen/?product=${encodeURIComponent(info.primaryProductId)}` : './kitchen/'}" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black py-2.5 px-4 rounded-xl flex justify-center items-center gap-2 text-xs transition-colors">
+                    <a href="${kitchenHref}" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black py-2.5 px-4 rounded-xl flex justify-center items-center gap-2 text-xs transition-colors">
                         <i class="fa-solid fa-fire-burner text-amber-600"></i> حضّر تتبيلة أوردرك من مطبخ سمان ههيا
                     </a>
-                    <button type="button" onclick="window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent('جربت سمان ههيا — سمان مذبوح طازج بالطلب وأوزان ممتازة والتوصيل لباب البيت 🌿 اطلب من هنا: https://smanhhya.github.io/'), '_blank');" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black py-2 px-4 rounded-xl flex justify-center items-center gap-1.5 text-[11px] transition-colors">
-                        <i class="fa-solid fa-share-nodes text-emerald-600"></i> رشّح سمان ههيا لحد غالي عليك
-                    </button>
-                    <button type="button" onclick="closeAlert()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs">
-                        ${esc(uiTexts.closeFollowUpBtn || 'تمام، شكراً 👍')}
-                    </button>
-
+                    <div class="grid grid-cols-2 gap-2">
+                        <button type="button" onclick="window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent('جربت سمان ههيا — سمان مذبوح طازج بالطلب وأوزان ممتازة والتوصيل لباب البيت 🌿 اطلب من هنا: https://smanhhya.github.io/'), '_blank');" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors">
+                            <i class="fa-solid fa-share-nodes text-emerald-600"></i> رشّحنا لصاحبك
+                        </button>
+                        <button type="button" onclick="closeAlert()" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-2 px-2 rounded-xl text-[11px] transition-colors">
+                            ${esc(uiTexts.closeFollowUpBtn || 'تمام، شكراً 👍')}
+                        </button>
+                    </div>
                 </div>
             </div>`;
 
@@ -3404,11 +3695,19 @@
             alertMsg.innerHTML = msgHTML;
         }
         const md = document.getElementById('alert-modal');
+        const box = document.getElementById('alert-box');
         if (md) {
             md.classList.remove('hidden');
-            setTimeout(() => md.classList.remove('opacity-0'), 10);
+            setTimeout(() => {
+                md.classList.remove('opacity-0');
+                if (box) {
+                    box.classList.remove('scale-95');
+                    box.classList.add('scale-100');
+                }
+            }, 10);
         }
     }
+
 
     // =========================================================================
     // 12. التنبيهات وإشعارات المبيعات الحية
