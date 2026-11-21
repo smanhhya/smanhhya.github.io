@@ -3308,8 +3308,6 @@
             saveLocalProfile(customerName, customerPhone, zoneName, customerAddress);
             saveLastOrderSnapshot(orderItems);
             sessionStorage.setItem('sman_last_order_ms', String(Date.now()));
-            const firstCookableItem = orderItems.find((it) => it && getProductTrackType(it.id) !== 'chicks');
-            const primaryProductId = firstCookableItem ? firstCookableItem.id : '';
 
             cart = {};
             window.nextBatchCart = {};
