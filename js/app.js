@@ -94,6 +94,167 @@
         } catch (e) {}
     }
 
+    function saveLastOrderSnapshot(itemsList) {
+        try {
+            const clean = (Array.isArray(itemsList) ? itemsList : [])
+                .filter((it) => it && it.id && !it.isWeightBased && Number(it.quantity) > 0)
+                .map((it) => ({
+                    id: String(it.id),
+                    name: String(it.name || ''),
+                    quantity: Math.max(1, Math.floor(Number(it.quantity) || 1))
+                }));
+            if (clean.length > 0) {
+                localStorage.setItem('sman_last_order_items', JSON.stringify(clean));
+            }
+        } catch (e) {}
+    }
+
+    function getCachedLastOrderItems() {
+        try {
+            const raw = localStorage.getItem('sman_last_order_items');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter((x) => x && x.id && Number(x.quantity) > 0) : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function renderReturningBannerUI(prof, lastItems) {
+        const banner = document.getElementById('returning-customer-banner');
+        if (!banner || !prof) return;
+        if (sessionStorage.getItem('sman_rcb_dismissed') === '1') return;
+
+        const cleanPhone = U.normalizePhone(prof.phone || '');
+        const firstName = String(prof.name || '').trim().split(/\s+/)[0] || '';
+        if (!firstName && cleanPhone.length < 10) return;
+
+        const greetEl = document.getElementById('rcb-greeting');
+        const sumEl = document.getElementById('rcb-last-summary');
+        const reorderBtn = document.getElementById('rcb-reorder-btn');
+        const trackLink = document.getElementById('rcb-track-link');
+
+        if (greetEl) {
+            greetEl.textContent = firstName ? `أهلاً بيك يا ${firstName} 👋` : 'أهلاً بيك مرة تانية في سمان ههيا 👋';
+        }
+        if (trackLink && cleanPhone.length >= 10) {
+            trackLink.href = `track.html?phone=${encodeURIComponent(cleanPhone)}`;
+        }
+
+        const validItems = (Array.isArray(lastItems) ? lastItems : []).filter((it) => it && it.id && productsInfo[it.id] && !productsInfo[it.id].isHidden && !productsInfo[it.id].isWeightBased);
+        if (validItems.length > 0) {
+            const summaryTxt = validItems.map((it) => `${it.quantity}× ${productsInfo[it.id]?.name || it.name}`).join(' + ');
+            if (sumEl) sumEl.textContent = `آخر طلب: ${summaryTxt}`;
+            if (reorderBtn) reorderBtn.classList.remove('hidden');
+        } else {
+            if (sumEl) sumEl.textContent = 'تقدر تتابع طلباتك ورصيد نقاط المحفظة بضغطة واحدة';
+            if (reorderBtn) reorderBtn.classList.add('hidden');
+        }
+
+        banner.classList.remove('hidden');
+    }
+
+    function initReturningCustomerWelcome() {
+        if (sessionStorage.getItem('sman_rcb_dismissed') === '1') return;
+        let prof = null;
+        try {
+            const raw = localStorage.getItem('sman_my_profile');
+            if (raw) prof = JSON.parse(raw);
+        } catch (e) {}
+        if (!prof || (!prof.name && !prof.phone)) return;
+
+        const cachedItems = getCachedLastOrderItems();
+        renderReturningBannerUI(prof, cachedItems);
+
+        // جلب آخر طلب في الخلفية بدون التأثير على سرعة الصفحة فقط إذا لم يكن محفوظاً محلياً بعد
+        const normPhone = U.normalizePhone(prof.phone || '');
+        if (cachedItems.length === 0 && hasCloud && db && normPhone.length >= 10) {
+            db.collection('orders')
+                .where('customerPhone', '==', normPhone)
+                .limit(3)
+                .get()
+                .then((snap) => {
+                    if (!snap || snap.empty) return;
+                    const ords = [];
+                    snap.forEach((d) => ords.push(d.data() || {}));
+                    ords.sort((a, b) => {
+                        const ma = (a.createdAt && typeof a.createdAt.toMillis === 'function') ? a.createdAt.toMillis() : 0;
+                        const mb = (b.createdAt && typeof b.createdAt.toMillis === 'function') ? b.createdAt.toMillis() : 0;
+                        return mb - ma;
+                    });
+                    const latest = ords.find((o) => Array.isArray(o.items) && o.items.length > 0);
+                    if (latest) {
+                        saveLastOrderSnapshot(latest.items);
+                        renderReturningBannerUI(prof, getCachedLastOrderItems());
+                    }
+                })
+                .catch(() => {});
+        }
+    }
+
+    window.dismissReturningBanner = function () {
+        sessionStorage.setItem('sman_rcb_dismissed', '1');
+        document.getElementById('returning-customer-banner')?.classList.add('hidden');
+    };
+
+    window.repeatLastCustomerOrder = function () {
+        if (globalSettings.storeOpen === false) {
+            return showAlert('المتجر مغلق', 'المتجر مغلق مؤقتاً حالياً، نعود قريباً.');
+        }
+        const lastItems = getCachedLastOrderItems();
+        if (lastItems.length === 0) {
+            return showStoreToast('لم يتم العثور على أصناف من طلبك السابق', 'fa-circle-info text-amber-400');
+        }
+
+        let addedCount = 0;
+        let adjustedAny = false;
+        let skippedNames = [];
+
+        lastItems.forEach((it) => {
+            const p = productsInfo[it.id];
+            if (!p || p.isHidden || p.isWeightBased) return;
+            const avail = getAvailableStock(it.id);
+            const reqQty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+            const unitPrice = Number(globalPrices[it.id] !== undefined ? globalPrices[it.id] : p.basePrice) || 0;
+
+            if (avail <= 0) {
+                skippedNames.push(p.name || it.name);
+                return;
+            }
+            const toAdd = Math.min(reqQty, avail);
+            if (toAdd < reqQty) adjustedAny = true;
+
+            if (cart[it.id]) {
+                cart[it.id].quantity += toAdd;
+                cart[it.id].price = unitPrice;
+            } else {
+                cart[it.id] = { quantity: toAdd, price: unitPrice, name: p.name };
+            }
+            addedCount++;
+        });
+
+        if (addedCount === 0) {
+            showAlert('تنبيه التوافر', 'الأصناف في طلبك الأخير غير متوفرة في الدفعة المختارة حالياً — يمكنك اختيار دفعة أخرى أو صنف بديل من المنيو.');
+            return;
+        }
+
+        if (navigator.vibrate) navigator.vibrate([35, 25, 45]);
+        saveCart();
+        renderProducts();
+        updateUI();
+
+        if (skippedNames.length > 0 || adjustedAny) {
+            showStoreToast('تمت إضافة المتاح من طلبك الأخير وضبط الكميات تلقائياً ✅', 'fa-circle-info text-amber-400');
+        } else {
+            showStoreToast('تمت إضافة طلبك الأخير للسلة بنجاح 🔁');
+        }
+
+        const sidebar = document.getElementById('cart-sidebar');
+        if (sidebar && sidebar.classList.contains('translate-x-full')) {
+            toggleCart();
+        }
+    };
+
     // =========================================================================
     // 2. الاتصال السريع بقاعدة البيانات مع التخزين المخبأ ووضع الإنقاذ
     // =========================================================================
@@ -189,9 +350,10 @@
             renderProducts();
             startLiveNotifications();
             updateUI();
+            initReturningCustomerWelcome();
 
             const phoneVal = document.getElementById('customer-phone')?.value || '';
-            const norm = U.normalizePhone(phoneVal);
+          const norm = U.normalizePhone(phoneVal);
             if (norm.length >= 10) checkCustomerWalletSafe(norm, phoneVal);
         } catch (e) {
             console.error('Firebase Fetch Error:', e);
@@ -1715,6 +1877,58 @@
 
         const trackForKitchen = getProductTrackType(id);
         const showKitchenBtn = trackForKitchen === 'quail' || trackForKitchen === 'weight' || id === 'eggs' || String(item.name || '').includes('بيض');
+        const mealMetaEl = document.getElementById('pq-meal-meta');
+        if (mealMetaEl) {
+            const sId = String(id || '').toLowerCase();
+            const sName = String(item.name || '').toLowerCase();
+            let servingsTxt = '';
+            let cookTimeTxt = '';
+
+            if (trackForKitchen === 'quail') {
+                if (sId === 'superspecial' || sName.includes('رويال') || (sName.includes('سوبر') && (sName.includes('سبشيال') || sName.includes('اسبيشيال')))) {
+                    servingsTxt = '2 فردة كبيرة (يكفي 2 فرد)';
+                    cookTimeTxt = '40–45 دقيقة حشو / 25 د شوي';
+                } else if (sId === 'special' || sName.includes('سبشيال') || sName.includes('اسبيشيال')) {
+                    servingsTxt = '2 فردة ممتلئة (يكفي 1–2 فرد)';
+                    cookTimeTxt = '35–40 دقيقة حشو / 20 د شوي';
+                } else if (sId === 'jumbo' || sName.includes('جامبو')) {
+                    servingsTxt = '2 فردة متوازنة (يكفي 1–2 فرد)';
+                    cookTimeTxt = '20–25 دقيقة شوي / 35 د حشو';
+                } else {
+                    servingsTxt = '2 فردة طازجة (يكفي 1–2 فرد)';
+                    cookTimeTxt = '15–20 دقيقة شوي أو تحمير';
+                }
+            } else if (sId === 'eggs' || sName.includes('بيض')) {
+                servingsTxt = '18 بيضة (للعائلة والأطفال)';
+                cookTimeTxt = '4–5 دقائق سلق فقط';
+            } else if (trackForKitchen === 'weight') {
+                servingsTxt = 'حسب الوزن المختار للأسرة';
+                cookTimeTxt = '45–60 دقيقة سلق أو فرن';
+            }
+
+            if (servingsTxt && cookTimeTxt) {
+                mealMetaEl.className = 'grid grid-cols-2 gap-2';
+                mealMetaEl.innerHTML = `
+                    <div class="bg-[#faf8f3] border border-slate-200/80 rounded-xl p-2.5 flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 flex items-center justify-center text-xs shrink-0"><i class="fa-solid fa-users"></i></span>
+                        <div class="min-w-0">
+                            <span class="block text-[9px] font-bold text-slate-400">يكفي كام فرد</span>
+                            <span class="block text-[10px] sm:text-[11px] font-black text-brand-navy leading-tight">${esc(servingsTxt)}</span>
+                        </div>
+                    </div>
+                    <div class="bg-[#faf8f3] border border-slate-200/80 rounded-xl p-2.5 flex items-center gap-2">
+                        <span class="w-7 h-7 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center text-xs shrink-0"><i class="fa-solid fa-fire-flame-curved"></i></span>
+                        <div class="min-w-0">
+                            <span class="block text-[9px] font-bold text-slate-400">وقت التسوية التقريبي</span>
+                            <span class="block text-[10px] sm:text-[11px] font-black text-brand-navy leading-tight">${esc(cookTimeTxt)}</span>
+                        </div>
+                    </div>`;
+            } else {
+                mealMetaEl.className = 'hidden';
+                mealMetaEl.innerHTML = '';
+            }
+        }
+
         const stockBadge = avail > 0
             ? `<span class="text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-xl inline-block">🟢 متاح للحجز الآن: ${avail}</span>`
             : `<span class="text-rose-600 bg-rose-50 border border-rose-200 px-3 py-1 rounded-xl inline-block">🔴 نفذت الكمية في هذه الدفعة</span>`;
@@ -3088,7 +3302,10 @@
             }
 
             saveLocalProfile(customerName, customerPhone, zoneName, customerAddress);
+            saveLastOrderSnapshot(orderItems);
             sessionStorage.setItem('sman_last_order_ms', String(Date.now()));
+            const firstCookableItem = orderItems.find((it) => it && getProductTrackType(it.id) !== 'chicks');
+            const primaryProductId = firstCookableItem ? firstCookableItem.id : '';
 
             cart = {};
             window.nextBatchCart = {};
@@ -3108,7 +3325,7 @@
                 ? window.getFriendlyBatchDatePhrase(globalBatches[batchId].deliveryStart, globalBatches[batchId].deliveryEnd)
                 : '';
 
-            showOrderSuccessModal({ customerName, customerPhone, batchName, interactiveTime, earnedLoyalty, newPromoCode });
+            showOrderSuccessModal({ customerName, customerPhone, batchName, interactiveTime, earnedLoyalty, newPromoCode, primaryProductId });
         } catch (e) {
             console.error('Order Submit Error:', e);
             if (e && typeof e.message === 'string' && e.message.startsWith('WEIGHT_TAKEN:')) {
@@ -3165,9 +3382,16 @@
                     <button type="button" onclick="closeAlert(); window.open(window.currentOrderWaLink, '_blank');" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-3 px-4 rounded-xl flex justify-center items-center gap-2 shadow-md text-xs sm:text-sm">
                         <i class="fa-brands fa-whatsapp text-lg"></i> ${esc(uiTexts.waFollowUpBtn || 'تأكيد ومتابعة عبر واتساب')}
                     </button>
+                    <a href="${info.primaryProductId ? `./kitchen/?product=${encodeURIComponent(info.primaryProductId)}` : './kitchen/'}" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border border-amber-300 font-black py-2.5 px-4 rounded-xl flex justify-center items-center gap-2 text-xs transition-colors">
+                        <i class="fa-solid fa-fire-burner text-amber-600"></i> حضّر تتبيلة أوردرك من مطبخ سمان ههيا
+                    </a>
+                    <button type="button" onclick="window.open('https://api.whatsapp.com/send?text=' + encodeURIComponent('جربت سمان ههيا — سمان مذبوح طازج بالطلب وأوزان ممتازة والتوصيل لباب البيت 🌿 اطلب من هنا: https://smanhhya.github.io/'), '_blank');" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-black py-2 px-4 rounded-xl flex justify-center items-center gap-1.5 text-[11px] transition-colors">
+                        <i class="fa-solid fa-share-nodes text-emerald-600"></i> رشّح سمان ههيا لحد غالي عليك
+                    </button>
                     <button type="button" onclick="closeAlert()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 rounded-xl text-xs">
                         ${esc(uiTexts.closeFollowUpBtn || 'تمام، شكراً 👍')}
                     </button>
+
                 </div>
             </div>`;
 
