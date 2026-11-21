@@ -1,1395 +1,2009 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>تتبع الطلب | سمان ههيا</title>
-    <meta name="theme-color" content="#1b4332">
-    <link rel="manifest" href="./manifest.json">
-    <link rel="icon" type="image/png" href="./logo.png">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>تتبع الطلب | سمان ههيا — من المزرعة لطبقك</title>
+  <meta name="description" content="تتبع حالة طلبك لحظياً في سمان ههيا، اعرف ميعاد الدفعة والتوصيل، ورصيد نقاط الولاء والهدايا.">
+  <meta name="theme-color" content="#0f3426">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/png" href="./logo.png">
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="./css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="./css/style.css?v=9">
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            primary: '#1b4332',
-                            navy: '#1b4332',
-                            accent: '#d97706',
-                            yellow: '#f59e0b',
-                            light: '#f0fdf4'
-                        }
-                    },
-                    fontFamily: { cairo: ['Cairo', 'sans-serif'] }
-                }
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#0f3426',
+              navy: '#0f3426',
+              emerald: '#1b4332',
+              accent: '#d97706',
+              yellow: '#f59e0b',
+              light: '#f0fdf4'
             }
-        };
-    </script>
+          },
+          fontFamily: { cairo: ['Cairo', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    .vip-card-bg {
+      background: radial-gradient(circle at 12% 18%, rgba(251, 191, 36, 0.25), transparent 45%),
+                  radial-gradient(circle at 90% 85%, rgba(16, 185, 129, 0.2), transparent 50%),
+                  linear-gradient(135deg, #102a20 0%, #173f30 55%, #0c231a 100%);
+    }
+    .review-tag-btn {
+      transition: all 0.16s ease;
+    }
+    .review-tag-btn.selected {
+      background-color: #0f3426;
+      color: #fbbf24;
+      border-color: #f59e0b;
+      box-shadow: 0 4px 10px -2px rgba(15, 52, 38, 0.25);
+    }
+    .step-dot-pulse {
+      box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55);
+      animation: trackPulse 2s infinite;
+    }
+    @keyframes trackPulse {
+      0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }
+      70% { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+    }
+  </style>
 </head>
-<body class="text-slate-800 flex flex-col min-h-screen pb-14 bg-[#fdfbf7]">
+<body class="text-slate-800 flex flex-col min-h-screen bg-[#faf8f3] selection:bg-brand-navy selection:text-white">
 
-    <!-- زر واتساب خدمة العملاء العائم -->
-    <a id="floating-wa" href="https://wa.me/201208027294" target="_blank" rel="noopener" class="fixed bottom-5 left-5 w-14 h-14 bg-[#25D366] text-white rounded-full flex items-center justify-center text-3xl shadow-xl hover:scale-105 transition-transform z-[90]" title="تواصل مع خدمة العملاء">
-        <i class="fa-brands fa-whatsapp"></i>
-    </a>
+  <!-- إشعار Toast فوري أعلى الشاشة -->
+  <div id="track-toast" class="fixed top-16 left-1/2 -translate-x-1/2 z-[150] pointer-events-none opacity-0 -translate-y-4 transition-all duration-300 w-max max-w-[92vw]">
+    <div class="bg-slate-900/95 backdrop-blur-md text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-amber-400/30 flex items-center gap-2 text-xs font-black">
+      <i id="track-toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-sm"></i>
+      <span id="track-toast-text">تم التحديث بنجاح</span>
+    </div>
+  </div>
 
-    <!-- الهيدر العلوي -->
-    <header class="bg-brand-primary text-white shadow-md py-3 px-4 sticky top-0 z-50 border-b border-white/10">
-        <div class="max-w-md mx-auto flex items-center justify-between gap-2">
-            <a href="index.html" class="flex items-center gap-2">
-                <div class="w-9 h-9 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center text-brand-yellow text-lg">
-                    <i class="fa-solid fa-kiwi-bird"></i>
-                </div>
-                <div>
-                    <h1 class="text-base font-black leading-tight">سمان <span class="text-brand-yellow">ههيا</span></h1>
-                    <p class="text-[10px] text-white/75 font-bold">متابعة وتحديث الطلبات</p>
-                </div>
-            </a>
-            <a href="index.html" class="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 transition-colors">
-                <i class="fa-solid fa-store text-brand-yellow"></i> المتجر
-            </a>
+  <!-- زر واتساب خدمة العملاء العائم -->
+  <a id="floating-wa" href="https://wa.me/201208027294" target="_blank" rel="noopener" class="fixed bottom-5 left-4 w-[52px] h-[52px] bg-[#25D366] text-white rounded-full flex items-center justify-center text-2xl shadow-xl hover:scale-105 active:scale-95 transition-transform z-[90] border-2 border-white" title="تواصل مع خدمة العملاء">
+    <i class="fa-brands fa-whatsapp"></i>
+  </a>
+
+  <!-- شريط التنقل الزجاجي الملكي المطابق للمتجر -->
+  <nav class="bg-[#0b261c]/95 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-white/10">
+    <div class="max-w-lg mx-auto px-3.5 h-14 flex items-center justify-between gap-2">
+      <a href="index.html" class="flex items-center gap-2.5 min-w-0">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-[#0b261c] flex items-center justify-center shadow-md shrink-0">
+          <i class="fa-solid fa-kiwi-bird text-lg"></i>
         </div>
-    </header>
+        <div class="min-w-0">
+          <span class="font-black text-base text-white leading-none block truncate">سمان <span class="text-amber-400">ههيا</span></span>
+          <span class="text-[10px] font-bold text-emerald-300 flex items-center gap-1 mt-0.5">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span>مركز التتبع والولاء</span>
+          </span>
+        </div>
+      </a>
 
-    <main class="flex-1 max-w-md w-full mx-auto p-4 flex flex-col mt-1">
+      <div class="flex items-center gap-1.5 shrink-0">
+        <a href="./kitchen/" class="bg-amber-400/15 hover:bg-amber-400/25 text-amber-300 border border-amber-400/35 px-2.5 py-1.5 rounded-xl text-[11px] font-black transition-all flex items-center gap-1">
+          <i class="fa-solid fa-fire-burner text-xs"></i>
+          <span>المطبخ</span>
+        </a>
+        <a href="index.html" class="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl text-xs font-black transition-all border border-white/20">
+          <i class="fa-solid fa-store text-amber-400"></i>
+          <span>المتجر</span>
+        </a>
+      </div>
+    </div>
+  </nav>
 
-        <!-- شاشة إدخال رقم الهاتف -->
-        <div id="login-section" class="glass-card p-6 sm:p-7 rounded-3xl animate-slide mt-6">
-            <div class="w-16 h-16 bg-brand-light text-brand-primary rounded-2xl border border-emerald-200 flex items-center justify-center mx-auto mb-4 text-3xl shadow-sm">
-                <i class="fa-solid fa-route"></i>
-            </div>
-            <h2 class="text-xl font-black text-center mb-1.5 text-brand-primary">تتبع حالة طلبك لحظياً</h2>
-            <p class="text-xs text-center text-slate-500 font-bold mb-6 leading-relaxed">
-                أدخل رقم الهاتف المسجل في الطلب لمتابعة التجهيز، وموعد الدفعة، ورصيد نقاط الولاء.
-            </p>
+  <main class="flex-1 max-w-lg w-full mx-auto px-3.5 sm:px-4 pt-4 pb-10 flex flex-col">
 
-            <div class="mb-4">
-                <input type="tel" id="customer-phone" inputmode="numeric" placeholder="01X XXXX XXXX" onkeydown="if(event.key==='Enter'){event.preventDefault(); trackOrder();}" class="w-full border-2 border-slate-200 bg-slate-50 rounded-2xl p-3.5 text-center font-black outline-none focus:border-brand-primary focus:bg-white transition-all text-lg tracking-widest text-brand-primary" dir="ltr">
-            </div>
+    <!-- ==================== 1. شاشة إدخال رقم الهاتف ==================== -->
+    <div id="login-section" class="space-y-4 mt-2 animate-slide">
+      <div class="luxury-hero-bg text-white rounded-3xl p-6 shadow-xl border border-amber-400/25 relative overflow-hidden text-center">
+        <div class="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b261c] rounded-2xl flex items-center justify-center mx-auto mb-3.5 text-3xl shadow-lg">
+          <i class="fa-solid fa-route"></i>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-black text-white leading-snug">تتبع طلبك ورصيد نقاطك لحظياً</h1>
+        <p class="text-xs text-emerald-100/85 font-bold mt-1.5 leading-relaxed max-w-xs mx-auto">
+          اكتب رقم موبايلك المسجل في الطلب عشان تتابع التجهيز، وميعاد دفعة الذبح، وهدايا محفظة الولاء.
+        </p>
 
-            <button type="button" onclick="trackOrder()" id="btn-track" class="w-full bg-brand-primary hover:opacity-95 text-white font-black py-3.5 rounded-2xl shadow-lg transition-all flex justify-center items-center gap-2 text-base active:scale-95">
-                <i class="fa-solid fa-magnifying-glass text-brand-yellow"></i> متابعة الطلب
-            </button>
-            <p id="error-msg" class="hidden text-red-600 text-xs font-black text-center mt-4 bg-red-50 p-3 rounded-xl border border-red-200"></p>
+        <div class="mt-5 space-y-3">
+          <div class="relative">
+            <i class="fa-solid fa-mobile-screen-button absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 text-base pointer-events-none"></i>
+            <input type="tel" id="customer-phone" inputmode="numeric" placeholder="01X XXXX XXXX" onkeydown="if(event.key==='Enter'){event.preventDefault(); trackOrder();}" class="w-full border-2 border-white/20 bg-white rounded-2xl py-3.5 pr-11 pl-4 text-center font-black outline-none focus:border-amber-400 transition-all text-lg tracking-widest text-brand-navy shadow-inner" dir="ltr">
+          </div>
+
+          <button type="button" onclick="trackOrder()" id="btn-track" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3.5 rounded-2xl shadow-lg transition-all flex justify-center items-center gap-2 text-sm sm:text-base active:scale-95">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <span>عرض حالة طلبي الآن</span>
+          </button>
         </div>
 
-        <!-- شاشة نتيجة التتبع -->
-        <div id="result-section" class="hidden space-y-4">
+        <p id="error-msg" class="hidden text-rose-100 text-xs font-black text-center mt-4 bg-rose-500/30 p-3 rounded-xl border border-rose-300/40"></p>
+      </div>
 
-            <!-- شريط اختيار الطلب عند وجود أكثر من طلب نشط -->
-            <div id="orders-selector" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
-
-            <!-- كارت الترحيب وحالة الطلب والفاتورة -->
-            <div class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 animate-slide">
-                <div class="flex items-start justify-between gap-2 mb-3 border-b border-slate-100 pb-3">
-                    <div>
-                        <h3 class="font-black text-base text-slate-800">أهلاً بحضرتك، أ. <span id="res-name" class="text-brand-primary"></span></h3>
-                        <p class="text-[11px] text-slate-500 font-bold mt-0.5">متابعة مباشرة لحالة وتفاصيل طلبك</p>
-                    </div>
-                    <span class="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-lg text-[10px] font-black flex items-center gap-1 shrink-0">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> مباشر
-                    </span>
-                </div>
-
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div>
-                        <p class="text-[11px] text-slate-400 font-bold mb-0.5">حالة الطلب الآن</p>
-                        <h3 id="res-status-title" class="font-black text-brand-primary text-lg">جاري التحميل...</h3>
-                    </div>
-                    <div class="text-center bg-slate-50 p-3 rounded-2xl border border-slate-200 w-full sm:w-auto sm:min-w-[155px]">
-                        <p class="text-[10px] text-slate-500 font-bold mb-0.5">الإجمالي المطلوب</p>
-                        <p class="font-black text-2xl text-brand-primary leading-tight">
-                            <span id="res-total">0</span> <span class="text-xs text-slate-500">ج.م</span>
-                        </p>
-                        <div id="res-payment-badge" class="mt-1"></div>
-                    </div>
-                </div>
-
-                <div id="res-total-details" class="text-[11px] text-slate-600 font-bold border-t border-slate-100 pt-3 mt-3 flex flex-wrap gap-1.5"></div>
-            </div>
-
-            <!-- بانر محفظة الهدايا ونقاط الولاء + شريط التقدم التشجيعي -->
-            <div id="main-wallet-banner" class="hidden bg-gradient-to-l from-amber-50 to-white border-2 border-amber-200 rounded-2xl p-4 shadow-sm animate-slide">
-                <div class="flex justify-between items-center gap-2">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center text-white text-lg shadow-md shrink-0">
-                            <i class="fa-solid fa-gift animate-pulse"></i>
-                        </div>
-                        <div>
-                            <p class="text-xs font-black text-amber-900">رصيد الهدايا ونقاط الولاء</p>
-                            <p class="text-[11px] font-bold text-amber-700">معاك <span id="main-wallet-points" class="font-black">0</span> نقطة</p>
-                        </div>
-                    </div>
-                    <div class="text-left bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-sm shrink-0">
-                        <p class="text-[9px] font-bold text-amber-600">تساوي خصم</p>
-                        <p class="text-base font-black text-amber-700 leading-none"><span id="main-wallet-val">0</span> <span class="text-[10px]">ج.م</span></p>
-                    </div>
-                </div>
-
-                <div id="progress-bar-container" class="hidden"></div>
-
-                <div id="quick-apply-wallet-container" class="hidden mt-3 pt-3 border-t border-amber-200/70">
-                    <button type="button" onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95">
-                        <i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب
-                    </button>
-                </div>
-            </div>
-
-            <!-- صندوق متابعة الدفعة (يقرأ لايف من الـ CRM) -->
-            <div id="batch-info-box" class="hidden bg-gradient-to-l from-indigo-50/80 to-white rounded-2xl p-4 shadow-sm border border-indigo-200/80 animate-slide">
-                <div class="flex items-center gap-2 mb-3 border-b border-indigo-100 pb-2">
-                    <i class="fa-solid fa-calendar-check text-indigo-600 text-base"></i>
-                    <h4 class="font-black text-indigo-900 text-xs sm:text-sm">متابعة الدفعة: <span id="batch-display-name" class="text-brand-primary">--</span></h4>
-                </div>
-
-                <div class="grid grid-cols-2 gap-2.5 mb-3" id="batch-dates-grid">
-                    <div id="box-delivery-dates" class="hidden bg-white p-2.5 rounded-xl border border-indigo-100 text-center shadow-sm">
-                        <span class="block text-[10px] font-bold text-slate-500 mb-0.5">أيام التسليم</span>
-                        <span class="block text-sm font-black text-slate-800" id="batch-date-range">--</span>
-                    </div>
-                    <div id="box-delivery-left" class="hidden bg-white p-2.5 rounded-xl border border-indigo-100 text-center shadow-sm">
-                        <span class="block text-[10px] font-bold text-slate-500 mb-0.5" id="batch-days-text">متبقي للتجهيز</span>
-                        <span class="block text-sm font-black text-brand-primary" id="batch-days-left">--</span>
-                    </div>
-                </div>
-
-                <div id="batch-msg-container" class="hidden bg-indigo-100/60 p-3 rounded-xl border border-indigo-200 text-xs font-bold text-indigo-950 leading-relaxed">
-                    <i class="fa-solid fa-circle-info text-indigo-600 ml-1"></i>
-                    <span id="batch-customer-msg"></span>
-                </div>
-            </div>
-
-            <!-- تنبيهات التأجيل وعدم الرد -->
-            <div id="alert-banner" class="hidden rounded-2xl p-4 animate-slide shadow-sm border">
-                <div class="flex items-start gap-3">
-                    <div id="alert-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"></div>
-                    <div class="min-w-0 flex-1">
-                        <h4 id="alert-title" class="font-black text-sm sm:text-base mb-1"></h4>
-                        <p id="alert-desc" class="text-xs sm:text-sm text-slate-600 font-bold leading-relaxed mb-3"></p>
-                    </div>
-                </div>
-                <a id="btn-alert-wa" href="#" target="_blank" rel="noopener" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-2.5 rounded-xl flex justify-center items-center gap-2 text-xs sm:text-sm shadow-md transition-colors">
-                    <i class="fa-brands fa-whatsapp text-lg"></i> تواصل مع الإدارة عبر واتساب
-                </a>
-            </div>
-
-            <!-- معلومات المندوب والوصول وتأكيد الاستلام -->
-            <div id="driver-info" class="hidden bg-white border-2 border-indigo-200 rounded-2xl p-4 shadow-sm animate-slide">
-                <div class="flex items-center justify-between mb-3 border-b border-slate-100 pb-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-10 h-10 bg-indigo-50 rounded-xl border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg">
-                            <i class="fa-solid fa-motorcycle"></i>
-                        </div>
-                        <div>
-                            <p class="text-[10px] text-slate-500 font-bold">مندوب التوصيل</p>
-                            <h4 id="driver-name" class="font-black text-slate-800 text-sm"></h4>
-                        </div>
-                    </div>
-                    <a id="driver-call-btn" href="#" class="hidden bg-brand-primary hover:opacity-90 text-white px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm">
-                        <i class="fa-solid fa-phone"></i> اتصال
-                    </a>
-                </div>
-                <div class="text-center bg-indigo-50/60 py-2 px-3 rounded-xl border border-indigo-100">
-                    <p class="text-[11px] text-slate-600 font-bold"><i class="fa-regular fa-clock text-indigo-600 ml-1"></i> متوقع وصول المندوب بين:</p>
-                    <p class="text-base font-black text-brand-primary mt-0.5" id="driver-eta"></p>
-                </div>
-
-                <div id="confirm-receipt-box" class="mt-3 pt-3 border-t border-slate-100">
-                    <p class="text-[11px] text-slate-500 font-bold text-center mb-2">عند استلامك الطلب من المندوب، يمكنك تأكيد الاستلام:</p>
-                    <button type="button" onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-emerald-50 hover:bg-emerald-600 border-2 border-emerald-500 text-emerald-800 hover:text-white font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-sm flex justify-center items-center gap-2">
-                        <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
-                    </button>
-                </div>
-            </div>
-
-            <!-- شريط خطوات التتبع -->
-            <div id="tracking-card" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 animate-slide">
-                <div class="relative flex justify-between items-center px-2">
-                    <div class="absolute top-4 left-6 right-6 h-1 bg-slate-100 rounded-full"></div>
-                    <div id="progress-line" class="absolute top-4 right-6 h-1 bg-brand-primary rounded-full transition-all duration-700" style="width: 0%;"></div>
-
-                    <div class="flex flex-col items-center gap-1.5 relative z-10">
-                        <div id="step-1-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200"><i class="fa-solid fa-clipboard-check"></i></div>
-                        <span class="text-[11px] font-black text-slate-600">مراجعة</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-1.5 relative z-10">
-                        <div id="step-2-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200"><i class="fa-solid fa-fire-burner"></i></div>
-                        <span class="text-[11px] font-black text-slate-600">تجهيز</span>
-                    </div>
-                    <div class="flex flex-col items-center gap-1.5 relative z-10">
-                        <div id="step-3-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200"><i class="fa-solid fa-motorcycle"></i></div>
-                        <span class="text-[11px] font-black text-slate-600">توصيل</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- محتويات الطلب والتعديل المباشر للطلبات الجديدة -->
-            <div id="view-items-section" class="bg-white rounded-2xl p-4 sm:p-5 shadow-sm border border-slate-200 animate-slide">
-                <h4 class="font-black text-slate-800 text-sm mb-3"><i class="fa-solid fa-box-open text-brand-primary ml-1"></i> محتويات الطلب:</h4>
-                <div id="res-items" class="flex flex-col gap-2 mb-3"></div>
-
-                <div id="edit-request-box" class="hidden border-t border-slate-100 pt-3 mt-2">
-                    <button type="button" onclick="toggleVisualEditMenu()" id="btn-open-edit-menu" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-sm flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-pen-to-square"></i> تعديل أصناف الطلب / زيادة الكمية
-                    </button>
-
-                    <div id="visual-edit-container" class="hidden mt-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-3">
-                        <div class="text-xs font-black text-slate-700 border-b border-slate-200 pb-2 flex justify-between items-center">
-                            <span><i class="fa-solid fa-cart-shopping text-brand-primary ml-1"></i> عدّل الكميات براحتك:</span>
-                            <span id="live-edit-total" class="text-brand-primary font-black text-sm">0 ج.م</span>
-                        </div>
-                        <div id="interactive-edit-items" class="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto cart-scroll pr-0.5 pb-1"></div>
-                        <button type="button" onclick="submitDirectOrderEdit()" id="btn-confirm-direct-edit" class="w-full bg-brand-primary hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2">
-                            <i class="fa-solid fa-check-circle text-brand-yellow"></i> حفظ التعديل وتحديث الفاتورة
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- قسم التقييم بعد التسليم -->
-            <div id="feedback-section" class="hidden bg-white border-2 border-emerald-500/40 rounded-2xl p-5 text-center shadow-md animate-slide">
-                <div class="w-14 h-14 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-2.5 text-brand-primary text-2xl">
-                    <i class="fa-solid fa-check-double"></i>
-                </div>
-                <h4 class="font-black text-slate-800 text-base mb-1">بالهناء والشفاء! 🌿</h4>
-                <p class="text-xs text-slate-500 font-bold mb-4">نسعد بتقييم حضرتك لمستوى الخدمة وجودة السمان.</p>
-                <div class="star-rating text-3xl text-slate-300 flex justify-center gap-3 flex-row-reverse mb-3" id="stars-container">
-                    <i class="fa-solid fa-star" onclick="rateOrder(5)"></i>
-                    <i class="fa-solid fa-star" onclick="rateOrder(4)"></i>
-                    <i class="fa-solid fa-star" onclick="rateOrder(3)"></i>
-                    <i class="fa-solid fa-star" onclick="rateOrder(2)"></i>
-                    <i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
-                </div>
-                <div id="complaint-box" class="hidden mt-3 text-right">
-                    <label class="text-xs font-black text-slate-600 block mb-1.5">ملاحظاتك (اختياري):</label>
-                    <textarea id="complaint-text" rows="2" class="w-full rounded-xl border border-slate-300 p-2.5 text-xs font-bold outline-none focus:border-brand-primary bg-slate-50" placeholder="اكتب رأيك أو أي ملاحظة لتحسين الخدمة..."></textarea>
-                    <button type="button" onclick="submitComplaint()" class="mt-2.5 w-full bg-brand-primary hover:opacity-95 text-white font-black py-2.5 rounded-xl text-xs sm:text-sm transition-opacity">إرسال التقييم للإدارة</button>
-                </div>
-                <div id="feedback-thanks" class="hidden mt-3 bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-center">
-                    <p class="text-emerald-800 font-black text-xs">شكراً لتقييم حضرتك! نسعد دائماً بخدمتكم 🤍</p>
-                </div>
-            </div>
-
-            <!-- أرشيف الطلبات السابقة -->
-            <div id="history-section" class="hidden bg-slate-50 rounded-2xl p-4 border border-slate-200">
-                <h4 class="font-black text-slate-700 text-xs mb-3"><i class="fa-solid fa-clock-rotate-left ml-1 text-brand-primary"></i> سجل طلباتك السابقة المكتملة</h4>
-                <div id="history-list" class="space-y-2.5 max-h-64 overflow-y-auto cart-scroll"></div>
-            </div>
-
-            <!-- روابط سفلية -->
-            <div class="flex flex-col items-center gap-2.5 pt-4 border-t border-slate-200">
-                <button type="button" onclick="toggleHistory()" class="text-slate-500 hover:text-brand-primary text-xs font-black underline transition-colors">عرض / إخفاء سجل طلباتك السابقة</button>
-                <button type="button" onclick="logoutTracker()" class="text-slate-400 hover:text-red-500 text-xs font-bold underline transition-colors">البحث برقم هاتف آخر</button>
-            </div>
+      <!-- شريط مميزات سريعة أسفل شاشة الدخول -->
+      <div class="grid grid-cols-3 gap-2 text-center">
+        <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
+          <i class="fa-solid fa-satellite-dish text-emerald-600 text-base mb-1"></i>
+          <span class="block text-[10px] font-black text-brand-navy">تحديث مباشر</span>
         </div>
-    </main>
-
-    <!-- نافذة التنبيه والتأكيد التنفيذية الداخلية -->
-    <div id="track-dialog-modal" class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm z-[130] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
-            <div class="bg-brand-primary text-white px-5 py-3.5 flex items-center justify-between">
-                <h3 id="td-title" class="text-sm font-black">سمان ههيا</h3>
-                <button type="button" onclick="resolveTrackDialog(false)" class="w-7 h-7 rounded-full bg-white/15 hover:bg-red-500 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="p-5">
-                <p id="td-message" class="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-line"></p>
-            </div>
-            <div class="px-5 pb-4 flex gap-2">
-                <button type="button" id="td-confirm-btn" onclick="resolveTrackDialog(true)" class="flex-1 bg-brand-primary hover:opacity-95 text-white font-black py-2.5 rounded-xl text-xs sm:text-sm shadow-md">موافق</button>
-                <button type="button" id="td-cancel-btn" onclick="resolveTrackDialog(false)" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm">إلغاء</button>
-            </div>
+        <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
+          <i class="fa-solid fa-pen-to-square text-amber-500 text-base mb-1"></i>
+          <span class="block text-[10px] font-black text-brand-navy">تعديل مرن للطلب</span>
         </div>
+        <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
+          <i class="fa-solid fa-crown text-amber-500 text-base mb-1"></i>
+          <span class="block text-[10px] font-black text-brand-navy">نقاط وهدايا VIP</span>
+        </div>
+      </div>
     </div>
 
-    <script src="./js/config.js"></script>
-    <script>
-        (function () {
-            const U = window.SMAN_UTILS;
-            const esc = U.escapeHtml;
-            const escAttr = U.escapeJsAttr;
+    <!-- ==================== 2. شاشة نتيجة التتبع الملكية ==================== -->
+    <div id="result-section" class="hidden space-y-4">
 
-            if (!firebase.apps.length) {
-                firebase.initializeApp(FIREBASE_CONFIG);
+      <!-- شريط اختيار الطلب عند وجود أكثر من طلب نشط -->
+      <div id="orders-selector" class="hidden flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+
+      <!-- 2-أ: الكارت الملكي للترحيب وحالة الطلب والفاتورة -->
+      <div class="bg-white rounded-3xl shadow-md border border-emerald-900/10 overflow-hidden animate-slide">
+        <div class="luxury-hero-bg text-white p-4 sm:p-5 space-y-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="text-[11px] font-bold text-emerald-200/85">أهلاً بحضرتك في سمان ههيا 🌿</p>
+              <h2 class="font-black text-base sm:text-lg text-white truncate mt-0.5">أ. <span id="res-name" class="text-amber-300"></span></h2>
+            </div>
+            <span class="bg-white/10 text-emerald-200 border border-white/15 px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 shrink-0">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> مباشر
+            </span>
+          </div>
+
+          <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2 border-t border-white/10">
+            <div class="min-w-0">
+              <span class="text-[10px] text-emerald-200/80 font-bold block">حالة طلبك الآن</span>
+              <h3 id="res-status-title" class="font-black text-white text-lg sm:text-xl leading-snug mt-0.5">جاري التحميل...</h3>
+              <p id="res-status-sub" class="text-[11px] font-bold text-amber-200/90 mt-0.5"></p>
+            </div>
+            <div class="text-center bg-white/10 backdrop-blur-sm px-4 py-2.5 rounded-2xl border border-white/15 shrink-0 sm:min-w-[148px]">
+              <p class="text-[10px] text-emerald-200/90 font-bold mb-0.5">الإجمالي المطلوب</p>
+              <p class="font-black text-2xl text-amber-300 leading-none">
+                <span id="res-total">0</span> <span class="text-xs text-white/80">ج.م</span>
+              </p>
+              <div id="res-payment-badge" class="mt-1.5"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="res-total-details" class="p-4 text-[11px] text-slate-600 font-bold flex flex-wrap gap-1.5 bg-white"></div>
+      </div>
+
+      <!-- 2-ب: شريط خطوات التتبع التفاعلي (4 مراحل) -->
+      <div id="tracking-card" class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-900/10 animate-slide">
+        <div class="relative flex justify-between items-start px-1">
+          <div class="absolute top-4 left-7 right-7 h-1.5 bg-slate-100 rounded-full"></div>
+          <div id="progress-line" class="absolute top-4 right-7 h-1.5 bg-gradient-to-l from-brand-navy to-emerald-500 rounded-full transition-all duration-700" style="width: 0%;"></div>
+
+          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
+            <div id="step-1-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-clipboard-check"></i></div>
+            <span class="text-[10px] font-black text-slate-600 text-center">تم الحجز</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
+            <div id="step-2-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-fire-burner"></i></div>
+            <span class="text-[10px] font-black text-slate-600 text-center">تجهيز طازج</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
+            <div id="step-3-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-motorcycle"></i></div>
+            <span class="text-[10px] font-black text-slate-600 text-center">مع المندوب</span>
+          </div>
+          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
+            <div id="step-4-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-house-circle-check"></i></div>
+            <span class="text-[10px] font-black text-slate-600 text-center">تم التسليم</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-ج: صندوق متابعة الدفعة الذكي + شريط نمو السمان (38–45 يوم) -->
+      <div id="batch-info-box" class="hidden bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-200/80 space-y-3 animate-slide">
+        <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-brand-navy border border-emerald-200 flex items-center justify-center text-sm shrink-0">
+              <i class="fa-solid fa-calendar-check text-amber-500"></i>
+            </span>
+            <div class="min-w-0">
+              <span class="block text-[10px] font-bold text-slate-400">متابعة دفعة الحجز</span>
+              <h4 id="batch-display-name" class="font-black text-brand-navy text-xs sm:text-sm truncate">--</h4>
+            </div>
+          </div>
+          <span id="batch-stage-pill" class="hidden text-[10px] font-black px-2.5 py-1 rounded-xl border shrink-0"></span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2.5" id="batch-dates-grid">
+          <div id="box-delivery-dates" class="hidden bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 text-center">
+            <span class="block text-[10px] font-bold text-slate-500 mb-0.5">التسليم المتوقع</span>
+            <span class="block text-xs sm:text-sm font-black text-brand-navy" id="batch-date-range">--</span>
+          </div>
+          <div id="box-delivery-left" class="hidden bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 text-center">
+            <span class="block text-[10px] font-bold text-slate-500 mb-0.5" id="batch-days-text">المتبقي تقريباً</span>
+            <span class="block text-xs sm:text-sm font-black text-emerald-700" id="batch-days-left">--</span>
+          </div>
+        </div>
+
+        <!-- شريط مراحل نمو الدفعة -->
+        <div id="batch-growth-bar-wrap" class="hidden bg-emerald-50/50 border border-emerald-100 rounded-2xl p-3 space-y-2">
+          <div class="flex items-center justify-between text-[10px] font-black text-brand-navy">
+            <span><i class="fa-solid fa-seedling text-emerald-600 ml-1"></i> رحلة تجهيز دفعتك الطازجة</span>
+            <span id="batch-growth-label" class="text-emerald-700"></span>
+          </div>
+          <div class="w-full h-2 bg-white rounded-full overflow-hidden border border-emerald-100">
+            <div id="batch-growth-fill" class="h-full bg-gradient-to-l from-amber-400 to-emerald-600 rounded-full transition-all duration-700" style="width: 10%;"></div>
+          </div>
+          <div class="flex justify-between text-[9px] font-bold text-slate-400">
+            <span>تحضين 🐣</span>
+            <span>تسمين 📈</span>
+            <span>جاهزية 38–45ي 🔪</span>
+            <span>توصيل 🛵</span>
+          </div>
+        </div>
+
+        <div id="batch-msg-container" class="hidden bg-gradient-to-l from-emerald-50/80 to-amber-50/40 p-3 rounded-2xl border border-emerald-200/70 text-xs font-bold text-emerald-950 leading-relaxed space-y-1.5">
+          <div id="batch-customer-msg"></div>
+          <p class="text-[11px] font-black text-brand-navy pt-1 border-t border-emerald-200/50">
+            <i class="fa-solid fa-phone-volume text-amber-500 ml-1"></i> وهنتواصل معاك قبلها للتأكيد وتحديد الوقت المناسب ليك قبل الذبح وتحرك المندوب 🌿
+          </p>
+        </div>
+      </div>
+
+      <!-- 2-د: تنبيهات التأجيل وعدم الرد -->
+      <div id="alert-banner" class="hidden rounded-3xl p-4 animate-slide shadow-sm border">
+        <div class="flex items-start gap-3">
+          <div id="alert-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"></div>
+          <div class="min-w-0 flex-1">
+            <h4 id="alert-title" class="font-black text-sm sm:text-base mb-1"></h4>
+            <p id="alert-desc" class="text-xs sm:text-sm text-slate-600 font-bold leading-relaxed mb-3"></p>
+          </div>
+        </div>
+        <a id="btn-alert-wa" href="#" target="_blank" rel="noopener" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-2.5 rounded-xl flex justify-center items-center gap-2 text-xs sm:text-sm shadow-md transition-colors">
+          <i class="fa-brands fa-whatsapp text-lg"></i> تواصل مع الإدارة عبر واتساب
+        </a>
+      </div>
+
+      <!-- 2-هـ: معلومات المندوب والوصول وتأكيد الاستلام -->
+      <div id="driver-info" class="hidden bg-white border-2 border-indigo-200 rounded-3xl p-4 sm:p-5 shadow-sm animate-slide space-y-3">
+        <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-11 h-11 bg-indigo-50 rounded-2xl border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shrink-0">
+              <i class="fa-solid fa-motorcycle"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-[10px] text-slate-400 font-bold">مندوب سمان ههيا في الطريق</p>
+              <h4 id="driver-name" class="font-black text-slate-900 text-sm sm:text-base truncate"></h4>
+            </div>
+          </div>
+          <a id="driver-call-btn" href="#" class="hidden bg-brand-navy hover:opacity-90 text-white px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm shrink-0">
+            <i class="fa-solid fa-phone text-amber-400"></i> اتصال
+          </a>
+        </div>
+        <div class="text-center bg-indigo-50/60 py-2.5 px-3 rounded-2xl border border-indigo-100">
+          <p class="text-[11px] text-slate-600 font-bold"><i class="fa-regular fa-clock text-indigo-600 ml-1"></i> تقدير التوصيل:</p>
+          <p class="text-sm sm:text-base font-black text-brand-navy mt-0.5" id="driver-eta"></p>
+        </div>
+
+        <div id="confirm-receipt-box" class="pt-2 border-t border-slate-100">
+          <p class="text-[11px] text-slate-500 font-bold text-center mb-2">استلمت طلبك طازج من المندوب؟ أكّد الاستلام عشان تقيّم تجربتك:</p>
+          <button type="button" onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-emerald-50 hover:bg-emerald-600 border-2 border-emerald-500 text-emerald-800 hover:text-white font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-sm flex justify-center items-center gap-2 active:scale-95">
+            <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
+          </button>
+        </div>
+      </div>
+
+      <!-- 2-و: بطاقة عضوية الولاء والهدايا الذهبية (VIP Loyalty Card) -->
+      <div id="main-wallet-banner" class="hidden vip-card-bg text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-amber-400/35 animate-slide space-y-3">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2.5 min-w-0">
+            <div class="w-11 h-11 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center text-[#0b261c] text-lg shadow-md shrink-0">
+              <i class="fa-solid fa-crown"></i>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap">
+                <p class="text-xs font-black text-white">محفظة الهدايا والنقاط</p>
+                <span id="vip-tier-badge" class="text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full">عضو مميز</span>
+              </div>
+              <p class="text-[11px] font-bold text-emerald-200 mt-0.5">معاك <span id="main-wallet-points" class="font-black text-amber-300">0</span> نقطة محفوظة</p>
+            </div>
+          </div>
+          <div class="text-left bg-white/10 backdrop-blur-sm px-3 py-2 rounded-2xl border border-white/15 shrink-0">
+            <p class="text-[9px] font-bold text-emerald-200/90">تساوي خصم</p>
+            <p class="text-lg font-black text-amber-300 leading-none mt-0.5"><span id="main-wallet-val">0</span> <span class="text-[10px] text-white/80">ج.م</span></p>
+          </div>
+        </div>
+
+        <div id="progress-bar-container" class="hidden"></div>
+
+        <div id="quick-apply-wallet-container" class="hidden pt-2.5 border-t border-white/15">
+          <button type="button" onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب
+          </button>
+        </div>
+      </div>
+
+      <!-- 2-ز: محتويات الطلب والتعديل المباشر للطلبات الجديدة -->
+      <div id="view-items-section" class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-900/10 animate-slide">
+        <div class="flex items-center justify-between gap-2 mb-3">
+          <h4 class="font-black text-brand-navy text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-box-open text-amber-500"></i> محتويات طلبك
+          </h4>
+          <span id="items-count-pill" class="text-[10px] font-black bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg"></span>
+        </div>
+        <div id="res-items" class="flex flex-col gap-2 mb-3"></div>
+
+        <div id="edit-request-box" class="hidden border-t border-slate-100 pt-3 mt-2">
+          <button type="button" onclick="toggleVisualEditMenu()" id="btn-open-edit-menu" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border-2 border-amber-300 font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
+            <i class="fa-solid fa-pen-to-square text-amber-600"></i> تعديل أصناف الطلب / زيادة الكمية
+          </button>
+
+          <div id="visual-edit-container" class="hidden mt-3 bg-[#faf8f3] p-3.5 rounded-2xl border border-slate-200 space-y-3">
+            <div class="text-xs font-black text-brand-navy border-b border-slate-200 pb-2 flex justify-between items-center">
+              <span><i class="fa-solid fa-cart-shopping text-emerald-600 ml-1"></i> عدّل الكميات براحتك:</span>
+              <span id="live-edit-total" class="text-emerald-700 font-black text-sm">0 ج.م</span>
+            </div>
+            <div id="interactive-edit-items" class="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto cart-scroll pr-0.5 pb-1"></div>
+            <button type="button" onclick="submitDirectOrderEdit()" id="btn-confirm-direct-edit" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
+              <i class="fa-solid fa-check-circle text-amber-400"></i> حفظ التعديل وتحديث الفاتورة
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2-ح: جسر مطبخ سمان ههيا التفاعلي -->
+      <a id="kitchen-bridge-card" href="./kitchen/" class="hidden block bg-gradient-to-l from-amber-50 via-white to-emerald-50/60 hover:shadow-md border border-amber-300/80 rounded-3xl p-4 transition-all animate-slide">
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3 min-w-0">
+            <span class="w-11 h-11 rounded-2xl bg-brand-navy text-amber-400 flex items-center justify-center text-lg shrink-0 shadow-sm">
+              <i class="fa-solid fa-fire-burner"></i>
+            </span>
+            <div class="min-w-0">
+              <span class="block text-xs sm:text-sm font-black text-brand-navy leading-snug">جهّز تتبيلة أوردرك قبل ما يوصل! 🍳</span>
+              <span class="block text-[11px] font-bold text-slate-500 mt-0.5 truncate">افتح وصفات سمان ههيا المخصصة لأصناف طلبك</span>
+            </div>
+          </div>
+          <span class="bg-amber-400 text-[#0b261c] px-3 py-1.5 rounded-xl text-[11px] font-black shrink-0 shadow-sm">الوصفات</span>
+        </div>
+      </a>
+
+      <!-- 2-ط: قسم التقييم الغني بالنجوم والوسوم السريعة (بعد التسليم) -->
+      <div id="feedback-section" class="hidden bg-white border-2 border-emerald-500/35 rounded-3xl p-5 text-center shadow-md animate-slide space-y-3">
+        <div class="w-14 h-14 bg-gradient-to-br from-emerald-50 to-amber-50 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto text-brand-navy text-2xl shadow-sm">
+          <i class="fa-solid fa-star text-amber-500"></i>
+        </div>
+        <div>
+          <h4 class="font-black text-brand-navy text-base">بالهناء والشفاء! 🌿</h4>
+          <p class="text-xs text-slate-500 font-bold mt-0.5">رأيك يهمنا جداً — قيّم تجربتك في ثوانٍ</p>
+        </div>
+
+        <div class="star-rating text-3xl text-slate-300 flex justify-center gap-3 flex-row-reverse py-1" id="stars-container">
+          <i class="fa-solid fa-star" onclick="rateOrder(5)"></i>
+          <i class="fa-solid fa-star" onclick="rateOrder(4)"></i>
+          <i class="fa-solid fa-star" onclick="rateOrder(3)"></i>
+          <i class="fa-solid fa-star" onclick="rateOrder(2)"></i>
+          <i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
+        </div>
+
+        <div id="complaint-box" class="hidden text-right space-y-3 pt-2 border-t border-slate-100">
+          <div>
+            <span class="text-[11px] font-black text-slate-600 block mb-2">أكثر حاجة عجبتك (اختياري):</span>
+            <div id="review-quick-tags" class="flex flex-wrap gap-1.5">
+              <button type="button" data-tag="الأوزان ممتازة ⚖️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">الأوزان ممتازة ⚖️</button>
+              <button type="button" data-tag="تنظيف وتغليف رائع ✨" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">تنظيف وتغليف رائع ✨</button>
+              <button type="button" data-tag="طعم طازج جداً 🌿" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">طعم طازج جداً 🌿</button>
+              <button type="button" data-tag="مندوب محترم وسريع 🛵" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">مندوب محترم وسريع 🛵</button>
+              <button type="button" data-tag="التوصيل في الميعاد ⏱️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">التوصيل في الميعاد ⏱️</button>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[11px] font-black text-slate-600 block mb-1.5">كلمة أو ملاحظة للإدارة (اختياري):</label>
+            <textarea id="complaint-text" rows="2" class="w-full rounded-2xl border-2 border-slate-200 p-2.5 text-xs font-bold outline-none focus:border-brand-navy bg-slate-50 focus:bg-white resize-none" placeholder="شاركنا رأيك أو أي ملاحظة تساعدنا نخدمك أحسن..."></textarea>
+          </div>
+
+          <button type="button" id="btn-submit-rating" onclick="submitComplaint()" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
+            <i class="fa-solid fa-paper-plane text-amber-400"></i> إرسال التقييم
+          </button>
+        </div>
+
+        <div id="feedback-thanks" class="hidden bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl text-center space-y-1.5">
+          <p class="text-emerald-900 font-black text-xs">شكراً من القلب لتقييمك! نسعد دائماً بخدمتك في سمان ههيا 🤍</p>
+          <div id="feedback-saved-summary" class="text-[11px] font-bold text-emerald-700"></div>
+        </div>
+      </div>
+
+      <!-- 2-ي: أرشيف الطلبات السابقة + إعادة الطلب بضغطة واحدة داخل المتجر -->
+      <div id="history-section" class="hidden bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between">
+          <h4 class="font-black text-brand-navy text-xs sm:text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> سجل طلباتك السابقة المكتملة
+          </h4>
+          <span id="history-count-pill" class="text-[10px] font-black bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-lg"></span>
+        </div>
+        <div id="history-list" class="space-y-2.5 max-h-72 overflow-y-auto cart-scroll"></div>
+      </div>
+
+      <!-- روابط سفلية -->
+      <div class="flex items-center justify-center gap-4 pt-3 border-t border-slate-200/80">
+        <button type="button" id="btn-toggle-history" onclick="toggleHistory()" class="text-brand-navy hover:text-emerald-700 text-xs font-black bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> طلباتك السابقة
+        </button>
+        <button type="button" onclick="logoutTracker()" class="text-slate-500 hover:text-rose-600 text-xs font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5">
+          <i class="fa-solid fa-right-left"></i> رقم آخر
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- فوتر مطابق للهوية الملكية -->
+  <footer class="luxury-hero-bg text-emerald-100/80 py-5 px-4 border-t border-white/10 mt-auto">
+    <div class="max-w-lg mx-auto flex items-center justify-between gap-2 text-xs">
+      <div>
+        <p class="font-black text-white flex items-center gap-1.5"><i class="fa-solid fa-kiwi-bird text-amber-400"></i> سمان ههيا</p>
+        <p class="text-[10px] text-emerald-200/75 mt-0.5">أصل الطعم يبدأ من التربية • طازج بالطلب</p>
+      </div>
+      <a href="index.html" class="bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black px-3.5 py-2 rounded-xl text-[11px] shadow-md transition-colors">
+        اطلب الآن
+      </a>
+    </div>
+  </footer>
+
+  <!-- نافذة التنبيه والتأكيد التنفيذية الداخلية -->
+  <div id="track-dialog-modal" class="fixed inset-0 bg-[#0b261c]/80 backdrop-blur-sm z-[130] hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
+      <div class="luxury-hero-bg text-white px-5 py-3.5 flex items-center justify-between">
+        <h3 id="td-title" class="text-sm font-black">سمان ههيا</h3>
+        <button type="button" onclick="resolveTrackDialog(false)" class="w-7 h-7 rounded-full bg-white/15 hover:bg-red-500 text-white flex items-center justify-center text-xs"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="p-5">
+        <p id="td-message" class="text-xs sm:text-sm font-bold text-slate-700 leading-relaxed whitespace-pre-line"></p>
+      </div>
+      <div class="px-5 pb-4 flex gap-2">
+        <button type="button" id="td-confirm-btn" onclick="resolveTrackDialog(true)" class="flex-1 bg-brand-navy hover:opacity-95 text-white font-black py-2.5 rounded-xl text-xs sm:text-sm shadow-md">موافق</button>
+        <button type="button" id="td-cancel-btn" onclick="resolveTrackDialog(false)" class="hidden bg-slate-100 hover:bg-slate-200 text-slate-700 font-black px-4 py-2.5 rounded-xl text-xs sm:text-sm">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/config.js?v=8"></script>
+  <script>
+    (function () {
+      const U = window.SMAN_UTILS;
+      const esc = U.escapeHtml;
+      const escAttr = U.escapeJsAttr;
+
+      if (!firebase.apps.length) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+      }
+      const db = firebase.firestore();
+
+      let currentOrder = null;
+      let allActiveOrders = [];
+      let pastOrders = [];
+      let storeWhatsapp = '201208027294';
+      let orderListener = null;
+      let liveProductsCatalog = {};
+      let livePricesMap = {};
+      let livePointValue = 0.40;
+      let matchedCustomerDocId = '';
+      let activeCustomerStats = { ordersCount: 0, totalSpent: 0 };
+
+      let editCartMap = {};
+      let preservedWeightItems = [];
+      let maxAllowedItemsInThisOrder = 50;
+      let editBatchTrackType = 'quail';
+      let selectedStars = 0;
+      let selectedReviewTags = new Set();
+      let toastTimer = null;
+      let dialogResolver = null;
+
+      function getDocServerFirst(docRef) {
+        return docRef.get({ source: 'server' }).catch(() => docRef.get().catch(() => ({ exists: false })));
+      }
+
+      function showTrackToast(text, iconCls = 'fa-circle-check text-emerald-400') {
+        const el = document.getElementById('track-toast');
+        const txt = document.getElementById('track-toast-text');
+        const ico = document.getElementById('track-toast-icon');
+        if (!el || !txt) return;
+        txt.textContent = text;
+        if (ico) ico.className = `fa-solid ${iconCls} text-sm`;
+        el.classList.remove('opacity-0', '-translate-y-4');
+        el.classList.add('opacity-100', 'translate-y-0');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+          el.classList.remove('opacity-100', 'translate-y-0');
+          el.classList.add('opacity-0', '-translate-y-4');
+        }, 2400);
+      }
+
+      function openTrackDialog(message, opts = {}) {
+        return new Promise((resolve) => {
+          dialogResolver = resolve;
+          document.getElementById('td-title').textContent = opts.title || 'سمان ههيا';
+          document.getElementById('td-message').textContent = message || '';
+          const cBtn = document.getElementById('td-confirm-btn');
+          const xBtn = document.getElementById('td-cancel-btn');
+          cBtn.textContent = opts.confirmText || 'حسناً';
+          if (opts.isConfirm) {
+            xBtn.textContent = opts.cancelText || 'تراجع';
+            xBtn.classList.remove('hidden');
+          } else {
+            xBtn.classList.add('hidden');
+          }
+          document.getElementById('track-dialog-modal').classList.remove('hidden');
+        });
+      }
+
+      window.resolveTrackDialog = function (val) {
+        document.getElementById('track-dialog-modal').classList.add('hidden');
+        if (typeof dialogResolver === 'function') {
+          const fn = dialogResolver;
+          dialogResolver = null;
+          fn(val);
+        }
+      };
+
+      function toWesternDigits(str) {
+        return String(str || '')
+          .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
+          .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06F0));
+      }
+
+      function toArabicDigits(str) {
+        const ar = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+        return String(str || '').replace(/[0-9]/g, (d) => ar[Number(d)]);
+      }
+
+      function buildPhoneCandidates(cleanPhone, rawInput = '') {
+        const set = new Set();
+        const norm = U.normalizePhone(cleanPhone || rawInput || '');
+        const rawTrim = String(rawInput || '').trim();
+        if (norm) set.add(norm);
+        if (rawTrim && rawTrim.length >= 10) set.add(rawTrim);
+        if (norm.startsWith('01') && norm.length === 11) {
+          set.add(norm.substring(1));
+          set.add('2' + norm);
+          set.add('+2' + norm);
+          set.add('002' + norm);
+          set.add(toArabicDigits(norm));
+        }
+        return Array.from(set);
+      }
+
+      // =================================================================
+      // دوال المسارات الـ 3 المستقلة ومواعيد الدفعة الذكية (+يومين أمان و38–45 يوم)
+      // =================================================================
+      function getBatchTrackType(batch) {
+        if (!batch) return 'quail';
+        if (batch.batchType === 'quail' || batch.batchType === 'chicks' || batch.batchType === 'weight') {
+          return batch.batchType;
+        }
+        const n = String(batch.name || '').toLowerCase();
+        if (n.includes('كتكوت') || n.includes('كتاكيت') || n.includes('عمر يوم') || n.includes('تفريخ') || n.includes('فقس')) return 'chicks';
+        if (n.includes('فراخ') || n.includes('تسمين') || n.includes('رومي') || n.includes('بط')) return 'weight';
+        return 'quail';
+      }
+
+      function getProductTrackType(pId, prodObj) {
+        const p = prodObj || liveProductsCatalog[pId];
+        if (!p) return 'quail';
+        if (p.categoryType === 'custom') return 'immediate';
+        if (p.categoryType === 'weight' || p.isWeightBased) return 'weight';
+        if (p.categoryType === 'quail') return 'quail';
+        const sId = String(pId || '').toLowerCase();
+        const sName = String(p.name || '').toLowerCase();
+        if (sId === 'chicks' || sName.includes('كتكوت') || sName.includes('كتاكيت') || sName.includes('عمر يوم') || sName.includes('عمر')) return 'chicks';
+        if (p.categoryType === 'eggs_chicks' || p.isExtra || sId === 'eggs' || sName.includes('بيض')) return 'immediate';
+        return 'quail';
+      }
+
+      function parseDateFromBatchName(batchName, fallbackDate) {
+        if (!batchName) return null;
+        const norm = toWesternDigits(batchName);
+        const m = norm.match(/(?:^|[^\d])(\d{1,2})\s*[\/\-]\s*(\d{1,2})(?:\s*[\/\-]\s*(\d{2,4}))?(?!\d)/);
+        if (!m) return null;
+        const a = parseInt(m[1], 10);
+        const b = parseInt(m[2], 10);
+        const yRaw = m[3] ? parseInt(m[3], 10) : null;
+        const now = new Date();
+        const todayMid = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const makeValidDate = (dayNum, monthNum, yearOpt) => {
+          if (monthNum < 1 || monthNum > 12 || dayNum < 1 || dayNum > 31) return null;
+          if (yearOpt !== null && !isNaN(yearOpt)) {
+            const yr = yearOpt < 100 ? 2000 + yearOpt : yearOpt;
+            const d = new Date(yr, monthNum - 1, dayNum);
+            return (d.getMonth() === monthNum - 1 && d.getDate() === dayNum) ? d : null;
+          }
+          const cands = [];
+          [todayMid.getFullYear() - 1, todayMid.getFullYear(), todayMid.getFullYear() + 1].forEach((yr) => {
+            const d = new Date(yr, monthNum - 1, dayNum);
+            if (d.getMonth() === monthNum - 1 && d.getDate() === dayNum) {
+              const diff = Math.round((d.getTime() - todayMid.getTime()) / 86400000);
+              const score = diff >= -45 ? Math.abs(diff) : Math.abs(diff) + 400;
+              cands.push({ score, d });
             }
-            const db = firebase.firestore();
+          });
+          cands.sort((x, y) => x.score - y.score);
+          return cands[0] ? cands[0].d : null;
+        };
 
-            let currentOrder = null;
-            let allActiveOrders = [];
-            let pastOrders = [];
-            let storeWhatsapp = '201208027294';
-            let orderListener = null;
-            let liveProductsCatalog = {};
-            let livePricesMap = {};
-            let livePointValue = 0.40;
+        const candDM = makeValidDate(a, b, yRaw);
+        const candMD = makeValidDate(b, a, yRaw);
+        if (candDM && !candMD) return candDM;
+        if (candMD && !candDM) return candMD;
+        if (!candDM && !candMD) return null;
 
-            let editCartMap = {};
-            let preservedWeightItems = [];
-            let maxAllowedItemsInThisOrder = 50;
-            let selectedStars = 0;
+        const anchor = (fallbackDate instanceof Date && !isNaN(fallbackDate.getTime())) ? fallbackDate : todayMid;
+        const distDM = Math.abs(Math.round((candDM.getTime() - anchor.getTime()) / 86400000));
+        const distMD = Math.abs(Math.round((candMD.getTime() - anchor.getTime()) / 86400000));
+        return (distMD + 45 < distDM) ? candMD : candDM;
+      }
 
-            let dialogResolver = null;
+      function formatArabicDateRange(startD, endD) {
+        if (!startD || isNaN(startD.getTime())) return 'قريباً فور التجهيز';
+        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        const d1 = startD.getDate();
+        const m1 = months[startD.getMonth()];
+        if (endD && !isNaN(endD.getTime()) && (endD.getDate() !== d1 || endD.getMonth() !== startD.getMonth())) {
+          const d2 = endD.getDate();
+          const m2 = months[endD.getMonth()];
+          return m1 === m2 ? `من ${d1} إلى ${d2} ${m1}` : `من ${d1} ${m1} إلى ${d2} ${m2}`;
+        }
+        return `بداية من ${d1} ${m1}`;
+      }
 
-            function openTrackDialog(message, opts = {}) {
-                return new Promise((resolve) => {
-                    dialogResolver = resolve;
-                    document.getElementById('td-title').textContent = opts.title || 'سمان ههيا';
-                    document.getElementById('td-message').textContent = message || '';
-                    const cBtn = document.getElementById('td-confirm-btn');
-                    const xBtn = document.getElementById('td-cancel-btn');
-                    cBtn.textContent = opts.confirmText || 'حسناً';
-                    if (opts.isConfirm) {
-                        xBtn.textContent = opts.cancelText || 'تراجع';
-                        xBtn.classList.remove('hidden');
-                    } else {
-                        xBtn.classList.add('hidden');
-                    }
-                    document.getElementById('track-dialog-modal').classList.remove('hidden');
-                });
+      function resolveBatchWindow(b) {
+        if (!b) return { startDate: null, endDate: null, phrase: 'قريباً فور التجهيز', minAge: 38, maxAge: 45 };
+        const minAge = Number(b.slaughterAgeMin) || 38;
+        const maxAge = Math.max(Number(b.slaughterAgeMax) || Number(b.slaughterAge) || 45, minAge + 5);
+
+        const sStored = b.deliveryStart ? new Date(b.deliveryStart) : null;
+        const validStart = (sStored && !isNaN(sStored.getTime())) ? sStored : null;
+        const eStored = b.deliveryEnd ? new Date(b.deliveryEnd) : null;
+        const validEnd = (eStored && !isNaN(eStored.getTime())) ? eStored : null;
+
+        const nameDate = parseDateFromBatchName(b.name, validStart);
+        if (nameDate) {
+          const endPlus2 = new Date(nameDate.getFullYear(), nameDate.getMonth(), nameDate.getDate() + 2);
+          return { startDate: nameDate, endDate: endPlus2, phrase: formatArabicDateRange(nameDate, endPlus2), minAge, maxAge };
+        }
+        if (validStart) {
+          const effEnd = (validEnd && validEnd.getTime() > validStart.getTime())
+            ? validEnd
+            : new Date(validStart.getFullYear(), validStart.getMonth(), validStart.getDate() + 2);
+          return { startDate: validStart, endDate: effEnd, phrase: formatArabicDateRange(validStart, effEnd), minAge, maxAge };
+        }
+        if (b.hatchDate) {
+          const hMs = Number(b.hatchDate);
+          if (!isNaN(hMs) && hMs > 0) {
+            const sD = new Date(hMs + minAge * 86400000);
+            const eD = new Date(hMs + maxAge * 86400000);
+            return { startDate: sD, endDate: eD, phrase: formatArabicDateRange(sD, eD), minAge, maxAge };
+          }
+        }
+        return { startDate: null, endDate: null, phrase: 'قريباً فور التجهيز', minAge, maxAge };
+      }
+
+      // جلب الإعدادات والأسعار الحية للمتجر من السيرفر أولاً
+      async function loadStoreConfigAndPrices() {
+        try {
+          const [setSnap, priceSnap] = await Promise.all([
+            getDocServerFirst(db.collection('inventory').doc('settings')),
+            getDocServerFirst(db.collection('inventory').doc('prices'))
+          ]);
+          if (setSnap && setSnap.exists) {
+            const s = setSnap.data() || {};
+            if (s.storePhone) {
+              storeWhatsapp = U.formatWaPhone(s.storePhone);
+              const fWa = document.getElementById('floating-wa');
+              if (fWa) {
+                fWa.href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent('أهلاً، لدي استفسار بخصوص طلبي في سمان ههيا.')}`;
+              }
             }
-
-            window.resolveTrackDialog = function (val) {
-                document.getElementById('track-dialog-modal').classList.add('hidden');
-                if (typeof dialogResolver === 'function') {
-                    const fn = dialogResolver;
-                    dialogResolver = null;
-                    fn(val);
-                }
-            };
-
-            // جلب الإعدادات والأسعار الحية للمتجر مرة واحدة
-            async function loadStoreConfigAndPrices() {
-                try {
-                    const [setSnap, priceSnap] = await Promise.all([
-                        db.collection('inventory').doc('settings').get(),
-                        db.collection('inventory').doc('prices').get()
-                    ]);
-                    if (setSnap.exists) {
-                        const s = setSnap.data() || {};
-                        if (s.storePhone) {
-                            storeWhatsapp = U.formatWaPhone(s.storePhone);
-                            const fWa = document.getElementById('floating-wa');
-                            if (fWa) {
-                                fWa.href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent('أهلاً، لدي استفسار بخصوص طلبي في سمان ههيا.')}`;
-                            }
-                        }
-                        if (s.pointValueInEGP) livePointValue = parseFloat(s.pointValueInEGP) || 0.40;
-                        if (s.productsData && typeof s.productsData === 'object') liveProductsCatalog = s.productsData;
-                    }
-                    if (priceSnap.exists) {
-                        livePricesMap = priceSnap.data() || {};
-                    }
-                } catch (e) {}
-            }
-            loadStoreConfigAndPrices();
-
-            function getLiveBarterProducts() {
-                const list = [];
-                Object.keys(liveProductsCatalog).forEach((id) => {
-                    const p = liveProductsCatalog[id];
-                    if (!p || p.isHidden || p.isWeightBased) return;
-                    const price = Number(livePricesMap[id] !== undefined ? livePricesMap[id] : p.basePrice) || 0;
-                    if (price >= 30) {
-                        list.push({ id, name: p.name, price });
-                    }
-                });
-                if (list.length > 0) {
-                    return list.sort((a, b) => b.price - a.price);
-                }
-                return [
-                    { id: 'superspecial', name: 'سوبر سبشيال', price: 140 },
-                    { id: 'special', name: 'طبق سبشيال', price: 130 },
-                    { id: 'jumbo', name: 'طبق جامبو', price: 120 },
-                    { id: 'super', name: 'طبق سوبر', price: 110 },
-                    { id: 'eggs', name: 'طبق بيض سمان', price: 50 }
-                ];
-            }
-
-            function showError(msg) {
-                const el = document.getElementById('error-msg');
-                if (!el) return;
-                el.textContent = msg;
-                el.classList.remove('hidden');
-            }
-
-            // البحث الآمن عن الطلبات بدون سحب بيانات باقي العملاء (متوافق مع firestore.rules)
-            window.trackOrder = async function () {
-                const rawInput = (document.getElementById('customer-phone')?.value || '').trim();
-                const phone = U.normalizePhone(rawInput);
-                const btn = document.getElementById('btn-track');
-
-                if (phone.length < 10) {
-                    showError('برجاء إدخال رقم هاتف مصري صحيح ومكتمل.');
-                    return;
-                }
-
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن طلبك...';
-                btn.disabled = true;
-                document.getElementById('error-msg')?.classList.add('hidden');
-
-                try {
-                    const phoneCandidates = new Set([phone]);
-                    if (rawInput && rawInput !== phone) phoneCandidates.add(rawInput);
-                    if (phone.startsWith('01') && phone.length === 11) {
-                        phoneCandidates.add(phone.substring(1));
-                        phoneCandidates.add('2' + phone);
-                        phoneCandidates.add('+2' + phone);
-                        phoneCandidates.add('002' + phone);
-                        const arDigits = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
-                        phoneCandidates.add(phone.replace(/[0-9]/g, (d) => arDigits[Number(d)]));
-                    }
-
-
-                    const queries = [];
-                    phoneCandidates.forEach((pVal) => {
-                        queries.push(db.collection('orders').where('customerPhone', '==', pVal).limit(20).get());
-                        queries.push(db.collection('orders').where('customerPhone2', '==', pVal).limit(20).get());
-                    });
-
-                    const snaps = await Promise.all(queries);
-                    const ordersMap = {};
-                    snaps.forEach((snap) => {
-                        snap.forEach((doc) => {
-                            ordersMap[doc.id] = { id: doc.id, ...doc.data() };
-                        });
-                    });
-
-                    const orders = Object.values(ordersMap);
-                    const getMs = (o) => (o.createdAt && typeof o.createdAt.toMillis === 'function') ? o.createdAt.toMillis() : 0;
-
-                    pastOrders = orders
-                        .filter((o) => o.status === 'completed')
-                        .sort((a, b) => getMs(b) - getMs(a));
-
-                    allActiveOrders = orders
-                        .filter((o) => !['trash', 'canceled', 'completed'].includes(o.status))
-                        .sort((a, b) => getMs(a) - getMs(b));
-
-                    if (allActiveOrders.length === 0) {
-                        if (pastOrders.length > 0) {
-                            allActiveOrders = [pastOrders[0]];
-                        } else {
-                            showError('لا توجد طلبات مسجلة بهذا الرقم حالياً.');
-                            return;
-                        }
-                    }
-
-                    renderOrderTabs();
-                    window.selectOrder(0);
-                } catch (error) {
-                    console.error('Track Order Error:', error);
-                    showError('تعذر الاتصال بالنظام، يرجى المحاولة مرة أخرى.');
-                } finally {
-                    btn.innerHTML = '<i class="fa-solid fa-magnifying-glass text-brand-yellow"></i> متابعة الطلب';
-                    btn.disabled = false;
-                }
-            };
-
-            function renderOrderTabs() {
-                const container = document.getElementById('orders-selector');
-                if (!container) return;
-                if (allActiveOrders.length > 1) {
-                    container.classList.remove('hidden');
-                    container.innerHTML = allActiveOrders.map((o, idx) => {
-                        const isActive = currentOrder && currentOrder.id === o.id;
-                        const cls = isActive
-                            ? 'bg-brand-primary text-white shadow-md'
-                            : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50';
-                        return `<button type="button" onclick="selectOrder(${idx})" class="whitespace-nowrap px-3.5 py-2 rounded-xl text-xs font-black transition-colors ${cls}">الطلب ${idx + 1} (${Number(o.total) || 0} ج.م)</button>`;
-                    }).join('');
-                } else {
-                    container.classList.add('hidden');
-                }
-            }
-
-            window.selectOrder = function (index) {
-                if (!allActiveOrders[index]) return;
-                currentOrder = allActiveOrders[index];
-                if (allActiveOrders.length > 1) renderOrderTabs();
-
-                if (orderListener) {
-                    orderListener();
-                    orderListener = null;
-                }
-
-                orderListener = db.collection('orders').doc(currentOrder.id).onSnapshot(
-                    (doc) => {
-                        if (doc.exists) {
-                            currentOrder = { id: doc.id, ...doc.data() };
-                            displayResult();
-                        }
-                    },
-                    (err) => console.error('Live order snapshot error:', err)
-                );
-            };
-
-            function displayResult() {
-                document.getElementById('login-section')?.classList.add('hidden');
-                document.getElementById('result-section')?.classList.remove('hidden');
-
-                document.getElementById('res-name').textContent = currentOrder.customerName || 'عميلنا العزيز';
-                document.getElementById('res-total').textContent = Number(currentOrder.total) || 0;
-
-                const payBadgeEl = document.getElementById('res-payment-badge');
-                if (payBadgeEl) {
-                    if (currentOrder.paymentMethod === 'online') {
-                        payBadgeEl.innerHTML = '<span class="inline-block bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-black">✅ خالص (أونلاين)</span>';
-                    } else if (currentOrder.paymentMethod === 'split') {
-                        payBadgeEl.innerHTML = `<span class="inline-block bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md text-[10px] font-black">كاش: ${Number(currentOrder.paidCash) || 0}ج • محفظة: ${Number(currentOrder.paidOnline) || 0}ج</span>`;
-                    } else {
-                        payBadgeEl.innerHTML = '<span class="inline-block bg-white text-slate-600 border border-slate-200 px-2 py-0.5 rounded-md text-[10px] font-black">💵 الدفع عند الاستلام</span>';
-                    }
-                }
-
-                const itemsCost = Number(currentOrder.subtotal) || 0;
-                const deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                const discountVal = Number(currentOrder.discount) || 0;
-                const itemsText = Array.isArray(currentOrder.items) && currentOrder.items.length > 0
-                    ? currentOrder.items.map((i) => `${i.quantity} ${i.name}`).join(' و ')
-                    : 'بدون تفاصيل';
-
-                let detailsHtml = `
-                    <span class="bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/80">${esc(itemsText)} بـ ${itemsCost}ج</span>
-                    <span class="bg-slate-50 px-2 py-1 rounded-lg border border-slate-200/80">توصيل ${deliveryFee}ج</span>
-                `;
-                if (discountVal > 0) {
-                    detailsHtml += `<span class="bg-red-50 text-red-600 px-2 py-1 rounded-lg border border-red-200">خصم -${discountVal}ج</span>`;
-                }
-
-                const orderDateVal = esc(currentOrder.orderDate || '');
-                const orderTimeVal = esc(currentOrder.orderTime || '');
-                const addressVal = esc(currentOrder.customerAddress || 'لم يتم تسجيل عنوان تفصيلي');
-                const zoneVal = esc(currentOrder.zone || '');
-
-                detailsHtml += `
-                    <div class="w-full text-right mt-2 pt-2.5 border-t border-slate-100 space-y-1.5 text-slate-600">
-                        <div class="flex items-center gap-1.5 text-[11px]">
-                            <i class="fa-regular fa-clock text-slate-400"></i>
-                            <span>وقت الطلب:</span>
-                            <strong class="text-slate-800">${orderDateVal}${orderTimeVal ? ' — ' + orderTimeVal : ''}</strong>
-                        </div>
-                        <div class="flex items-start gap-1.5 text-[11px]">
-                            <i class="fa-solid fa-location-dot text-brand-primary mt-0.5"></i>
-                            <div class="flex-1">
-                                <span>العنوان (${zoneVal || 'غير محدد'}):</span>
-                                <span class="text-slate-800 font-black block mt-0.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200/60">${addressVal}</span>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                document.getElementById('res-total-details').innerHTML = detailsHtml;
-
-                renderItemsList();
-                updateTimeline();
-                refreshWalletBanner();
-            }
-
-            async function refreshWalletBanner() {
-                const banner = document.getElementById('main-wallet-banner');
-                const quickBtn = document.getElementById('quick-apply-wallet-container');
-                if (!banner || !currentOrder) return;
-
-                try {
-                    const cleanPhone = U.normalizePhone(currentOrder.customerPhone);
-                    if (!cleanPhone) return banner.classList.add('hidden');
-
-                    const custSnap = await db.collection('customers').doc(cleanPhone).get();
-                    if (custSnap.exists && Number(custSnap.data().walletPoints) > 0) {
-                        const pts = parseInt(custSnap.data().walletPoints) || 0;
-                        const discVal = Math.floor(pts * livePointValue);
-                        if (discVal > 0) {
-                            banner.classList.remove('hidden');
-                            document.getElementById('main-wallet-points').textContent = pts;
-                            document.getElementById('main-wallet-val').textContent = discVal;
-                            window.currentWalletPoints = pts;
-                            window.currentWalletDiscount = discVal;
-
-                            updateProgressTarget(discVal);
-                            if (quickBtn) {
-                                quickBtn.classList.toggle('hidden', currentOrder.status !== 'new');
-                            }
-                            return;
-                        }
-                    }
-                    banner.classList.add('hidden');
-                } catch (e) {
-                    banner.classList.add('hidden');
-                }
-            }
-
-            function renderItemsList() {
-                const resItems = document.getElementById('res-items');
-                if (resItems) {
-                    resItems.innerHTML = Array.isArray(currentOrder.items) && currentOrder.items.length > 0
-                        ? currentOrder.items.map((i) => `
-                            <div class="flex justify-between items-center bg-slate-50 border border-slate-100 px-3 py-2 rounded-xl">
-                                <span class="text-xs sm:text-sm font-black text-slate-800">${esc(i.name)}</span>
-                                <span class="text-[11px] font-black text-brand-primary bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200 shrink-0">الكمية: ${esc(i.quantity)}</span>
-                            </div>`).join('')
-                        : '<p class="text-xs text-slate-500">لا توجد تفاصيل.</p>';
-                }
-
-                const editBox = document.getElementById('edit-request-box');
-                if (editBox) {
-                    editBox.classList.toggle('hidden', currentOrder.status !== 'new');
-                }
-            }
-
-            // =================================================================
-            // تعديل أصناف الطلب (للطلبات الجديدة فقط مع حماية الأصناف الموزونة)
-            // =================================================================
-            window.toggleVisualEditMenu = function () {
-                const container = document.getElementById('visual-edit-container');
-                if (!container) return;
-                if (container.classList.contains('hidden')) {
-                    container.classList.remove('hidden');
-                    loadProductsForEdit();
-                } else {
-                    container.classList.add('hidden');
-                }
-            };
-
-            async function loadProductsForEdit() {
-                const itemsDiv = document.getElementById('interactive-edit-items');
-                itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400 col-span-2"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحميل الأصناف...</div>';
-
-                try {
-                    const [settingsSnap, pricesSnap, batchesSnap] = await Promise.all([
-                        db.collection('inventory').doc('settings').get(),
-                        db.collection('inventory').doc('prices').get(),
-                        db.collection('inventory').doc('batches').get()
-                    ]);
-
-                    const productsData = settingsSnap.exists ? (settingsSnap.data().productsData || {}) : liveProductsCatalog;
-                    const pricesData = pricesSnap.exists ? (pricesSnap.data() || {}) : livePricesMap;
-
-                    maxAllowedItemsInThisOrder = 30;
-                    if (currentOrder.batchId && batchesSnap.exists) {
-                        const bData = batchesSnap.data()[currentOrder.batchId];
-                        if (bData && Number(bData.publicPairs) > 0) {
-                            let totalBooked = 0;
-                            if (bData.booked) Object.values(bData.booked).forEach((q) => { totalBooked += Number(q) || 0; });
-                            let curOrderStdTotal = 0;
-                            (currentOrder.items || []).forEach((i) => {
-                                if (!i.isWeightBased) curOrderStdTotal += Number(i.quantity) || 0;
-                            });
-                            const rem = Number(bData.publicPairs) - totalBooked;
-                            maxAllowedItemsInThisOrder = curOrderStdTotal + Math.max(0, rem);
-                        }
-                    }
-
-                    editCartMap = {};
-                    preservedWeightItems = [];
-                    (currentOrder.items || []).forEach((i) => {
-                        const prodDef = productsData[i.id];
-                        if (i.isWeightBased || (prodDef && prodDef.isWeightBased) || Number(i.price) === 0) {
-                            // حفظ الأصناف الموزونة بالجرام والهدايا المجانية بدون تخريبها
-                            preservedWeightItems.push(i);
-                        } else {
-                            editCartMap[i.id] = { name: i.name, quantity: Number(i.quantity) || 0, price: Number(i.price) || 0 };
-                        }
-                    });
-
-                    const sortedIds = Object.keys(productsData)
-                        .filter((pId) => productsData[pId] && !productsData[pId].isHidden && !productsData[pId].isWeightBased)
-                        .sort((a, b) => {
-                            const ma = U.getProductCategoryAndRank(a, productsData[a]);
-                            const mb = U.getProductCategoryAndRank(b, productsData[b]);
-                            const ga = ma.group === 'quail' ? 0 : 100;
-                            const gb = mb.group === 'quail' ? 0 : 100;
-                            return (ga + ma.rank) - (gb + mb.rank);
-                        });
-
-                    itemsDiv.innerHTML = sortedIds.map((pId) => {
-                        const p = productsData[pId];
-                        const curQty = editCartMap[pId] ? editCartMap[pId].quantity : 0;
-                        const price = Number(pricesData[pId] !== undefined ? pricesData[pId] : p.basePrice) || 0;
-                        const safePid = escAttr(pId);
-                        const safeName = escAttr(p.name);
-                        return `
-                        <div class="bg-white border border-slate-200 p-2.5 rounded-2xl shadow-sm flex flex-col justify-between text-center">
-                            <div class="mb-2">
-                                <span class="text-xs font-black text-slate-800 block mb-1">${esc(p.name)}</span>
-                                <span class="text-[10px] font-black text-brand-primary bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">${price} ج.م</span>
-                            </div>
-                            <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-1 mt-auto">
-                                <button type="button" onclick="changeEditItemQty('${safePid}', '${safeName}', ${price}, -1)" class="w-7 h-7 bg-white text-red-500 rounded-lg font-black shadow-sm flex items-center justify-center"><i class="fa-solid fa-minus text-[10px]"></i></button>
-                                <span id="edit-qty-${esc(pId)}" class="text-sm font-black text-slate-800 w-7 text-center">${curQty}</span>
-                                <button type="button" onclick="changeEditItemQty('${safePid}', '${safeName}', ${price}, 1)" class="w-7 h-7 bg-brand-primary text-white rounded-lg font-black shadow-sm flex items-center justify-center"><i class="fa-solid fa-plus text-[10px]"></i></button>
-                            </div>
-                        </div>`;
-                    }).join('') || '<p class="text-xs text-center text-slate-400 col-span-2">لا توجد أصناف متاحة للتعديل.</p>';
-
-                    updateLiveEditTotal();
-                } catch (e) {
-                    itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
-                }
-            }
-
-            window.changeEditItemQty = function (pId, name, price, delta) {
-                if (delta > 0) {
-                    let totalStd = 0;
-                    Object.values(editCartMap).forEach((i) => { totalStd += Number(i.quantity) || 0; });
-                    if ((totalStd + delta) > maxAllowedItemsInThisOrder) {
-                        openTrackDialog('عفواً، وصلت للحد الأقصى المتاح للجمهور في هذه الدفعة حالياً.', { title: 'حد الكمية المتاح' });
-                        return;
-                    }
-                }
-                if (!editCartMap[pId]) editCartMap[pId] = { name, quantity: 0, price };
-                editCartMap[pId].quantity += delta;
-                const el = document.getElementById(`edit-qty-${pId}`);
-                if (editCartMap[pId].quantity <= 0) {
-                    delete editCartMap[pId];
-                    if (el) el.textContent = '0';
-                } else {
-                    if (el) el.textContent = String(editCartMap[pId].quantity);
-                }
-                updateLiveEditTotal();
-            };
-
-            function updateLiveEditTotal() {
-                let itemsTotal = 0;
-                Object.values(editCartMap).forEach((i) => { itemsTotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0)); });
-                preservedWeightItems.forEach((i) => { itemsTotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0)); });
-                const deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                const discount = Number(currentOrder.discount) || 0;
-                const finalTotal = Math.max(0, itemsTotal + deliveryFee - discount);
-                const el = document.getElementById('live-edit-total');
-                if (el) el.textContent = `${finalTotal} ج.م`;
-            }
-
-            window.submitDirectOrderEdit = async function () {
-                const updatedItems = [...preservedWeightItems];
-                let newSubtotal = 0;
-                const summaryParts = [];
-
-                preservedWeightItems.forEach((i) => {
-                    newSubtotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
-                    summaryParts.push(`${i.quantity}x ${i.name}`);
-                });
-
-                Object.keys(editCartMap).forEach((pId) => {
-                    const it = editCartMap[pId];
-                    if (it.quantity > 0) {
-                        updatedItems.push({ id: pId, name: it.name, quantity: it.quantity, price: it.price });
-                        newSubtotal += Math.round(it.quantity * it.price);
-                        summaryParts.push(`${it.quantity}x ${it.name}`);
-                    }
-                });
-
-                if (updatedItems.length === 0) {
-                    return openTrackDialog('لا يمكن حفظ طلب فارغ! اختر صنفاً واحداً على الأقل.', { title: 'تنبيه' });
-                }
-
-                const btn = document.getElementById('btn-confirm-direct-edit');
-                const origHtml = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديث الطلب...';
-                btn.disabled = true;
-
-                try {
-                    const deliveryFee = Number(currentOrder.deliveryFee) || 0;
-                    const currentDiscount = Number(currentOrder.discount) || 0;
-                    const newTotal = Math.max(0, newSubtotal + deliveryFee - currentDiscount);
-
-                    const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    const oldNote = currentOrder.adminNote || '';
-                    const noteLine = `[${dateStr}] 🚨 تعديل العميل من التتبع: (${summaryParts.join(' ، ')}) — الإجمالي: ${newTotal} ج`;
-                    const finalNotes = oldNote ? `${oldNote}\n---\n${noteLine}` : noteLine;
-
-                    // حساب فروقات المخزون والمحجوز للأصناف العادية فقط
-                    const stockDeltas = {};
-                    const bookedDeltas = {};
-                    (currentOrder.items || []).forEach((i) => {
-                        if (!i.isWeightBased && Number(i.price) > 0 && i.id) {
-                            stockDeltas[i.id] = (stockDeltas[i.id] || 0) + Number(i.quantity);
-                            bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) - Number(i.quantity);
-                        }
-                    });
-                    updatedItems.forEach((i) => {
-                        if (!i.isWeightBased && Number(i.price) > 0 && i.id) {
-                            stockDeltas[i.id] = (stockDeltas[i.id] || 0) - Number(i.quantity);
-                            bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) + Number(i.quantity);
-                        }
-                    });
-
-                    const atomicBatch = db.batch();
-                    atomicBatch.update(db.collection('orders').doc(currentOrder.id), {
-                        items: updatedItems,
-                        subtotal: newSubtotal,
-                        total: newTotal,
-                        discount: currentDiscount,
-                        adminNote: finalNotes
-                    });
-
-                    const finalStockUpdates = {};
-                    Object.keys(stockDeltas).forEach((id) => {
-                        if (stockDeltas[id] !== 0) finalStockUpdates[id] = firebase.firestore.FieldValue.increment(stockDeltas[id]);
-                    });
-                    if (Object.keys(finalStockUpdates).length > 0) {
-                        atomicBatch.set(db.collection('inventory').doc('stock'), finalStockUpdates, { merge: true });
-                    }
-
-                    if (currentOrder.batchId) {
-                        const finalBookedUpdates = {};
-                        Object.keys(bookedDeltas).forEach((id) => {
-                            if (bookedDeltas[id] !== 0) finalBookedUpdates[id] = firebase.firestore.FieldValue.increment(bookedDeltas[id]);
-                        });
-                        if (Object.keys(finalBookedUpdates).length > 0) {
-                            atomicBatch.set(db.collection('inventory').doc('batches'), {
-                                [currentOrder.batchId]: { booked: finalBookedUpdates }
-                            }, { merge: true });
-                        }
-                    }
-
-                    const priceDiff = newTotal - (Number(currentOrder.total) || 0);
-                    if (priceDiff !== 0) {
-                        atomicBatch.set(db.collection('inventory').doc('stats'), {
-                            sales: firebase.firestore.FieldValue.increment(priceDiff)
-                        }, { merge: true });
-                        const cleanPhone = U.normalizePhone(currentOrder.customerPhone);
-                        if (cleanPhone) {
-                            atomicBatch.set(db.collection('customers').doc(cleanPhone), {
-                                totalSpent: firebase.firestore.FieldValue.increment(priceDiff)
-                            }, { merge: true });
-                        }
-                    }
-
-                    await atomicBatch.commit();
-                    document.getElementById('visual-edit-container')?.classList.add('hidden');
-                    await openTrackDialog('تم تحديث أصناف وفاتورة طلبك بنجاح! 🎉', { title: 'تم التحديث بنجاح' });
-                } catch (e) {
-                    console.error('Order Edit Error:', e);
-                    await openTrackDialog('تعذر تحديث الطلب حالياً، برجاء المحاولة لاحقاً.', { title: 'تنبيه' });
-                } finally {
-                    btn.innerHTML = origHtml;
-                    btn.disabled = false;
-                }
-            };
-
-            // =================================================================
-            // تفعيل محفظة النقاط الذكي (خوارزمية المقايضة 0%–7% بالأسعار الحية)
-            // =================================================================
-            window.applyWalletToCurrentOrder = async function () {
-                if (!currentOrder || currentOrder.status !== 'new') {
-                    return openTrackDialog('لا يمكن تفعيل رصيد النقاط إلا والطلب في حالة (جديد).', { title: 'تنبيه' });
-                }
-
-                const btn = document.getElementById('btn-quick-apply-wallet');
-                const origHtml = btn.innerHTML;
-                const walletCash = Number(window.currentWalletDiscount) || 0;
-                const ptsUsed = Number(window.currentWalletPoints) || 0;
-
-                if (walletCash <= 0 || ptsUsed <= 0) {
-                    return openTrackDialog('رصيد المحفظة غير كافٍ حالياً.', { title: 'تنبيه' });
-                }
-
-                const productsPool = getLiveBarterProducts();
-                const minOfferPrice = walletCash / 0.98;
-                const maxOfferPrice = walletCash / 0.93;
-                let bestCombo = null;
-                let bestComboPrice = Infinity;
-
-                function findBestMix(idx, combo, sum) {
-                    if (sum >= minOfferPrice && sum <= maxOfferPrice) {
-                        if (sum < bestComboPrice) {
-                            bestComboPrice = sum;
-                            bestCombo = [...combo];
-                        }
-                    }
-                    if (sum > maxOfferPrice || idx >= productsPool.length) return;
-                    for (let qty = 0; qty <= 6; qty++) {
-                        const add = qty * productsPool[idx].price;
-                        if (sum + add > maxOfferPrice) break;
-                        const next = qty > 0 ? [...combo, { ...productsPool[idx], qty }] : combo;
-                        findBestMix(idx + 1, next, sum + add);
-                    }
-                }
-                findBestMix(0, [], 0);
-
-                const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                const oldNotes = currentOrder.adminNote || '';
-                const cleanPhone = U.normalizePhone(currentOrder.customerPhone);
-                if (!cleanPhone) return;
-
-                let acceptOffer = false;
-                if (bestCombo && bestCombo.length > 0) {
-                    const comboText = bestCombo.map((item) => `${item.qty} ${item.name}`).join(' + ');
-                    acceptOffer = await openTrackDialog(
-                        `🎁 عرض حصري لك!\n\nبدلاً من خصم ${walletCash} ج.م من فاتورتك، يمكنك استبدال رصيدك بـ:\n( ${comboText} )\nبقيمة إجمالية ${bestComboPrice} ج.م مجاناً!\n\nهل تفضل استلام العرض المجاني أم تطبيق الخصم المالي؟`,
-                        { title: 'عرض هدية النقاط 🎁', isConfirm: true, confirmText: 'استلام العرض المجاني 🎁', cancelText: 'تطبيق الخصم المالي' }
-                    );
-
-                    if (acceptOffer) {
-                        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إضافة الهدية...';
-                        btn.disabled = true;
-                        try {
-                            const updatedItems = [...(currentOrder.items || [])];
-                            const giftSummary = [];
-                            bestCombo.forEach((item) => {
-                                updatedItems.push({
-                                    id: item.id,
-                                    name: `${item.name} (هدية النقاط 🎁)`,
-                                    price: 0,
-                                    quantity: item.qty
-                                });
-                                giftSummary.push(`${item.qty}x ${item.name}`);
-                            });
-
-                            const noteLine = `[${dateStr}] 🎁 العميل استبدل (${ptsUsed} نقطة) بهدية: (${giftSummary.join(' + ')}).`;
-                            const finalNotes = oldNotes ? `${oldNotes}\n---\n${noteLine}` : noteLine;
-
-                            const wb = db.batch();
-                            wb.update(db.collection('orders').doc(currentOrder.id), {
-                                items: updatedItems,
-                                adminNote: finalNotes
-                            });
-                            wb.update(db.collection('customers').doc(cleanPhone), {
-                                walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
-                            });
-                            await wb.commit();
-
-                            window.currentWalletDiscount = 0;
-                            window.currentWalletPoints = 0;
-                            if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
-                            await openTrackDialog(`🎉 مبروك! تم إضافة (${comboText}) لطلبك مجاناً.`, { title: 'تمت إضافة الهدية' });
-                            return;
-                        } catch (e) {
-                            console.error(e);
-                            await openTrackDialog('حدث خطأ أثناء إضافة الهدية، حاول مرة أخرى.', { title: 'تنبيه' });
-                            btn.innerHTML = origHtml;
-                            btn.disabled = false;
-                            return;
-                        }
-                    }
-                }
-
-                // تطبيق الخصم المالي العادي
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تطبيق الخصم...';
-                btn.disabled = true;
-                try {
-                    const currentTotal = Number(currentOrder.total) || 0;
-                    const currentDiscount = Number(currentOrder.discount) || 0;
-                    const appliedCash = Math.min(walletCash, currentTotal);
-                    const newDiscount = currentDiscount + appliedCash;
-                    const newTotal = Math.max(0, currentTotal - appliedCash);
-
-                    const noteLine = `[${dateStr}] 🎁 العميل فعّل خصم المحفظة المالي (${appliedCash} ج.م) بـ ${ptsUsed} نقطة.`;
-                    const finalNotes = oldNotes ? `${oldNotes}\n---\n${noteLine}` : noteLine;
-
-                    const wb = db.batch();
-                    wb.update(db.collection('orders').doc(currentOrder.id), {
-                        total: newTotal,
-                        discount: newDiscount,
-                        adminNote: finalNotes
-                    });
-                    wb.update(db.collection('customers').doc(cleanPhone), {
-                        walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
-                    });
-                    await wb.commit();
-
-                    window.currentWalletDiscount = 0;
-                    window.currentWalletPoints = 0;
-                    if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
-                    await openTrackDialog(`تم تفعيل خصم ${appliedCash} ج.م وتحديث فاتورتك بنجاح! 🎉`, { title: 'تم تطبيق الخصم' });
-                } catch (e) {
-                    console.error(e);
-                    await openTrackDialog('حدث خطأ أثناء تفعيل الخصم، حاول مرة أخرى.', { title: 'تنبيه' });
-                    btn.innerHTML = origHtml;
-                    btn.disabled = false;
-                }
-            };
-
-            function updateProgressTarget(walletCash) {
-                const container = document.getElementById('progress-bar-container');
-                if (!container) return;
-                const sorted = getLiveBarterProducts().sort((a, b) => a.price - b.price);
-                const target = sorted.find((p) => p.price > walletCash);
-
-                if (target) {
-                    const rem = Math.max(0, target.price - walletCash);
-                    const pct = Math.min(100, Math.floor((walletCash / target.price) * 100));
-                    container.innerHTML = `
-                        <div class="mt-3 pt-3 border-t border-amber-200/70">
-                            <p class="text-[11px] font-bold text-amber-900 mb-1.5 flex justify-between">
-                                <span>هدف الـ VIP القادم: <strong>${esc(target.name)}</strong></span>
-                                <span class="text-amber-700 font-black">${pct}%</span>
-                            </p>
-                            <div class="w-full bg-amber-100 rounded-full h-2 overflow-hidden flex justify-end" dir="ltr">
-                                <div class="bg-amber-500 h-2 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
-                            </div>
-                            <p class="text-[10px] text-amber-800 text-center font-bold mt-1.5">
-                                فاضلك <strong>${rem} ج.م</strong> وتستلم (${esc(target.name)}) مجاناً! 🚀
-                            </p>
-                        </div>`;
-                } else {
-                    container.innerHTML = `
-                        <div class="mt-3 pt-2.5 border-t border-amber-200/70 text-center bg-emerald-50 rounded-xl p-2 border border-emerald-200">
-                            <p class="text-xs font-black text-emerald-800"><i class="fa-solid fa-crown text-amber-500 ml-1"></i> أنت عميل VIP!</p>
-                            <p class="text-[10px] text-emerald-700 font-bold">رصيدك يغطي باقات هدايا مميزة.. اضغط تفعيل النقاط لاكتشاف هديتك!</p>
-                        </div>`;
-                }
-                container.classList.remove('hidden');
-            }
-
-            // =================================================================
-            // التايم لاين والمندوب وصندوق الدفعة وتأكيد الاستلام
-            // =================================================================
-            function calculateETA(zone) {
-                const now = new Date();
-                let min = 30, max = 60;
-                const z = String(zone || '');
-                if (z.includes('أبو كبير') || z.includes('ابو كبير')) { min = 30; max = 60; }
-                else if (z.includes('ههيا')) { min = 20; max = 40; }
-                else if (z.includes('زقازيق') || z.includes('الزقازيق')) { min = 30; max = 90; }
-
-                const fmt = (dt) => {
-                    let h = dt.getHours();
-                    const m = String(dt.getMinutes()).padStart(2, '0');
-                    const ap = h >= 12 ? 'م' : 'ص';
-                    h = h % 12 || 12;
-                    return `${h}:${m} ${ap}`;
-                };
-                return `${fmt(new Date(now.getTime() + min * 60000))} - ${fmt(new Date(now.getTime() + max * 60000))}`;
-            }
-
-            function updateTimeline() {
-                const s = currentOrder.status;
-                let title = '';
-                let pWidth = '0%';
-                let activeSteps = 0;
-
-                document.getElementById('alert-banner')?.classList.add('hidden');
-                document.getElementById('driver-info')?.classList.add('hidden');
-                document.getElementById('feedback-section')?.classList.add('hidden');
-                document.getElementById('tracking-card')?.classList.remove('hidden');
-
-                if (s === 'new') {
-                    const orderMs = (currentOrder.createdAt && typeof currentOrder.createdAt.toMillis === 'function')
-                        ? currentOrder.createdAt.toMillis() : Date.now();
-                    const secs = (Date.now() - orderMs) / 1000;
-                    if (secs >= 60) {
-                        title = 'استلمنا طلب حضرتك بنجاح ✅';
-                    } else {
-                        title = 'جاري مراجعة الطلب...';
-                        setTimeout(() => {
-                            const el = document.getElementById('res-status-title');
-                            if (el && currentOrder && currentOrder.status === 'new') {
-                                el.textContent = 'استلمنا طلب حضرتك بنجاح ✅';
-                            }
-                        }, Math.max(1000, (60 - secs) * 1000));
-                    }
-                    pWidth = '0%';
-                    activeSteps = 1;
-                } else if (s === 'deferred') {
-                    title = 'الطلب مؤجل لموعد محدد 📅';
-                    document.getElementById('tracking-card')?.classList.add('hidden');
-                    const schedNote = currentOrder.deferredDisplayStr
-                        ? `تمت جدولة طلبك ليوم (${currentOrder.deferredDisplayStr}). يمكنك التواصل معنا في أي وقت لتأكيد أو تعديل الموعد.`
-                        : 'تم تأجيل تجهيز الطلب بناءً على رغبة حضرتك؛ برجاء مراسلتنا لتأكيد موعد الاستلام المناسب.';
-                    showStatusAlertBanner('تم تأجيل الطلب', schedNote, 'bg-orange-50', 'border-orange-200', 'text-orange-800', 'fa-solid fa-calendar-days', `مرحباً، أستفسر عن موعد طلبي المؤجل باسم (${currentOrder.customerName || ''}).`);
-                } else if (s === 'no_answer') {
-                    title = 'تعذر التواصل هاتفياً 📵';
-                    document.getElementById('tracking-card')?.classList.add('hidden');
-                    showStatusAlertBanner('تعذر الوصول لحضرتك', 'حاولنا التواصل لتسليم الطلب ولم يتم الرد؛ طلبك محفوظ لدينا، برجاء مراسلتنا لإعادة التنسيق.', 'bg-red-50', 'border-red-200', 'text-red-700', 'fa-solid fa-phone-slash', `مرحباً، بخصوص طلبي باسم (${currentOrder.customerName || ''}) الذي تعذر التواصل فيه.`);
-                } else if (s === 'processing' || s === 'dispatched') {
-                    if (s === 'dispatched' || currentOrder.driverName) {
-                        title = 'الطلب في الطريق إليك 🛵';
-                        pWidth = '100%';
-                        activeSteps = 3;
-                        document.getElementById('driver-info')?.classList.remove('hidden');
-
-                        const rawDrvName = String(currentOrder.driverName || 'مندوب التوصيل');
-                        const directPhone = U.normalizePhone(currentOrder.driverPhone || '');
-                        const fallbackPhone = rawDrvName.replace(/[^\d+]/g, '');
-                        const drvPhone = directPhone.length >= 10 ? directPhone : (fallbackPhone.length >= 10 ? fallbackPhone : '');
-                        const cleanName = rawDrvName.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').trim() || 'مندوب التوصيل';
-
-                        document.getElementById('driver-name').textContent = cleanName;
-                        const callBtn = document.getElementById('driver-call-btn');
-                        if (callBtn) {
-                            if (drvPhone) {
-                                callBtn.href = `tel:${drvPhone}`;
-                                callBtn.classList.remove('hidden');
-                            } else {
-                                callBtn.classList.add('hidden');
-                            }
-                        }
-                        document.getElementById('driver-eta').textContent = calculateETA(currentOrder.zone);
-                    } else {
-                        title = 'جاري تجهيز طلبك طازج 🔥';
-                        pWidth = '50%';
-                        activeSteps = 2;
-                    }
-                } else if (s === 'completed') {
-                    title = 'تم تسليم الطلب بنجاح 🎉';
-                    pWidth = '100%';
-                    activeSteps = 3;
-                    document.getElementById('tracking-card')?.classList.add('hidden');
-                    document.getElementById('feedback-section')?.classList.remove('hidden');
-
-                    if (Number(currentOrder.rating) > 0) {
-                        document.getElementById('complaint-box')?.classList.add('hidden');
-                        document.getElementById('feedback-thanks')?.classList.remove('hidden');
-                        const starsEls = document.getElementById('stars-container').children;
-                        for (let i = 0; i < 5; i++) {
-                            if (i < Number(currentOrder.rating)) starsEls[4 - i].classList.add('active', 'text-amber-500');
-                        }
-                    }
-                }
-
-                document.getElementById('res-status-title').textContent = title;
-
-                setTimeout(() => {
-                    const line = document.getElementById('progress-line');
-                    if (line) line.style.width = pWidth;
-                    for (let i = 1; i <= 3; i++) {
-                        const icon = document.getElementById(`step-${i}-icon`);
-                        if (!icon) continue;
-                        icon.className = i <= activeSteps
-                            ? 'w-8 h-8 rounded-full shadow-sm flex items-center justify-center text-xs bg-brand-primary text-white transition-all duration-500 border-2 border-white'
-                            : 'w-8 h-8 rounded-full shadow-sm flex items-center justify-center text-xs bg-slate-100 text-slate-400 transition-all duration-500 border-2 border-slate-200';
-                    }
-                }, 80);
-
-                // تحديث صندوق الدفعة
-                updateBatchTrackingBox();
-            }
-
-            async function updateBatchTrackingBox() {
-                const batchBox = document.getElementById('batch-info-box');
-                if (!batchBox) return;
-                if (!currentOrder.batchId) {
-                    batchBox.classList.add('hidden');
-                    return;
-                }
-                try {
-                    const doc = await db.collection('inventory').doc('batches').get();
-                    if (!doc.exists || !doc.data()[currentOrder.batchId]) {
-                        batchBox.classList.add('hidden');
-                        return;
-                    }
-                    const b = doc.data()[currentOrder.batchId];
-                    batchBox.classList.remove('hidden');
-                    document.getElementById('batch-display-name').textContent = b.name || currentOrder.batchName || '';
-
-                    const datesBox = document.getElementById('box-delivery-dates');
-                    const leftBox = document.getElementById('box-delivery-left');
-                    if (b.deliveryStart && b.deliveryEnd) {
-                        datesBox.classList.remove('hidden');
-                        leftBox.classList.remove('hidden');
-                        const startD = new Date(b.deliveryStart);
-                        const endD = new Date(b.deliveryEnd);
-                        const now = new Date();
-                        now.setHours(0, 0, 0, 0);
-
-                        document.getElementById('batch-date-range').textContent = `${startD.getDate()} إلى ${endD.getDate()}`;
-                        const diffDays = Math.ceil((startD.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                        const leftEl = document.getElementById('batch-days-left');
-                        const txtEl = document.getElementById('batch-days-text');
-
-                        if (diffDays > 0) {
-                            leftEl.textContent = `${diffDays} أيام`;
-                            leftEl.className = 'block text-base font-black text-brand-primary';
-                            txtEl.textContent = 'متبقي على التجهيز';
-                        } else if (now >= startD && now <= endD) {
-                            leftEl.textContent = 'الآن';
-                            leftEl.className = 'block text-lg font-black text-emerald-600 animate-pulse';
-                            txtEl.textContent = 'جاري التجهيز والتسليم';
-                        } else {
-                            leftEl.textContent = 'قريباً جداً';
-                            leftEl.className = 'block text-sm font-black text-amber-600';
-                            txtEl.textContent = 'انتظر تواصلنا';
-                        }
-                    } else {
-                        datesBox.classList.add('hidden');
-                        leftBox.classList.add('hidden');
-                    }
-
-                    const msgBox = document.getElementById('batch-msg-container');
-                    const msgText = document.getElementById('batch-customer-msg');
-                    if (b.hatchDate && b.slaughterAge) {
-                        const age = Math.max(0, Math.floor((Date.now() - b.hatchDate) / (1000 * 60 * 60 * 24)));
-                        const rem = (Number(b.slaughterAge) || 40) - age;
-                        let autoMsg = '';
-                        if (b.slaughteredAt) autoMsg = '🛵 تم الذبح طازج وجاري التوزيع مع المناديب الآن!';
-                        else if (b.isOpen === false) autoMsg = '✅ اكتملت الدورة والسمان الآن في مرحلة التجهيز للذبح وترتيب مواعيد التسليم.';
-                        else if (rem <= 0) autoMsg = '🔪 السمان وصل لمرحلة النضج وجاهز فريش للتسليم قريباً!';
-                        else if (rem <= 5) autoMsg = '⏳ أيام بسيطة جداً والسمان يكون جاهز! استعدوا لاستلام طلباتكم قريباً.';
-                        else if (age <= 15) autoMsg = '🐣 السمان حالياً في مرحلة التحضين والرعاية الأولية لنقدم لكم أفضل جودة.';
-                        else autoMsg = '📈 السمان في مرحلة التسمين وبناء اللحم الممتاز؛ تابعونا لموعد الذبح قريباً.';
-
-                        msgText.innerHTML = (b.urgentNote ? `<strong class="text-amber-700 block mb-1">📌 تنبيه: ${esc(b.urgentNote)}</strong>` : '') + esc(autoMsg);
-                        msgBox.classList.remove('hidden');
-                    } else if (b.urgentNote) {
-                        msgText.innerHTML = `<strong class="text-amber-700">📌 تنبيه: ${esc(b.urgentNote)}</strong>`;
-                        msgBox.classList.remove('hidden');
-                    } else {
-                        msgBox.classList.add('hidden');
-                    }
-                } catch (e) {
-                    batchBox.classList.add('hidden');
-                }
-            }
-
-            function showStatusAlertBanner(title, desc, bgCls, borderCls, titleCls, iconCls, waPrefill) {
-                const banner = document.getElementById('alert-banner');
-                if (!banner) return;
-                banner.className = `rounded-2xl p-4 animate-slide shadow-sm border ${bgCls} ${borderCls}`;
-                document.getElementById('alert-icon').className = `w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-white shadow-sm ${titleCls}`;
-                document.getElementById('alert-icon').innerHTML = `<i class="${iconCls}"></i>`;
-                document.getElementById('alert-title').className = `font-black text-sm sm:text-base mb-1 ${titleCls}`;
-                document.getElementById('alert-title').textContent = title;
-                document.getElementById('alert-desc').textContent = desc;
-                const waBtn = document.getElementById('btn-alert-wa');
-                if (waBtn) {
-                    waBtn.href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(waPrefill || 'مرحباً، أستفسر عن طلبي في سمان ههيا.')}`;
-                }
-            }
-
-            window.confirmReceipt = async function () {
-                const ok = await openTrackDialog('هل تم استلام الطلب بالكامل من المندوب؟', {
-                    title: 'تأكيد استلام الطلب',
-                    isConfirm: true,
-                    confirmText: 'نعم، تم الاستلام ✅',
-                    cancelText: 'تراجع'
-                });
-                if (!ok) return;
-
-                const btn = document.getElementById('btn-confirm-receipt');
-                const origHtml = btn.innerHTML;
-                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التأكيد...';
-                btn.disabled = true;
-
-                try {
-                    const now = new Date();
-                    const dateStr = now.toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    const oldNote = currentOrder.adminNote || '';
-                    const newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
-                    const finalAdminNote = oldNote ? `${oldNote}\n---\n${newNote}` : newNote;
-
-                    await db.collection('orders').doc(currentOrder.id).update({
-                        status: 'completed',
-                        completedAtStr: now.toLocaleDateString('en-US'),
-                        completedTimeDisplay: dateStr,
-                        adminNote: finalAdminNote
-                    });
-                } catch (e) {
-                    console.error(e);
-                    await openTrackDialog('تعذر تأكيد الاستلام حالياً، يرجى التحقق من الاتصال.', { title: 'تنبيه' });
-                    btn.innerHTML = origHtml;
-                    btn.disabled = false;
-                }
-            };
-
-            // =================================================================
-            // التقييم والأرشيف وتسجيل الخروج
-            // =================================================================
-            window.rateOrder = function (stars) {
-                selectedStars = stars;
-                const starsEls = document.getElementById('stars-container').children;
-                for (let i = 0; i < 5; i++) {
-                    if (i < stars) {
-                        starsEls[4 - i].classList.add('active', 'text-amber-500');
-                        starsEls[4 - i].classList.remove('text-slate-300');
-                    } else {
-                        starsEls[4 - i].classList.remove('active', 'text-amber-500');
-                        starsEls[4 - i].classList.add('text-slate-300');
-                    }
-                }
-                document.getElementById('complaint-box')?.classList.remove('hidden');
-            };
-
-            window.submitComplaint = async function () {
-                if (selectedStars === 0) {
-                    return openTrackDialog('برجاء اختيار عدد النجوم أولاً.', { title: 'تقييم الخدمة' });
-                }
-                const text = (document.getElementById('complaint-text')?.value || '').trim();
-                const box = document.getElementById('complaint-box');
-                box.innerHTML = '<div class="py-2 text-center"><i class="fa-solid fa-spinner fa-spin text-brand-primary text-xl"></i></div>';
-
-                try {
-                    const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-                    const oldNote = currentOrder.adminNote || '';
-                    const newNote = `[${dateStr}] ⭐️ تقييم الخدمة (${selectedStars}/5): ${text || 'بدون تعليق'}`;
-                    await db.collection('orders').doc(currentOrder.id).update({
-                        rating: Number(selectedStars),
-                        adminNote: oldNote ? `${oldNote}\n---\n${newNote}` : newNote
-                    });
-                    box.classList.add('hidden');
-                    document.getElementById('feedback-thanks')?.classList.remove('hidden');
-                } catch (e) {
-                    console.error(e);
-                    await openTrackDialog('حدث خطأ أثناء حفظ التقييم، حاول مرة أخرى.', { title: 'تنبيه' });
-                }
-            };
-
-            window.toggleHistory = function () {
-                const sec = document.getElementById('history-section');
-                const list = document.getElementById('history-list');
-                if (!sec || !list) return;
-
-                if (sec.classList.contains('hidden')) {
-                    sec.classList.remove('hidden');
-                    if (pastOrders.length === 0) {
-                        list.innerHTML = '<p class="text-xs text-slate-500 font-bold text-center py-4">لا توجد طلبات سابقة مكتملة.</p>';
-                        return;
-                    }
-                    list.innerHTML = pastOrders.map((o) => {
-                        const itemsTxt = Array.isArray(o.items) ? o.items.map((i) => `${i.quantity}x ${i.name}`).join(' ، ') : 'بدون تفاصيل';
-                        const waMsg = encodeURIComponent(`مرحباً سمان ههيا، أود تكرار هذا الطلب مرة أخرى:\n(${itemsTxt})`);
-                        return `
-                        <div class="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                            <div class="flex justify-between items-start gap-2 mb-2">
-                                <div>
-                                    <p class="text-[10px] text-slate-400 font-bold mb-0.5">${esc(o.orderDate || '')}</p>
-                                    <p class="text-xs font-black text-slate-800 leading-relaxed">${esc(itemsTxt)}</p>
-                                </div>
-                                <span class="text-brand-primary font-black text-xs bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 whitespace-nowrap">${Number(o.total) || 0} ج.م</span>
-                            </div>
-                            <a href="https://wa.me/${storeWhatsapp}?text=${waMsg}" target="_blank" rel="noopener" class="w-full bg-slate-50 hover:bg-emerald-50 border border-slate-200 text-slate-700 font-black py-1.5 rounded-lg flex justify-center items-center gap-1.5 text-xs transition-colors">
-                                <i class="fa-solid fa-rotate-right text-brand-primary"></i> إعادة الطلب عبر واتساب
-                            </a>
-                        </div>`;
-                    }).join('');
-                } else {
-                    sec.classList.add('hidden');
-                }
-            };
-
-            window.logoutTracker = function () {
-                if (orderListener) {
-                    orderListener();
-                    orderListener = null;
-                }
-                window.location.href = 'track.html';
-            };
-
-            window.addEventListener('DOMContentLoaded', () => {
-                const params = new URLSearchParams(window.location.search);
-                const phoneParam = params.get('phone');
-                const phoneInput = document.getElementById('customer-phone');
-                if (phoneParam && phoneInput) {
-                    phoneInput.value = phoneParam;
-                    window.trackOrder();
-                } else if (phoneInput) {
-                    try {
-                        const saved = JSON.parse(localStorage.getItem('sman_my_profile') || '{}');
-                        if (saved.phone) phoneInput.value = saved.phone;
-                    } catch (e) {}
-                }
+            if (s.pointValueInEGP) livePointValue = parseFloat(s.pointValueInEGP) || 0.40;
+            if (s.productsData && typeof s.productsData === 'object') liveProductsCatalog = s.productsData;
+          }
+          if (priceSnap && priceSnap.exists) {
+            livePricesMap = priceSnap.data() || {};
+          }
+        } catch (e) {}
+      }
+      const configReadyPromise = loadStoreConfigAndPrices();
+
+      function getLiveBarterProducts() {
+        const list = [];
+        Object.keys(liveProductsCatalog).forEach((id) => {
+          const p = liveProductsCatalog[id];
+          if (!p || p.isHidden || p.isWeightBased) return;
+          const price = Number(livePricesMap[id] !== undefined ? livePricesMap[id] : p.basePrice) || 0;
+          if (price >= 30) list.push({ id, name: p.name, price });
+        });
+        if (list.length > 0) return list.sort((a, b) => b.price - a.price);
+        return [
+          { id: 'superspecial', name: 'سوبر سبشيال', price: 140 },
+          { id: 'special', name: 'طبق سبشيال', price: 130 },
+          { id: 'jumbo', name: 'طبق جامبو', price: 120 },
+          { id: 'super', name: 'طبق سوبر', price: 110 },
+          { id: 'eggs', name: 'طبق بيض سمان', price: 50 }
+        ];
+      }
+
+      function showError(msg) {
+        const el = document.getElementById('error-msg');
+        if (!el) return;
+        el.textContent = msg;
+        el.classList.remove('hidden');
+      }
+
+      // =================================================================
+      // البحث الآمن عن الطلبات بكل صيغ الرقم المصري
+      // =================================================================
+      window.trackOrder = async function () {
+        const rawInput = (document.getElementById('customer-phone')?.value || '').trim();
+        const phone = U.normalizePhone(rawInput);
+        const btn = document.getElementById('btn-track');
+
+        if (phone.length < 10) {
+          showError('برجاء إدخال رقم هاتف مصري صحيح ومكتمل.');
+          return;
+        }
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن طلبك...';
+        btn.disabled = true;
+        document.getElementById('error-msg')?.classList.add('hidden');
+
+        try {
+          await configReadyPromise;
+          const candidates = buildPhoneCandidates(phone, rawInput);
+          const queries = [];
+          candidates.forEach((pVal) => {
+            queries.push(db.collection('orders').where('customerPhone', '==', pVal).limit(20).get().catch(() => null));
+            queries.push(db.collection('orders').where('customerPhone2', '==', pVal).limit(20).get().catch(() => null));
+          });
+
+          const snaps = await Promise.all(queries);
+          const ordersMap = {};
+          snaps.forEach((snap) => {
+            if (!snap || snap.empty) return;
+            snap.forEach((doc) => {
+              ordersMap[doc.id] = { id: doc.id, ...doc.data() };
             });
-        })();
-    </script>
+          });
+
+          const orders = Object.values(ordersMap);
+          const getMs = (o) => (o.createdAt && typeof o.createdAt.toMillis === 'function') ? o.createdAt.toMillis() : 0;
+
+          pastOrders = orders
+            .filter((o) => o.status === 'completed')
+            .sort((a, b) => getMs(b) - getMs(a));
+
+          allActiveOrders = orders
+            .filter((o) => !['trash', 'canceled', 'completed'].includes(o.status))
+            .sort((a, b) => getMs(b) - getMs(a));
+
+          if (allActiveOrders.length === 0) {
+            if (pastOrders.length > 0) {
+              allActiveOrders = [pastOrders[0]];
+            } else {
+              showError('لا توجد طلبات مسجلة بهذا الرقم حالياً.');
+              return;
+            }
+          }
+
+          document.getElementById('history-section')?.classList.add('hidden');
+          const histPill = document.getElementById('history-count-pill');
+          if (histPill) histPill.textContent = `${pastOrders.length} طلب`;
+
+          renderOrderTabs();
+          window.selectOrder(0);
+        } catch (error) {
+          console.error('Track Order Error:', error);
+          showError('تعذر الاتصال بالنظام، يرجى المحاولة مرة أخرى.');
+        } finally {
+          btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>عرض حالة طلبي الآن</span>';
+          btn.disabled = false;
+        }
+      };
+
+      function renderOrderTabs() {
+        const container = document.getElementById('orders-selector');
+        if (!container) return;
+        if (allActiveOrders.length > 1) {
+          container.classList.remove('hidden');
+          const stEmoji = { new: '🆕', processing: '🔥', dispatched: '🛵', deferred: '📅', no_answer: '📵', completed: '✅' };
+          container.innerHTML = allActiveOrders.map((o, idx) => {
+            const isActive = currentOrder && currentOrder.id === o.id;
+            const cls = isActive
+              ? 'bg-brand-navy text-white border-amber-400 shadow-md'
+              : 'bg-white text-slate-700 border-slate-200 hover:border-brand-navy/40';
+            const emo = stEmoji[o.status] || '📦';
+            return `<button type="button" onclick="selectOrder(${idx})" class="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-black border-2 transition-all shrink-0 ${cls}">${emo} طلب ${idx + 1} (${Number(o.total) || 0} ج)</button>`;
+          }).join('');
+        } else {
+          container.classList.add('hidden');
+        }
+      }
+
+      window.selectOrder = function (index) {
+        if (!allActiveOrders[index]) return;
+        currentOrder = allActiveOrders[index];
+        if (allActiveOrders.length > 1) renderOrderTabs();
+        document.getElementById('visual-edit-container')?.classList.add('hidden');
+
+        if (orderListener) {
+          orderListener();
+          orderListener = null;
+        }
+
+        orderListener = db.collection('orders').doc(currentOrder.id).onSnapshot(
+          (doc) => {
+            if (doc.exists) {
+              currentOrder = { id: doc.id, ...doc.data() };
+              displayResult();
+            }
+          },
+          (err) => console.error('Live order snapshot error:', err)
+        );
+      };
+
+      function displayResult() {
+        document.getElementById('login-section')?.classList.add('hidden');
+        document.getElementById('result-section')?.classList.remove('hidden');
+
+        document.getElementById('res-name').textContent = currentOrder.customerName || 'عميلنا العزيز';
+        document.getElementById('res-total').textContent = Math.round(Number(currentOrder.total) || 0);
+
+        const payBadgeEl = document.getElementById('res-payment-badge');
+        if (payBadgeEl) {
+          if (currentOrder.paymentMethod === 'online') {
+            payBadgeEl.innerHTML = '<span class="inline-block bg-emerald-400/25 text-emerald-200 border border-emerald-400/35 px-2.5 py-0.5 rounded-full text-[10px] font-black">✅ خالص أونلاين</span>';
+          } else if (currentOrder.paymentMethod === 'split') {
+            payBadgeEl.innerHTML = `<span class="inline-block bg-indigo-400/25 text-indigo-100 border border-indigo-300/35 px-2.5 py-0.5 rounded-full text-[10px] font-black">كاش ${Number(currentOrder.paidCash) || 0}ج • محفظة ${Number(currentOrder.paidOnline) || 0}ج</span>`;
+          } else {
+            payBadgeEl.innerHTML = '<span class="inline-block bg-white/15 text-white border border-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-black">💵 عند الاستلام</span>';
+          }
+        }
+
+        const itemsCost = Number(currentOrder.subtotal) || 0;
+        const deliveryFee = Number(currentOrder.deliveryFee) || 0;
+        const discountVal = Number(currentOrder.discount) || 0;
+
+        let detailsHtml = `
+          <span class="bg-[#faf8f3] text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">المنتجات: <strong class="text-brand-navy">${itemsCost} ج</strong></span>
+          <span class="bg-[#faf8f3] text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">التوصيل: <strong class="text-brand-navy">${deliveryFee === 0 ? 'مجاني 🎉' : `${deliveryFee} ج`}</strong></span>
+        `;
+        if (discountVal > 0) {
+          detailsHtml += `<span class="bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-xl border border-emerald-200">🎉 خصم: -${discountVal} ج</span>`;
+        }
+
+        const orderDateVal = esc(currentOrder.orderDate || '');
+        const orderTimeVal = esc(currentOrder.orderTime || '');
+        const addressVal = esc(currentOrder.customerAddress || 'لم يتم تسجيل عنوان تفصيلي');
+        const zoneVal = esc(currentOrder.zone || 'غير محدد');
+
+        detailsHtml += `
+          <div class="w-full text-right mt-2 pt-3 border-t border-slate-100 space-y-2 text-slate-600">
+            <div class="flex items-center justify-between gap-2 text-[11px]">
+              <span class="text-slate-400"><i class="fa-regular fa-clock ml-1"></i> وقت التسجيل:</span>
+              <strong class="text-slate-800">${orderDateVal}${orderTimeVal ? ' — ' + orderTimeVal : ''}</strong>
+            </div>
+            <div class="flex items-start gap-2 text-[11px] bg-[#faf8f3] p-2.5 rounded-2xl border border-slate-200/70">
+              <i class="fa-solid fa-location-dot text-emerald-600 mt-0.5 shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <span class="text-slate-500 font-bold">التوصيل إلى (${zoneVal}):</span>
+                <span class="text-brand-navy font-black block mt-0.5 leading-snug">${addressVal}</span>
+              </div>
+            </div>
+          </div>
+        `;
+        document.getElementById('res-total-details').innerHTML = detailsHtml;
+
+        renderItemsList();
+        updateKitchenBridge();
+        updateTimeline();
+        refreshWalletBanner();
+      }
+
+      function updateKitchenBridge() {
+        const card = document.getElementById('kitchen-bridge-card');
+        if (!card || !currentOrder) return;
+        const items = Array.isArray(currentOrder.items) ? currentOrder.items : [];
+        const cookable = items.find((it) => it && getProductTrackType(it.id) !== 'chicks');
+        if (cookable || items.length > 0) {
+          card.href = (cookable && cookable.id)
+            ? `./kitchen/?product=${encodeURIComponent(cookable.id)}`
+            : './kitchen/';
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      }
+
+      async function refreshWalletBanner() {
+        const banner = document.getElementById('main-wallet-banner');
+        const quickBtnWrap = document.getElementById('quick-apply-wallet-container');
+        const quickBtn = document.getElementById('btn-quick-apply-wallet');
+        if (!banner || !currentOrder) return;
+
+        try {
+          const cleanPhone = U.normalizePhone(currentOrder.customerPhone);
+          if (!cleanPhone) return banner.classList.add('hidden');
+
+          const candidates = buildPhoneCandidates(cleanPhone, currentOrder.customerPhone);
+          const snaps = await Promise.all(
+            candidates.map((docId) => getDocServerFirst(db.collection('customers').doc(docId)))
+          );
+
+          let custData = null;
+          matchedCustomerDocId = cleanPhone;
+          for (let i = 0; i < snaps.length; i++) {
+            if (snaps[i] && snaps[i].exists) {
+              custData = snaps[i].data() || {};
+              matchedCustomerDocId = snaps[i].id;
+              break;
+            }
+          }
+
+          activeCustomerStats = {
+            ordersCount: Number(custData?.ordersCount) || pastOrders.length,
+            totalSpent: Number(custData?.totalSpent) || 0
+          };
+
+          const pts = parseInt(custData?.walletPoints) || 0;
+          const discVal = Math.floor(pts * livePointValue);
+
+          if (pts > 0 && discVal > 0) {
+            banner.classList.remove('hidden');
+            document.getElementById('main-wallet-points').textContent = pts;
+            document.getElementById('main-wallet-val').textContent = discVal;
+            window.currentWalletPoints = pts;
+            window.currentWalletDiscount = discVal;
+
+            const tierEl = document.getElementById('vip-tier-badge');
+            if (tierEl) {
+              if (activeCustomerStats.ordersCount >= 6 || activeCustomerStats.totalSpent >= 2500) {
+                tierEl.textContent = '👑 عميل ذهبي VIP';
+              } else if (activeCustomerStats.ordersCount >= 3 || activeCustomerStats.totalSpent >= 1000) {
+                tierEl.textContent = '🥈 عميل فضي مميز';
+              } else {
+                tierEl.textContent = '🌿 عضو عيلة سمان ههيا';
+              }
+            }
+
+            updateProgressTarget(discVal);
+            if (quickBtn) {
+              quickBtn.disabled = false;
+              quickBtn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب';
+            }
+            if (quickBtnWrap) {
+              quickBtnWrap.classList.toggle('hidden', currentOrder.status !== 'new');
+            }
+            return;
+          }
+          banner.classList.add('hidden');
+        } catch (e) {
+          banner.classList.add('hidden');
+        }
+      }
+
+      function renderItemsList() {
+        const resItems = document.getElementById('res-items');
+        const countPill = document.getElementById('items-count-pill');
+        const items = Array.isArray(currentOrder.items) ? currentOrder.items : [];
+        if (countPill) {
+          countPill.textContent = items.length === 1 ? 'صنف واحد' : `${items.length} أصناف`;
+        }
+        if (resItems) {
+          resItems.innerHTML = items.length > 0
+            ? items.map((i) => {
+                const lineVal = Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
+                const isGift = Number(i.price) === 0;
+                return `
+                <div class="flex justify-between items-center gap-2 ${isGift ? 'bg-amber-50/70 border-amber-200' : 'bg-[#faf8f3] border-slate-200/70'} border px-3 py-2.5 rounded-2xl">
+                  <div class="min-w-0 flex-1">
+                    <span class="text-xs sm:text-sm font-black text-brand-navy block truncate">${esc(i.name)}</span>
+                    <span class="text-[10px] font-bold text-slate-400">${isGift ? '🎁 هدية مجانية من النقاط' : `${Number(i.price) || 0} ج × ${esc(i.quantity)}`}</span>
+                  </div>
+                  <div class="text-left shrink-0 flex items-center gap-2">
+                    <span class="text-[11px] font-black ${isGift ? 'text-amber-800 bg-amber-100 border-amber-300' : 'text-emerald-800 bg-emerald-50 border-emerald-200'} px-2.5 py-1 rounded-xl border">
+                      ${isGift ? 'مجاني 🎁' : `${lineVal} ج`}
+                    </span>
+                  </div>
+                </div>`;
+              }).join('')
+            : '<p class="text-xs text-slate-500">لا توجد تفاصيل.</p>';
+        }
+
+        const editBox = document.getElementById('edit-request-box');
+        if (editBox) {
+          editBox.classList.toggle('hidden', currentOrder.status !== 'new');
+        }
+      }
+
+      // =================================================================
+      // تعديل أصناف الطلب (للطلبات الجديدة فقط — متوافق 100% مع المسارات الـ 3)
+      // =================================================================
+      window.toggleVisualEditMenu = function () {
+        const container = document.getElementById('visual-edit-container');
+        if (!container) return;
+        if (container.classList.contains('hidden')) {
+          container.classList.remove('hidden');
+          loadProductsForEdit();
+        } else {
+          container.classList.add('hidden');
+        }
+      };
+
+      async function loadProductsForEdit() {
+        const itemsDiv = document.getElementById('interactive-edit-items');
+        itemsDiv.innerHTML = '<div class="text-center py-4 text-xs font-bold text-slate-400 col-span-2"><i class="fa-solid fa-spinner fa-spin"></i> جاري تحميل الأصناف...</div>';
+
+        try {
+          const [settingsSnap, pricesSnap, batchesSnap] = await Promise.all([
+            getDocServerFirst(db.collection('inventory').doc('settings')),
+            getDocServerFirst(db.collection('inventory').doc('prices')),
+            getDocServerFirst(db.collection('inventory').doc('batches'))
+          ]);
+
+          const productsData = (settingsSnap && settingsSnap.exists) ? (settingsSnap.data().productsData || {}) : liveProductsCatalog;
+          const pricesData = (pricesSnap && pricesSnap.exists) ? (pricesSnap.data() || {}) : livePricesMap;
+          if (Object.keys(productsData).length > 0) liveProductsCatalog = productsData;
+          if (Object.keys(pricesData).length > 0) livePricesMap = pricesData;
+
+          maxAllowedItemsInThisOrder = 30;
+          editBatchTrackType = 'quail';
+          if (currentOrder.batchId && batchesSnap && batchesSnap.exists) {
+            const bData = batchesSnap.data()[currentOrder.batchId];
+            if (bData) {
+              editBatchTrackType = getBatchTrackType(bData);
+              const cap = Number(bData.publicPairs) || Number(bData.actualPairs) || 0;
+              if (cap > 0) {
+                let totalBookedOnTrack = 0;
+                if (bData.booked) {
+                  Object.keys(bData.booked).forEach((k) => {
+                    if (getProductTrackType(k, productsData[k]) === editBatchTrackType) {
+                      totalBookedOnTrack += Number(bData.booked[k]) || 0;
+                    }
+                  });
+                }
+                let curOrderTrackTotal = 0;
+                (currentOrder.items || []).forEach((i) => {
+                  if (!i.isWeightBased && Number(i.price) > 0 && getProductTrackType(i.id, productsData[i.id]) === editBatchTrackType) {
+                    curOrderTrackTotal += Number(i.quantity) || 0;
+                  }
+                });
+                const rem = cap - totalBookedOnTrack;
+                maxAllowedItemsInThisOrder = curOrderTrackTotal + Math.max(0, rem);
+              }
+            }
+          }
+
+          editCartMap = {};
+          preservedWeightItems = [];
+          (currentOrder.items || []).forEach((i) => {
+            const prodDef = productsData[i.id];
+            if (i.isWeightBased || (prodDef && prodDef.isWeightBased) || Number(i.price) === 0) {
+              preservedWeightItems.push(i);
+            } else {
+              editCartMap[i.id] = { name: i.name, quantity: Number(i.quantity) || 0, price: Number(i.price) || 0 };
+            }
+          });
+
+          const sortedIds = Object.keys(productsData)
+            .filter((pId) => productsData[pId] && !productsData[pId].isHidden && !productsData[pId].isWeightBased)
+            .sort((a, b) => {
+              const ma = U.getProductCategoryAndRank(a, productsData[a]);
+              const mb = U.getProductCategoryAndRank(b, productsData[b]);
+              const ga = ma.group === 'quail' ? 0 : 100;
+              const gb = mb.group === 'quail' ? 0 : 100;
+              return (ga + ma.rank) - (gb + mb.rank);
+            });
+
+          itemsDiv.innerHTML = sortedIds.map((pId) => {
+            const p = productsData[pId];
+            const curQty = editCartMap[pId] ? editCartMap[pId].quantity : 0;
+            const price = Number(pricesData[pId] !== undefined ? pricesData[pId] : p.basePrice) || 0;
+            const safePid = escAttr(pId);
+            const safeName = escAttr(p.name);
+            return `
+            <div class="bg-white border border-slate-200 p-2.5 rounded-2xl shadow-sm flex flex-col justify-between text-center">
+              <div class="mb-2">
+                <span class="text-xs font-black text-brand-navy block mb-1">${esc(p.name)}</span>
+                <span class="text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">${price} ج.م</span>
+              </div>
+              <div class="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-xl p-1 mt-auto">
+                <button type="button" onclick="changeEditItemQty('${safePid}', '${safeName}', ${price}, -1)" class="w-7 h-7 bg-white text-rose-500 rounded-lg font-black shadow-sm flex items-center justify-center"><i class="fa-solid fa-minus text-[10px]"></i></button>
+                <span id="edit-qty-${esc(pId)}" class="text-sm font-black text-brand-navy w-7 text-center">${curQty}</span>
+                <button type="button" onclick="changeEditItemQty('${safePid}', '${safeName}', ${price}, 1)" class="w-7 h-7 bg-brand-navy text-white rounded-lg font-black shadow-sm flex items-center justify-center"><i class="fa-solid fa-plus text-[10px]"></i></button>
+              </div>
+            </div>`;
+          }).join('') || '<p class="text-xs text-center text-slate-400 col-span-2">لا توجد أصناف متاحة للتعديل.</p>';
+
+          updateLiveEditTotal();
+        } catch (e) {
+          itemsDiv.innerHTML = '<p class="text-xs text-center text-red-500 col-span-2">حدث خطأ أثناء تحميل الأصناف.</p>';
+        }
+      }
+
+      window.changeEditItemQty = function (pId, name, price, delta) {
+        if (delta > 0 && currentOrder.batchId && getProductTrackType(pId) === editBatchTrackType) {
+          let totalOnTrack = 0;
+          Object.keys(editCartMap).forEach((k) => {
+            if (getProductTrackType(k) === editBatchTrackType) {
+              totalOnTrack += Number(editCartMap[k].quantity) || 0;
+            }
+          });
+          if ((totalOnTrack + delta) > maxAllowedItemsInThisOrder) {
+            openTrackDialog('عفواً، وصلت للحد الأقصى المتاح في هذه الدفعة حالياً.', { title: 'حد الكمية المتاح' });
+            return;
+          }
+        }
+        if (!editCartMap[pId]) editCartMap[pId] = { name, quantity: 0, price };
+        editCartMap[pId].quantity += delta;
+        const el = document.getElementById(`edit-qty-${pId}`);
+        if (editCartMap[pId].quantity <= 0) {
+          delete editCartMap[pId];
+          if (el) el.textContent = '0';
+        } else {
+          if (el) el.textContent = String(editCartMap[pId].quantity);
+        }
+        updateLiveEditTotal();
+      };
+
+      function updateLiveEditTotal() {
+        let itemsTotal = 0;
+        Object.values(editCartMap).forEach((i) => { itemsTotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0)); });
+        preservedWeightItems.forEach((i) => { itemsTotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0)); });
+        const deliveryFee = Number(currentOrder.deliveryFee) || 0;
+        const discount = Number(currentOrder.discount) || 0;
+        const finalTotal = Math.max(0, itemsTotal + deliveryFee - discount);
+        const el = document.getElementById('live-edit-total');
+        if (el) el.textContent = `${finalTotal} ج.م`;
+      }
+
+      window.submitDirectOrderEdit = async function () {
+        const updatedItems = [...preservedWeightItems];
+        let newSubtotal = 0;
+        const summaryParts = [];
+
+        preservedWeightItems.forEach((i) => {
+          newSubtotal += Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
+          summaryParts.push(`${i.quantity}x ${i.name}`);
+        });
+
+        Object.keys(editCartMap).forEach((pId) => {
+          const it = editCartMap[pId];
+          if (it.quantity > 0) {
+            updatedItems.push({ id: pId, name: it.name, quantity: it.quantity, price: it.price });
+            newSubtotal += Math.round(it.quantity * it.price);
+            summaryParts.push(`${it.quantity}x ${it.name}`);
+          }
+        });
+
+        if (updatedItems.length === 0) {
+          return openTrackDialog('لا يمكن حفظ طلب فارغ! اختر صنفاً واحداً على الأقل.', { title: 'تنبيه' });
+        }
+
+        const btn = document.getElementById('btn-confirm-direct-edit');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تحديث الطلب...';
+        btn.disabled = true;
+
+        try {
+          const deliveryFee = Number(currentOrder.deliveryFee) || 0;
+          const currentDiscount = Number(currentOrder.discount) || 0;
+          const newTotal = Math.max(0, newSubtotal + deliveryFee - currentDiscount);
+
+          const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const oldNote = currentOrder.adminNote || '';
+          const noteLine = `[${dateStr}] 🚨 تعديل العميل من التتبع: (${summaryParts.join(' ، ')}) — الإجمالي: ${newTotal} ج`;
+          const finalNotes = oldNote ? `${oldNote}\n---\n${noteLine}` : noteLine;
+
+          const stockDeltas = {};
+          const bookedDeltas = {};
+          (currentOrder.items || []).forEach((i) => {
+            if (!i.isWeightBased && Number(i.price) > 0 && i.id) {
+              stockDeltas[i.id] = (stockDeltas[i.id] || 0) + Number(i.quantity);
+              if (currentOrder.batchId && getProductTrackType(i.id) === editBatchTrackType) {
+                bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) - Number(i.quantity);
+              }
+            }
+          });
+          updatedItems.forEach((i) => {
+            if (!i.isWeightBased && Number(i.price) > 0 && i.id) {
+              stockDeltas[i.id] = (stockDeltas[i.id] || 0) - Number(i.quantity);
+              if (currentOrder.batchId && getProductTrackType(i.id) === editBatchTrackType) {
+                bookedDeltas[i.id] = (bookedDeltas[i.id] || 0) + Number(i.quantity);
+              }
+            }
+          });
+
+          const atomicBatch = db.batch();
+          atomicBatch.update(db.collection('orders').doc(currentOrder.id), {
+            items: updatedItems,
+            subtotal: newSubtotal,
+            total: newTotal,
+            discount: currentDiscount,
+            adminNote: finalNotes
+          });
+
+          const finalStockUpdates = {};
+          Object.keys(stockDeltas).forEach((id) => {
+            if (stockDeltas[id] !== 0) finalStockUpdates[id] = firebase.firestore.FieldValue.increment(stockDeltas[id]);
+          });
+          if (Object.keys(finalStockUpdates).length > 0) {
+            atomicBatch.set(db.collection('inventory').doc('stock'), finalStockUpdates, { merge: true });
+          }
+
+          if (currentOrder.batchId) {
+            const finalBookedUpdates = {};
+            Object.keys(bookedDeltas).forEach((id) => {
+              if (bookedDeltas[id] !== 0) finalBookedUpdates[id] = firebase.firestore.FieldValue.increment(bookedDeltas[id]);
+            });
+            if (Object.keys(finalBookedUpdates).length > 0) {
+              atomicBatch.set(db.collection('inventory').doc('batches'), {
+                [currentOrder.batchId]: { booked: finalBookedUpdates }
+              }, { merge: true });
+            }
+          }
+
+          const priceDiff = newTotal - (Number(currentOrder.total) || 0);
+          if (priceDiff !== 0) {
+            atomicBatch.set(db.collection('inventory').doc('stats'), {
+              sales: firebase.firestore.FieldValue.increment(priceDiff)
+            }, { merge: true });
+            const custDocKey = matchedCustomerDocId || U.normalizePhone(currentOrder.customerPhone);
+            if (custDocKey) {
+              atomicBatch.set(db.collection('customers').doc(custDocKey), {
+                totalSpent: firebase.firestore.FieldValue.increment(priceDiff)
+              }, { merge: true });
+            }
+          }
+
+          await atomicBatch.commit();
+          document.getElementById('visual-edit-container')?.classList.add('hidden');
+          showTrackToast('تم تحديث أصناف وفاتورة طلبك بنجاح! 🎉');
+        } catch (e) {
+          console.error('Order Edit Error:', e);
+          await openTrackDialog('تعذر تحديث الطلب حالياً، برجاء المحاولة لاحقاً.', { title: 'تنبيه' });
+        } finally {
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+        }
+      };
+
+      // =================================================================
+      // تفعيل محفظة النقاط الذكي (خوارزمية المقايضة 0%–7% + مزامنة الإحصائيات)
+      // =================================================================
+      window.applyWalletToCurrentOrder = async function () {
+        if (!currentOrder || currentOrder.status !== 'new') {
+          return openTrackDialog('لا يمكن تفعيل رصيد النقاط إلا والطلب في حالة (جديد).', { title: 'تنبيه' });
+        }
+
+        const btn = document.getElementById('btn-quick-apply-wallet');
+        const origHtml = btn.innerHTML;
+        const walletCash = Number(window.currentWalletDiscount) || 0;
+        const ptsUsed = Number(window.currentWalletPoints) || 0;
+        const custDocKey = matchedCustomerDocId || U.normalizePhone(currentOrder.customerPhone);
+
+        if (walletCash <= 0 || ptsUsed <= 0 || !custDocKey) {
+          return openTrackDialog('رصيد المحفظة غير كافٍ حالياً.', { title: 'تنبيه' });
+        }
+
+        const productsPool = getLiveBarterProducts();
+        const minOfferPrice = walletCash / 0.98;
+        const maxOfferPrice = walletCash / 0.93;
+        let bestCombo = null;
+        let bestComboPrice = Infinity;
+
+        function findBestMix(idx, combo, sum) {
+          if (sum >= minOfferPrice && sum <= maxOfferPrice) {
+            if (sum < bestComboPrice) {
+              bestComboPrice = sum;
+              bestCombo = [...combo];
+            }
+          }
+          if (sum > maxOfferPrice || idx >= productsPool.length) return;
+          for (let qty = 0; qty <= 6; qty++) {
+            const add = qty * productsPool[idx].price;
+            if (sum + add > maxOfferPrice) break;
+            const next = qty > 0 ? [...combo, { ...productsPool[idx], qty }] : combo;
+            findBestMix(idx + 1, next, sum + add);
+          }
+        }
+        findBestMix(0, [], 0);
+
+        const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        const oldNotes = currentOrder.adminNote || '';
+
+        if (bestCombo && bestCombo.length > 0) {
+          const comboText = bestCombo.map((item) => `${item.qty} ${item.name}`).join(' + ');
+          const acceptOffer = await openTrackDialog(
+            `🎁 عرض حصري لك!\n\nبدلاً من خصم ${walletCash} ج.م من فاتورتك، يمكنك استبدال رصيدك بـ:\n( ${comboText} )\nبقيمة إجمالية ${bestComboPrice} ج.م مجاناً!\n\nهل تفضل استلام العرض المجاني أم تطبيق الخصم المالي؟`,
+            { title: 'عرض هدية النقاط 🎁', isConfirm: true, confirmText: 'استلام العرض المجاني 🎁', cancelText: 'تطبيق الخصم المالي' }
+          );
+
+          if (acceptOffer) {
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إضافة الهدية...';
+            btn.disabled = true;
+            try {
+              const updatedItems = [...(currentOrder.items || [])];
+              const giftSummary = [];
+              bestCombo.forEach((item) => {
+                updatedItems.push({
+                  id: item.id,
+                  name: `${item.name} (هدية النقاط 🎁)`,
+                  price: 0,
+                  quantity: item.qty
+                });
+                giftSummary.push(`${item.qty}x ${item.name}`);
+              });
+
+              const noteLine = `[${dateStr}] 🎁 العميل استبدل (${ptsUsed} نقطة) بهدية: (${giftSummary.join(' + ')}).`;
+              const finalNotes = oldNotes ? `${oldNotes}\n---\n${noteLine}` : noteLine;
+
+              const wb = db.batch();
+              wb.update(db.collection('orders').doc(currentOrder.id), {
+                items: updatedItems,
+                adminNote: finalNotes
+              });
+              wb.set(db.collection('customers').doc(custDocKey), {
+                walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
+              }, { merge: true });
+              await wb.commit();
+
+              window.currentWalletDiscount = 0;
+              window.currentWalletPoints = 0;
+              if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+              await openTrackDialog(`🎉 مبروك! تم إضافة (${comboText}) لطلبك مجاناً.`, { title: 'تمت إضافة الهدية' });
+              return;
+            } catch (e) {
+              console.error(e);
+              await openTrackDialog('حدث خطأ أثناء إضافة الهدية، حاول مرة أخرى.', { title: 'تنبيه' });
+              return;
+            } finally {
+              btn.innerHTML = origHtml;
+              btn.disabled = false;
+            }
+          }
+        }
+
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تطبيق الخصم...';
+        btn.disabled = true;
+        try {
+          const currentTotal = Number(currentOrder.total) || 0;
+          const currentDiscount = Number(currentOrder.discount) || 0;
+          const appliedCash = Math.min(walletCash, currentTotal);
+          const newDiscount = currentDiscount + appliedCash;
+          const newTotal = Math.max(0, currentTotal - appliedCash);
+
+          const noteLine = `[${dateStr}] 🎁 العميل فعّل خصم المحفظة المالي (${appliedCash} ج.م) بـ ${ptsUsed} نقطة.`;
+          const finalNotes = oldNotes ? `${oldNotes}\n---\n${noteLine}` : noteLine;
+
+          const wb = db.batch();
+          wb.update(db.collection('orders').doc(currentOrder.id), {
+            total: newTotal,
+            discount: newDiscount,
+            adminNote: finalNotes
+          });
+          wb.set(db.collection('customers').doc(custDocKey), {
+            walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed),
+            totalSpent: firebase.firestore.FieldValue.increment(-appliedCash)
+          }, { merge: true });
+          if (appliedCash > 0) {
+            wb.set(db.collection('inventory').doc('stats'), {
+              sales: firebase.firestore.FieldValue.increment(-appliedCash)
+            }, { merge: true });
+          }
+          await wb.commit();
+
+          window.currentWalletDiscount = 0;
+          window.currentWalletPoints = 0;
+          if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
+          await openTrackDialog(`تم تفعيل خصم ${appliedCash} ج.م وتحديث فاتورتك بنجاح! 🎉`, { title: 'تم تطبيق الخصم' });
+        } catch (e) {
+          console.error(e);
+          await openTrackDialog('حدث خطأ أثناء تفعيل الخصم، حاول مرة أخرى.', { title: 'تنبيه' });
+        } finally {
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+        }
+      };
+
+      function updateProgressTarget(walletCash) {
+        const container = document.getElementById('progress-bar-container');
+        if (!container) return;
+        const sorted = getLiveBarterProducts().sort((a, b) => a.price - b.price);
+        const target = sorted.find((p) => p.price > walletCash);
+
+        if (target) {
+          const rem = Math.max(0, target.price - walletCash);
+          const pct = Math.min(100, Math.floor((walletCash / target.price) * 100));
+          container.innerHTML = `
+            <div class="pt-2.5 border-t border-white/15 space-y-1.5">
+              <p class="text-[11px] font-bold text-emerald-100 flex justify-between">
+                <span>الهدية القادمة: <strong class="text-amber-300">${esc(target.name)}</strong></span>
+                <span class="text-amber-300 font-black">${pct}%</span>
+              </p>
+              <div class="w-full bg-white/15 rounded-full h-2 overflow-hidden flex justify-end" dir="ltr">
+                <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-2 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
+              </div>
+              <p class="text-[10px] text-emerald-200/90 text-center font-bold">
+                فاضلك <strong class="text-amber-300">${rem} ج.م</strong> وتستلم (${esc(target.name)}) مجاناً! 🚀
+              </p>
+            </div>`;
+        } else {
+          container.innerHTML = `
+            <div class="pt-2.5 border-t border-white/15 text-center bg-white/10 rounded-2xl p-2.5 border border-amber-400/30">
+              <p class="text-xs font-black text-amber-300"><i class="fa-solid fa-crown ml-1"></i> رصيدك جاهز لهدايا الـ VIP!</p>
+              <p class="text-[10px] text-emerald-100 font-bold mt-0.5">اضغط «تفعيل رصيد النقاط» لاختيار هديتك أو الخصم المالي</p>
+            </div>`;
+        }
+        container.classList.remove('hidden');
+      }
+
+      // =================================================================
+      // التايم لاين والمندوب وصندوق الدفعة وتأكيد الاستلام
+      // =================================================================
+      function getHonestDriverETA(order) {
+        const z = String(order?.zone || '');
+        let min = 30, max = 60, areaText = 'خلال 30 إلى 60 دقيقة تقريباً';
+        if (z.includes('ههيا')) { min = 15; max = 35; areaText = 'خلال 15 إلى 35 دقيقة داخل ههيا'; }
+        else if (z.includes('مهدية') || z.includes('عدوة')) { min = 20; max = 45; areaText = 'خلال 20 إلى 45 دقيقة تقريباً'; }
+        else if (z.includes('أبو كبير') || z.includes('ابو كبير') || z.includes('إبراهيمية') || z.includes('ابراهيمية')) { min = 30; max = 60; areaText = 'خلال 30 إلى 60 دقيقة تقريباً'; }
+        else if (z.includes('زقازيق')) { min = 35; max = 75; areaText = 'خلال 35 إلى 75 دقيقة تقريباً'; }
+
+        const dispMs = order?.dispatchedAt
+          ? (typeof order.dispatchedAt.toMillis === 'function' ? order.dispatchedAt.toMillis() : Number(order.dispatchedAt))
+          : 0;
+        if (dispMs && !isNaN(dispMs) && (Date.now() - dispMs) < 6 * 3600000) {
+          const fmt = (dt) => {
+            let h = dt.getHours();
+            const m = String(dt.getMinutes()).padStart(2, '0');
+            const ap = h >= 12 ? 'م' : 'ص';
+            h = h % 12 || 12;
+            return `${h}:${m} ${ap}`;
+          };
+          return `بين ${fmt(new Date(dispMs + min * 60000))} و ${fmt(new Date(dispMs + max * 60000))}`;
+        }
+        return `${areaText} — سيتصل بك المندوب قبل الوصول`;
+      }
+
+      function resetFeedbackUI() {
+        selectedStars = 0;
+        selectedReviewTags = new Set();
+        const starsEls = document.getElementById('stars-container')?.children;
+        if (starsEls) {
+          for (let i = 0; i < starsEls.length; i++) {
+            starsEls[i].classList.remove('active', 'text-amber-500');
+            starsEls[i].classList.add('text-slate-300');
+          }
+        }
+        document.querySelectorAll('#review-quick-tags .review-tag-btn').forEach((btn) => {
+          btn.classList.remove('selected');
+        });
+        const ta = document.getElementById('complaint-text');
+        if (ta) ta.value = '';
+        const submitBtn = document.getElementById('btn-submit-rating');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane text-amber-400"></i> إرسال التقييم';
+        }
+        document.getElementById('complaint-box')?.classList.add('hidden');
+        document.getElementById('feedback-thanks')?.classList.add('hidden');
+      }
+
+      function updateTimeline() {
+        const s = currentOrder.status;
+        let title = '';
+        let sub = '';
+        let pWidth = '0%';
+        let activeSteps = 1;
+
+        document.getElementById('alert-banner')?.classList.add('hidden');
+        document.getElementById('driver-info')?.classList.add('hidden');
+        document.getElementById('feedback-section')?.classList.add('hidden');
+        document.getElementById('tracking-card')?.classList.remove('hidden');
+
+        if (s === 'new') {
+          const orderMs = (currentOrder.createdAt && typeof currentOrder.createdAt.toMillis === 'function')
+            ? currentOrder.createdAt.toMillis() : Date.now();
+          const secs = (Date.now() - orderMs) / 1000;
+          if (secs >= 45) {
+            title = 'تم تسجيل حجزك بنجاح ✅';
+            sub = 'طلبك محفوظ باسمك وهنتواصل معاك قبل الذبح والتوصيل';
+          } else {
+            title = 'استلمنا طلبك وجاري المراجعة...';
+            sub = 'تقدر تعدل أصنافك أو تفعّل نقاطك في أي وقت قبل التجهيز';
+            setTimeout(() => {
+              const el = document.getElementById('res-status-title');
+              if (el && currentOrder && currentOrder.status === 'new') {
+                el.textContent = 'تم تسجيل حجزك بنجاح ✅';
+              }
+            }, Math.max(1000, (45 - secs) * 1000));
+          }
+          pWidth = '12%';
+          activeSteps = 1;
+        } else if (s === 'deferred') {
+          title = 'الطلب مؤجل لموعد محدد 📅';
+          sub = 'طلبك محفوظ لدينا بأولوية كاملة';
+          document.getElementById('tracking-card')?.classList.add('hidden');
+          const schedNote = currentOrder.deferredDisplayStr
+            ? `تمت جدولة طلبك ليوم (${currentOrder.deferredDisplayStr}). يمكنك التواصل معنا في أي وقت لتأكيد أو تعديل الموعد.`
+            : 'تم تأجيل تجهيز الطلب بناءً على رغبة حضرتك؛ برجاء مراسلتنا لتأكيد موعد الاستلام المناسب.';
+          showStatusAlertBanner('تم تأجيل الطلب', schedNote, 'bg-orange-50', 'border-orange-200', 'text-orange-800', 'fa-solid fa-calendar-days', `مرحباً، أستفسر عن موعد طلبي المؤجل باسم (${currentOrder.customerName || ''}).`);
+        } else if (s === 'no_answer') {
+          title = 'تعذر التواصل هاتفياً 📵';
+          sub = 'تواصل معنا لإعادة إرسال المندوب';
+          document.getElementById('tracking-card')?.classList.add('hidden');
+          showStatusAlertBanner('تعذر الوصول لحضرتك', 'حاولنا التواصل لتسليم الطلب ولم يتم الرد؛ طلبك محفوظ لدينا، برجاء مراسلتنا لإعادة التنسيق.', 'bg-rose-50', 'border-rose-200', 'text-rose-700', 'fa-solid fa-phone-slash', `مرحباً، بخصوص طلبي باسم (${currentOrder.customerName || ''}) الذي تعذر التواصل فيه.`);
+        } else if (s === 'processing' || s === 'dispatched') {
+          if (s === 'dispatched' || currentOrder.driverName) {
+            title = 'طلبك في الطريق إليك الآن 🛵';
+            sub = 'المندوب في طريقه إليك — حضّر تليفونك';
+            pWidth = '68%';
+            activeSteps = 3;
+            document.getElementById('driver-info')?.classList.remove('hidden');
+
+            const rawDrvName = String(currentOrder.driverName || 'مندوب سمان ههيا');
+            const directPhone = U.normalizePhone(currentOrder.driverPhone || '');
+            const fallbackPhone = rawDrvName.replace(/[^\d+]/g, '');
+            const drvPhone = directPhone.length >= 10 ? directPhone : (fallbackPhone.length >= 10 ? fallbackPhone : '');
+            const cleanName = rawDrvName.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').trim() || 'مندوب سمان ههيا';
+
+            document.getElementById('driver-name').textContent = cleanName;
+            const callBtn = document.getElementById('driver-call-btn');
+            if (callBtn) {
+              if (drvPhone) {
+                callBtn.href = `tel:${drvPhone}`;
+                callBtn.classList.remove('hidden');
+              } else {
+                callBtn.classList.add('hidden');
+              }
+            }
+            document.getElementById('driver-eta').textContent = getHonestDriverETA(currentOrder);
+            const rcBtn = document.getElementById('btn-confirm-receipt');
+            if (rcBtn) {
+              rcBtn.disabled = false;
+              rcBtn.innerHTML = '<i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح';
+            }
+          } else {
+            title = 'جاري تجهيز طلبك طازج 🔥';
+            sub = 'يُذبح ويُنظف ويُغلف طازج باسمك الآن';
+            pWidth = '38%';
+            activeSteps = 2;
+          }
+        } else if (s === 'completed') {
+          title = 'تم تسليم الطلب بنجاح 🎉';
+          sub = 'بالهناء والشفاء — تشرّفنا بخدمتك!';
+          pWidth = '100%';
+          activeSteps = 4;
+          document.getElementById('feedback-section')?.classList.remove('hidden');
+
+          resetFeedbackUI();
+          const existingRating = Number(currentOrder.rating) || 0;
+          if (existingRating > 0) {
+            const starsEls = document.getElementById('stars-container')?.children;
+            if (starsEls) {
+              for (let i = 0; i < 5; i++) {
+                if (i < existingRating) {
+                  starsEls[4 - i].classList.add('active', 'text-amber-500');
+                  starsEls[4 - i].classList.remove('text-slate-300');
+                }
+              }
+            }
+            document.getElementById('feedback-thanks')?.classList.remove('hidden');
+            const savedSum = document.getElementById('feedback-saved-summary');
+            if (savedSum) {
+              const tagsStr = Array.isArray(currentOrder.reviewTags) && currentOrder.reviewTags.length > 0
+                ? currentOrder.reviewTags.join(' • ')
+                : '';
+              savedSum.textContent = `تقييمك المسجل: ${existingRating}/5 نجوم${tagsStr ? ' — ' + tagsStr : ''}`;
+            }
+          }
+        }
+
+        document.getElementById('res-status-title').textContent = title;
+        const subEl = document.getElementById('res-status-sub');
+        if (subEl) subEl.textContent = sub;
+
+        setTimeout(() => {
+          const line = document.getElementById('progress-line');
+          if (line) line.style.width = pWidth;
+          for (let i = 1; i <= 4; i++) {
+            const icon = document.getElementById(`step-${i}-icon`);
+            if (!icon) continue;
+            if (i < activeSteps || (i === activeSteps && s === 'completed')) {
+              icon.className = 'w-9 h-9 rounded-full shadow-sm flex items-center justify-center text-xs bg-brand-navy text-amber-300 transition-all duration-500 border-2 border-white';
+            } else if (i === activeSteps) {
+              icon.className = 'w-9 h-9 rounded-full shadow-md flex items-center justify-center text-xs bg-amber-400 text-[#0b261c] transition-all duration-500 border-2 border-white step-dot-pulse';
+            } else {
+              icon.className = 'w-9 h-9 rounded-full shadow-sm flex items-center justify-center text-xs bg-slate-100 text-slate-400 transition-all duration-500 border-2 border-slate-200';
+            }
+          }
+        }, 80);
+
+        updateBatchTrackingBox();
+      }
+
+      async function updateBatchTrackingBox() {
+        const batchBox = document.getElementById('batch-info-box');
+        if (!batchBox) return;
+        if (!currentOrder.batchId || currentOrder.status === 'completed') {
+          batchBox.classList.add('hidden');
+          return;
+        }
+        try {
+          const doc = await getDocServerFirst(db.collection('inventory').doc('batches'));
+          if (!doc || !doc.exists || !doc.data()[currentOrder.batchId]) {
+            batchBox.classList.add('hidden');
+            return;
+          }
+          const b = doc.data()[currentOrder.batchId];
+          const win = resolveBatchWindow(b);
+          batchBox.classList.remove('hidden');
+          document.getElementById('batch-display-name').textContent = b.name || currentOrder.batchName || '';
+
+          const datesBox = document.getElementById('box-delivery-dates');
+          const leftBox = document.getElementById('box-delivery-left');
+          if (win.startDate) {
+            datesBox.classList.remove('hidden');
+            leftBox.classList.remove('hidden');
+            document.getElementById('batch-date-range').textContent = win.phrase;
+
+            const todayMid = new Date();
+            todayMid.setHours(0, 0, 0, 0);
+            const startMid = new Date(win.startDate.getFullYear(), win.startDate.getMonth(), win.startDate.getDate());
+            const endMid = win.endDate
+              ? new Date(win.endDate.getFullYear(), win.endDate.getMonth(), win.endDate.getDate())
+              : startMid;
+            const diffDays = Math.round((startMid.getTime() - todayMid.getTime()) / 86400000);
+            const leftEl = document.getElementById('batch-days-left');
+            const txtEl = document.getElementById('batch-days-text');
+
+            if (diffDays > 1) {
+              leftEl.textContent = diffDays === 2 ? 'بعد يومين' : `خلال ${diffDays} ${diffDays <= 10 ? 'أيام' : 'يوماً'}`;
+              leftEl.className = 'block text-xs sm:text-sm font-black text-brand-navy';
+              txtEl.textContent = 'المتبقي تقريباً';
+            } else if (diffDays === 1) {
+              leftEl.textContent = 'غداً بإذن الله ✨';
+              leftEl.className = 'block text-xs sm:text-sm font-black text-emerald-700';
+              txtEl.textContent = 'قربنا جداً';
+            } else if (todayMid.getTime() <= endMid.getTime()) {
+              leftEl.textContent = 'فترة التسليم الآن 🛵';
+              leftEl.className = 'block text-xs sm:text-sm font-black text-emerald-600 animate-pulse';
+              txtEl.textContent = 'جاري التجهيز والتوصيل';
+            } else {
+              leftEl.textContent = 'قريباً جداً';
+              leftEl.className = 'block text-xs sm:text-sm font-black text-amber-700';
+              txtEl.textContent = 'انتظر تواصلنا';
+            }
+          } else {
+            datesBox.classList.add('hidden');
+            leftBox.classList.add('hidden');
+          }
+
+          const growthWrap = document.getElementById('batch-growth-bar-wrap');
+          const growthFill = document.getElementById('batch-growth-fill');
+          const growthLabel = document.getElementById('batch-growth-label');
+          const stagePill = document.getElementById('batch-stage-pill');
+
+          const nowMs = Date.now();
+          const isFutureDelivery = Boolean(win.startDate && win.startDate.getTime() > nowMs + 86400000);
+          const trackType = getBatchTrackType(b);
+          let autoMsg = 'طلبك محجوز ضمن هذه الدفعة وسيتم تجهيزه طازج يوم التسليم.';
+
+          if (trackType === 'quail' && b.hatchDate) {
+            const age = Math.max(0, Math.floor((nowMs - Number(b.hatchDate)) / 86400000));
+            const pct = Math.min(100, Math.max(10, Math.round((age / win.maxAge) * 100)));
+            if (growthWrap && growthFill && growthLabel) {
+              growthWrap.classList.remove('hidden');
+              growthFill.style.width = `${pct}%`;
+              growthLabel.textContent = `عمر القطيع: ${age} يوم`;
+            }
+
+            if (b.slaughteredAt && !b.isOpen && !isFutureDelivery) {
+              autoMsg = '🛵 تم الذبح الطازج وجاري التوزيع مع المناديب الآن!';
+              if (stagePill) {
+                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200 shrink-0';
+                stagePill.textContent = '🛵 جاري التوزيع';
+                stagePill.classList.remove('hidden');
+              }
+            } else if (age >= win.minAge) {
+              autoMsg = `🔪 الدفعة الآن في فترة الجاهزية والذبح الطازج الآمنة (${win.minAge}–${win.maxAge} يوم).`;
+              if (stagePill) {
+                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-emerald-50 text-emerald-800 border-emerald-200 shrink-0';
+                stagePill.textContent = '🔪 فترة الذبح الآمنة';
+                stagePill.classList.remove('hidden');
+              }
+            } else if (win.minAge - age <= 5) {
+              autoMsg = '⏳ الدفعة بتكمل أوزانها النهائية حالياً وقربت تجهز للتسليم!';
+              if (stagePill) {
+                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-amber-50 text-amber-800 border-amber-200 shrink-0';
+                stagePill.textContent = '⏳ قربت تجهز';
+                stagePill.classList.remove('hidden');
+              }
+            } else if (age <= 15) {
+              autoMsg = '🐣 السمان حالياً في مرحلة التحضين والرعاية الأولية لنقدم لك أفضل جودة.';
+              if (stagePill) {
+                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-sky-50 text-sky-700 border-sky-200 shrink-0';
+                stagePill.textContent = '🐣 مرحلة التحضين';
+                stagePill.classList.remove('hidden');
+              }
+            } else {
+              autoMsg = `📈 السمان في مرحلة التسمين وبناء اللحم (الذبح الآمن ${win.minAge}–${win.maxAge} يوم).`;
+              if (stagePill) {
+                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-purple-50 text-purple-700 border-purple-200 shrink-0';
+                stagePill.textContent = '📈 مرحلة التسمين';
+                stagePill.classList.remove('hidden');
+              }
+            }
+          } else {
+            growthWrap?.classList.add('hidden');
+            stagePill?.classList.add('hidden');
+          }
+
+          const msgBox = document.getElementById('batch-msg-container');
+          const msgText = document.getElementById('batch-customer-msg');
+          if (msgBox && msgText) {
+            msgText.innerHTML = (b.urgentNote ? `<strong class="text-amber-800 bg-amber-50 border border-amber-200 px-2 py-1 rounded-lg block mb-1.5">📌 تنبيه هام: ${esc(b.urgentNote)}</strong>` : '') + esc(autoMsg);
+            msgBox.classList.remove('hidden');
+          }
+        } catch (e) {
+          batchBox.classList.add('hidden');
+        }
+      }
+
+      function showStatusAlertBanner(title, desc, bgCls, borderCls, titleCls, iconCls, waPrefill) {
+        const banner = document.getElementById('alert-banner');
+        if (!banner) return;
+        banner.className = `rounded-3xl p-4 animate-slide shadow-sm border ${bgCls} ${borderCls}`;
+        document.getElementById('alert-icon').className = `w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 bg-white shadow-sm ${titleCls}`;
+        document.getElementById('alert-icon').innerHTML = `<i class="${iconCls}"></i>`;
+        document.getElementById('alert-title').className = `font-black text-sm sm:text-base mb-1 ${titleCls}`;
+        document.getElementById('alert-title').textContent = title;
+        document.getElementById('alert-desc').textContent = desc;
+        const waBtn = document.getElementById('btn-alert-wa');
+        if (waBtn) {
+          waBtn.href = `https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(waPrefill || 'مرحباً، أستفسر عن طلبي في سمان ههيا.')}`;
+        }
+      }
+
+      window.confirmReceipt = async function () {
+        const ok = await openTrackDialog('هل تم استلام الطلب بالكامل من المندوب؟', {
+          title: 'تأكيد استلام الطلب',
+          isConfirm: true,
+          confirmText: 'نعم، تم الاستلام ✅',
+          cancelText: 'تراجع'
+        });
+        if (!ok) return;
+
+        const btn = document.getElementById('btn-confirm-receipt');
+        const origHtml = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التأكيد...';
+        btn.disabled = true;
+
+        try {
+          const now = new Date();
+          const dateStr = now.toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const oldNote = currentOrder.adminNote || '';
+          const newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
+          const finalAdminNote = oldNote ? `${oldNote}\n---\n${newNote}` : newNote;
+
+          await db.collection('orders').doc(currentOrder.id).update({
+            status: 'completed',
+            completedAtStr: now.toLocaleDateString('en-US'),
+            completedTimeDisplay: dateStr,
+            adminNote: finalAdminNote
+          });
+          if (typeof confetti === 'function') confetti({ particleCount: 90, spread: 70, origin: { y: 0.65 } });
+          showTrackToast('تم تأكيد الاستلام! بالهناء والشفاء 🌿');
+        } catch (e) {
+          console.error(e);
+          await openTrackDialog('تعذر تأكيد الاستلام حالياً، يرجى التحقق من الاتصال.', { title: 'تنبيه' });
+          btn.innerHTML = origHtml;
+          btn.disabled = false;
+        }
+      };
+
+      // =================================================================
+      // التقييم الغني (نجوم + وسوم سريعة + نص منظم بدون تدمير DOM)
+      // =================================================================
+      window.toggleReviewQuickTag = function (btnEl) {
+        if (!btnEl) return;
+        const tag = btnEl.getAttribute('data-tag') || '';
+        if (!tag) return;
+        if (selectedReviewTags.has(tag)) {
+          selectedReviewTags.delete(tag);
+          btnEl.classList.remove('selected');
+        } else {
+          selectedReviewTags.add(tag);
+          btnEl.classList.add('selected');
+        }
+        if (navigator.vibrate) navigator.vibrate(15);
+      };
+
+      window.rateOrder = function (stars) {
+        if (Number(currentOrder?.rating) > 0) return;
+        selectedStars = stars;
+        const starsEls = document.getElementById('stars-container').children;
+        for (let i = 0; i < 5; i++) {
+          if (i < stars) {
+            starsEls[4 - i].classList.add('active', 'text-amber-500');
+            starsEls[4 - i].classList.remove('text-slate-300');
+          } else {
+            starsEls[4 - i].classList.remove('active', 'text-amber-500');
+            starsEls[4 - i].classList.add('text-slate-300');
+          }
+        }
+        document.getElementById('complaint-box')?.classList.remove('hidden');
+      };
+
+      window.submitComplaint = async function () {
+        if (selectedStars === 0) {
+          return openTrackDialog('برجاء اختيار عدد النجوم أولاً.', { title: 'تقييم الخدمة' });
+        }
+        const text = (document.getElementById('complaint-text')?.value || '').trim();
+        const tagsArr = Array.from(selectedReviewTags);
+        const btn = document.getElementById('btn-submit-rating');
+        const origHtml = btn ? btn.innerHTML : '';
+
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري حفظ التقييم...';
+        }
+
+        try {
+          const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const oldNote = currentOrder.adminNote || '';
+          const combinedComment = [tagsArr.join(' • '), text].filter(Boolean).join(' — ');
+          const newNote = `[${dateStr}] ⭐️ تقييم الخدمة (${selectedStars}/5): ${combinedComment || 'تقييم بالنجوم بدون تعليق'}`;
+
+          await db.collection('orders').doc(currentOrder.id).update({
+            rating: Number(selectedStars),
+            reviewText: text,
+            reviewTags: tagsArr,
+            ratedAt: Date.now(),
+            adminNote: oldNote ? `${oldNote}\n---\n${newNote}` : newNote
+          });
+
+          document.getElementById('complaint-box')?.classList.add('hidden');
+          document.getElementById('feedback-thanks')?.classList.remove('hidden');
+          if (selectedStars >= 4 && typeof confetti === 'function') {
+            confetti({ particleCount: 100, spread: 70, origin: { y: 0.7 } });
+          }
+          showTrackToast('شكراً لتقييمك! وصل رأيك للإدارة بنجاح 🤍');
+        } catch (e) {
+          console.error(e);
+          await openTrackDialog('حدث خطأ أثناء حفظ التقييم، حاول مرة أخرى.', { title: 'تنبيه' });
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = origHtml;
+          }
+        }
+      };
+
+      // =================================================================
+      // أرشيف الطلبات السابقة + تكرار الطلب في سلة المتجر بضغطة واحدة
+      // =================================================================
+      window.reorderPastOrderToStore = function (pastIdx) {
+        const ord = pastOrders[pastIdx];
+        if (!ord || !Array.isArray(ord.items)) return;
+
+        const newCart = {};
+        const snapshot = [];
+        ord.items.forEach((it) => {
+          if (!it || !it.id || it.isWeightBased || Number(it.price) === 0) return;
+          const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
+          const prodDef = liveProductsCatalog[it.id];
+          const livePrice = Number(livePricesMap[it.id] !== undefined ? livePricesMap[it.id] : (prodDef?.basePrice || it.price)) || 0;
+          newCart[it.id] = { quantity: qty, price: livePrice, name: prodDef?.name || it.name };
+          snapshot.push({ id: it.id, name: prodDef?.name || it.name, quantity: qty });
+        });
+
+        if (Object.keys(newCart).length === 0) {
+          showTrackToast('هذه الأصناف بالميزان — اختر الوزن المناسب من المتجر', 'fa-circle-info text-amber-400');
+          setTimeout(() => { window.location.href = 'index.html'; }, 800);
+          return;
+        }
+
+        try {
+          localStorage.setItem('sman_cart_v2', JSON.stringify(newCart));
+          localStorage.setItem('sman_last_order_items', JSON.stringify(snapshot));
+        } catch (e) {}
+        showTrackToast('تم تجهيز سلتك بنفس الأصناف! جاري التحويل للمتجر 🛒');
+        setTimeout(() => { window.location.href = 'index.html'; }, 500);
+      };
+
+      window.toggleHistory = function () {
+        const sec = document.getElementById('history-section');
+        const list = document.getElementById('history-list');
+        if (!sec || !list) return;
+
+        if (sec.classList.contains('hidden')) {
+          sec.classList.remove('hidden');
+          if (pastOrders.length === 0) {
+            list.innerHTML = '<p class="text-xs text-slate-500 font-bold text-center py-4">لا توجد طلبات سابقة مكتملة حتى الآن.</p>';
+            return;
+          }
+          list.innerHTML = pastOrders.map((o, idx) => {
+            const itemsTxt = Array.isArray(o.items) ? o.items.map((i) => `${i.quantity}× ${i.name}`).join(' ، ') : 'بدون تفاصيل';
+            const waMsg = encodeURIComponent(`مرحباً سمان ههيا، أود تكرار هذا الطلب مرة أخرى:\n(${itemsTxt})`);
+            const starsBadge = Number(o.rating) > 0
+              ? `<span class="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">⭐️ ${o.rating}/5</span>`
+              : '';
+            return `
+            <div class="bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 space-y-2">
+              <div class="flex justify-between items-start gap-2">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
+                    <span class="text-[10px] text-slate-400 font-bold">${esc(o.orderDate || '')}</span>
+                    ${starsBadge}
+                  </div>
+                  <p class="text-xs font-black text-brand-navy leading-relaxed">${esc(itemsTxt)}</p>
+                </div>
+                <span class="text-emerald-800 font-black text-xs bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 whitespace-nowrap shrink-0">${Math.round(Number(o.total) || 0)} ج.م</span>
+              </div>
+              <div class="grid grid-cols-2 gap-1.5">
+                <button type="button" onclick="reorderPastOrderToStore(${idx})" class="bg-brand-navy hover:bg-emerald-800 text-white font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors active:scale-95">
+                  <i class="fa-solid fa-cart-plus text-amber-400"></i> اطلبها في السلة
+                </button>
+                <a href="https://wa.me/${storeWhatsapp}?text=${waMsg}" target="_blank" rel="noopener" class="bg-white hover:bg-emerald-50 border border-slate-200 text-slate-700 font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors">
+                  <i class="fa-brands fa-whatsapp text-[#25D366] text-sm"></i> عبر واتساب
+                </a>
+              </div>
+            </div>`;
+          }).join('');
+        } else {
+          sec.classList.add('hidden');
+        }
+      };
+
+      window.logoutTracker = function () {
+        if (orderListener) {
+          orderListener();
+          orderListener = null;
+        }
+        window.location.href = 'track.html';
+      };
+
+      window.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        const phoneParam = params.get('phone');
+        const phoneInput = document.getElementById('customer-phone');
+        if (phoneParam && phoneInput) {
+          phoneInput.value = phoneParam;
+          window.trackOrder();
+        } else if (phoneInput) {
+          try {
+            const saved = JSON.parse(localStorage.getItem('sman_my_profile') || '{}');
+            if (saved.phone) phoneInput.value = saved.phone;
+          } catch (e) {}
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
