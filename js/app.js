@@ -1422,39 +1422,164 @@
     // =========================================================================
     // 7. كروت الدفعات المدمجة
     // =========================================================================
-    window.getFriendlyBatchDatePhrase = function (startDateStr, endDateStr) {
+        function parseDateFromBatchName(batchName, fallbackStartStr) {
+        if (!batchName) return null;
+        const norm = String(batchName)
+            .replace(/[\u0660-\u0669]/g, (c) => String(c.charCodeAt(0) - 0x0660))
+            .replace(/[\u06F0-\u06F9]/g, (c) => String(c.charCodeAt(0) - 0x06F0));
+        const m = norm.match(/(\d{1,2})\s*[/\-]\s*(\d{1,2})(?:\s*[/\-]\s*(\d{2,4}))?/);
+        if (!m) return null;
+
+        const n1 = parseInt(m[1], 10);
+        const n2 = parseInt(m[2], 10);
+        const yRaw = m[3];
+        const todayMid = new Date();
+        todayMid.setHours(0, 0, 0, 0);
+        const refYear = yRaw ? (yRaw.length === 4 ? parseInt(yRaw, 10) : 2000 + parseInt(yRaw, 10)) : todayMid.getFullYear();
+
+        const buildClosestDate = (day, month) => {
+            if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+            const years = yRaw ? [refYear] : [refYear - 1, refYear, refYear + 1];
+            let best = null;
+            let bestScore = Infinity;
+            years.forEach((yr) => {
+                const d = new Date(yr, month - 1, day);
+                if (d.getFullYear() === yr && d.getMonth() === month - 1 && d.getDate() === day) {
+                    const diffDays = (d.getTime() - todayMid.getTime()) / 86400000;
+                    const sc = diffDays >= -45 ? Math.abs(diffDays) : Math.abs(diffDays) + 400;
+                    if (sc < bestScore) {
+                        bestScore = sc;
+                        best = d;
+                    }
+                }
+            });
+            return best;
+        };
+
+        if (n1 > 12 && n2 <= 12) return buildClosestDate(n1, n2);
+        if (n2 > 12 && n1 <= 12) return buildClosestDate(n2, n1);
+
+        const dDM = buildClosestDate(n1, n2);
+        const dMD = buildClosestDate(n2, n1);
+
+        if (fallbackStartStr) {
+            const fb = new Date(fallbackStartStr);
+            if (!isNaN(fb.getTime())) {
+                const fbM = fb.getMonth();
+                if (dDM && dDM.getMonth() === fbM) return dDM;
+                if (dMD && dMD.getMonth() === fbM) return dMD;
+            }
+        }
+
+        const scoreNear = (d) => {
+            if (!d) return 99999;
+            const diff = (d.getTime() - todayMid.getTime()) / 86400000;
+            return (diff >= -15 && diff <= 110) ? Math.abs(diff) : Math.abs(diff) + 500;
+        };
+        return scoreNear(dDM) <= scoreNear(dMD) ? dDM : dMD;
+    }
+
+    function formatArabicDateRange(startDate, endDate) {
+        if (!startDate || isNaN(startDate.getTime())) return 'قريباً فور التجهيز';
+        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+        const sDay = startDate.getDate();
+        const sMonth = months[startDate.getMonth()];
+        if (endDate && !isNaN(endDate.getTime()) && endDate.getTime() > startDate.getTime()) {
+            const eDay = endDate.getDate();
+            const eMonth = months[endDate.getMonth()];
+            if (startDate.getMonth() === endDate.getMonth()) {
+                return `من ${sDay} إلى ${eDay} ${sMonth}`;
+            }
+            return `من ${sDay} ${sMonth} إلى ${eDay} ${eMonth}`;
+        }
+        return `بداية من ${sDay} ${sMonth}`;
+    }
+
+    function resolveSmartBatchWindow(batch) {
+        if (!batch) return { startDate: null, endDate: null, phrase: 'قريباً فور التجهيز' };
+
+        // 1. الأولوية الأولى: استخراج تاريخ التسليم من اسم الدفعة (مثل 6/12 أو ١٢/٦) مع زيادة يومين أمان
+        const fromName = parseDateFromBatchName(batch.name, batch.deliveryStart);
+        if (fromName) {
+            const endPlus2 = new Date(fromName.getFullYear(), fromName.getMonth(), fromName.getDate() + 2);
+            return {
+                startDate: fromName,
+                endDate: endPlus2,
+                phrase: formatArabicDateRange(fromName, endPlus2)
+            };
+        }
+
+        // 2. الأولوية الثانية: تواريخ التسليم المسجلة على الدفعة (مع هامش يومين إذا لم يوجد تاريخ نهاية)
+        if (batch.deliveryStart) {
+            const s = new Date(batch.deliveryStart);
+            if (!isNaN(s.getTime())) {
+                let e = batch.deliveryEnd ? new Date(batch.deliveryEnd) : null;
+                if (!e || isNaN(e.getTime()) || e.getTime() <= s.getTime()) {
+                    e = new Date(s.getFullYear(), s.getMonth(), s.getDate() + 2);
+                }
+                return { startDate: s, endDate: e, phrase: formatArabicDateRange(s, e) };
+            }
+        }
+
+        // 3. الأولوية الثالثة: الحساب الآمن من تاريخ الفقس (عمر الذبح الآمن 38 إلى 45 يوم)
+        if (batch.hatchDate && getBatchTrackType(batch) === 'quail') {
+            const hMs = Number(batch.hatchDate);
+            if (!isNaN(hMs) && hMs > 0) {
+                const minAge = Number(batch.slaughterAgeMin) || 38;
+                const maxAge = Math.max(45, Number(batch.slaughterAgeMax) || Number(batch.slaughterAge) || 45);
+                const s = new Date(hMs + minAge * 86400000);
+                const e = new Date(hMs + maxAge * 86400000);
+                return { startDate: s, endDate: e, phrase: formatArabicDateRange(s, e) };
+            }
+        }
+
+        return { startDate: null, endDate: null, phrase: 'قريباً فور التجهيز' };
+    }
+
+    window.getFriendlyBatchDatePhrase = function (startDateStr, endDateStr, batchObj) {
+        if (batchObj && typeof batchObj === 'object') {
+            return resolveSmartBatchWindow(batchObj).phrase;
+        }
         if (!startDateStr) return 'قريباً فور التجهيز';
         const startDate = new Date(startDateStr);
         if (isNaN(startDate.getTime())) return String(startDateStr);
-        const day = startDate.getDate();
-        const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-        const mText = months[startDate.getMonth()];
-        if (endDateStr) {
-            const endD = new Date(endDateStr);
-            if (!isNaN(endD.getTime()) && endD.getDate() !== day) {
-                return `من ${day} إلى ${endD.getDate()} ${mText}`;
-            }
+        let endD = endDateStr ? new Date(endDateStr) : null;
+        if (!endD || isNaN(endD.getTime()) || endD.getTime() <= startDate.getTime()) {
+            endD = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate() + 2);
         }
-        return `بداية من ${day} ${mText}`;
+        return formatArabicDateRange(startDate, endD);
     };
 
     function getBatchSmartCustomerNote(batch) {
+        if (!batch) return null;
         if (batch.urgentNote && batch.urgentNote.trim()) return { isUrgent: true, text: batch.urgentNote.trim() };
         if (batch.customerMsg && batch.customerMsg.trim()) return { isUrgent: false, text: batch.customerMsg.trim() };
-        if (batch.slaughteredAt) {
-            const days = (Date.now() - batch.slaughteredAt) / (1000 * 60 * 60 * 24);
-            return { isUrgent: false, text: days >= 3 ? 'تم التسليم بالكامل' : 'تم الذبح وجاري التوزيع 🛵' };
+
+        const win = resolveSmartBatchWindow(batch);
+        // لا نظهر "تم التسليم بالكامل" أبداً والدفعة ما زالت مفتوحة للحجز
+        if (batch.slaughteredAt && !batch.isOpen) {
+            const days = (Date.now() - Number(batch.slaughteredAt)) / 86400000;
+            return { isUrgent: false, text: days >= 3 ? 'تم التسليم بالكامل' : 'تم الذبح الطازج وجاري التوزيع 🛵' };
         }
-        if (batch.hatchDate && batch.slaughterAge) {
-            const age = Math.max(0, Math.floor((Date.now() - batch.hatchDate) / (1000 * 60 * 60 * 24)));
-            const rem = (Number(batch.slaughterAge) || 40) - age;
-            if (!batch.isOpen) return { isUrgent: false, text: 'مكتملة الحجز وجاري التجهيز' };
-            if (rem <= 0) return { isUrgent: false, text: 'جاهز فريش للتسليم قريباً 🔪' };
-            if (rem <= 5) return { isUrgent: false, text: `باقي ${rem} أيام تقريباً على الجاهزية` };
-            if (age <= 15) return { isUrgent: false, text: 'مرحلة التحضين والرعاية 🐣' };
-            return { isUrgent: false, text: 'مرحلة التسمين وبناء اللحم 📈' };
+        if (!batch.isOpen) {
+            return { isUrgent: false, text: 'مكتملة الحجز وجاري التجهيز للتسليم' };
         }
-        return null;
+        if (batch.hatchDate && getBatchTrackType(batch) === 'quail') {
+            const age = Math.max(0, Math.floor((Date.now() - Number(batch.hatchDate)) / 86400000));
+            const minSafeAge = Number(batch.slaughterAgeMin) || 38;
+            const maxSafeAge = Math.max(45, Number(batch.slaughterAgeMax) || Number(batch.slaughterAge) || 45);
+            if (age >= minSafeAge) {
+                return { isUrgent: false, text: 'فترة الجاهزية والذبح الطازج الآن — هنتواصل معاك قبلها 🔪' };
+            }
+            if (minSafeAge - age <= 5) {
+                return { isUrgent: false, text: `قربت تجهز خلال أيام — التسليم ${win.phrase} وهنتواصل معاك قبلها` };
+            }
+            if (age <= 15) {
+                return { isUrgent: false, text: 'مرحلة التحضين والرعاية 🐣 — هنتواصل معاك قبل التسليم' };
+            }
+            return { isUrgent: false, text: `مرحلة التسمين وبناء الوزن 📈 — الذبح بعمر ${minSafeAge}–${maxSafeAge} يوم` };
+        }
+        return { isUrgent: false, text: 'هنتواصل معاك قبل التسليم للتأكيد وتحديد الوقت المناسب 🌿' };
     }
 
     function updateCartBatchBanner() {
@@ -1474,11 +1599,11 @@
 
         if (hasQuail && qBatch) {
             if (nameEl) nameEl.textContent = qBatch.name;
-            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
+            if (dateEl) dateEl.textContent = resolveSmartBatchWindow(qBatch).phrase;
             pill.classList.remove('hidden');
         } else if (hasChicks && cBatch) {
             if (nameEl) nameEl.textContent = `🐣 ${cBatch.name}`;
-            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(cBatch.deliveryStart, cBatch.deliveryEnd);
+            if (dateEl) dateEl.textContent = resolveSmartBatchWindow(cBatch).phrase;
             pill.classList.remove('hidden');
         } else if (cartKeys.length > 0 && !hasQuail && !hasChicks) {
             if (nameEl) nameEl.textContent = 'طلب فوري مستقل (بيض / طيور بالوزن)';
@@ -1486,7 +1611,7 @@
             pill.classList.remove('hidden');
         } else if (qBatch) {
             if (nameEl) nameEl.textContent = qBatch.name;
-            if (dateEl) dateEl.textContent = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
+            if (dateEl) dateEl.textContent = resolveSmartBatchWindow(qBatch).phrase;
             pill.classList.remove('hidden');
         } else {
             pill.classList.add('hidden');
@@ -1560,7 +1685,7 @@
             heroPillName.textContent = activeObj.name;
             if (heroPillLabel) {
                 heroPillLabel.textContent = activeObj.isOpen
-                    ? `التسليم: ${window.getFriendlyBatchDatePhrase(activeObj.deliveryStart, activeObj.deliveryEnd)}`
+                    ? `التسليم: ${resolveSmartBatchWindow(activeObj).phrase}`
                     : 'آخر دفعة سمان (البيض والمنتجات اليومية متاحة)';
             }
         }
@@ -1568,7 +1693,7 @@
         cardsWrapper.innerHTML = toShow.map((batch) => {
             const bId = batch.id;
             const safeId = escAttr(bId);
-            const dateText = window.getFriendlyBatchDatePhrase(batch.deliveryStart, batch.deliveryEnd);
+            const dateText = resolveSmartBatchWindow(batch).phrase;
             const smartNote = getBatchSmartCustomerNote(batch);
 
             if (batch.isOpen) {
@@ -3385,22 +3510,20 @@
             checkoutBtn.innerHTML = origHtml;
         }
     };
-
     function getBatchRelativeCountdownText(batch) {
         if (!batch) return '';
-        if (batch.slaughteredAt) {
-            const daysSince = (Date.now() - Number(batch.slaughteredAt)) / (1000 * 60 * 60 * 24);
-            return daysSince >= 3 ? 'مكتملة التسليم' : 'تم التجهيز وجاري التوزيع 🛵';
+        if (batch.slaughteredAt && !batch.isOpen) {
+            const daysSince = (Date.now() - Number(batch.slaughteredAt)) / 86400000;
+            return daysSince >= 3 ? 'مكتملة التسليم' : 'تم الذبح وجاري التوزيع 🛵';
         }
-        if (!batch.deliveryStart) return '';
 
-        const startD = new Date(batch.deliveryStart);
-        if (isNaN(startD.getTime())) return '';
+        const win = resolveSmartBatchWindow(batch);
+        if (!win.startDate) return '';
 
         const todayMid = new Date();
         todayMid.setHours(0, 0, 0, 0);
-        const startMid = new Date(startD.getFullYear(), startD.getMonth(), startD.getDate());
-        const diffDays = Math.round((startMid.getTime() - todayMid.getTime()) / (1000 * 60 * 60 * 24));
+        const startMid = new Date(win.startDate.getFullYear(), win.startDate.getMonth(), win.startDate.getDate());
+        const diffDays = Math.round((startMid.getTime() - todayMid.getTime()) / 86400000);
 
         if (diffDays === 0) return 'اليوم بإذن الله ✨';
         if (diffDays === 1) return 'غداً بإذن الله ✨';
@@ -3408,13 +3531,10 @@
         if (diffDays > 2 && diffDays <= 10) return `خلال ${diffDays} أيام تقريباً`;
         if (diffDays > 10) return `خلال ${diffDays} يوماً تقريباً`;
 
-        if (batch.deliveryEnd) {
-            const endD = new Date(batch.deliveryEnd);
-            if (!isNaN(endD.getTime())) {
-                const endMid = new Date(endD.getFullYear(), endD.getMonth(), endD.getDate());
-                if (endMid.getTime() >= todayMid.getTime()) {
-                    return 'فترة التسليم جارية الآن 🛵';
-                }
+        if (win.endDate) {
+            const endMid = new Date(win.endDate.getFullYear(), win.endDate.getMonth(), win.endDate.getDate());
+            if (endMid.getTime() >= todayMid.getTime()) {
+                return 'فترة التسليم جارية الآن 🛵';
             }
         }
         return '';
@@ -3424,9 +3544,11 @@
         const blocks = [];
         const qBatch = (opts.quailBatchId && globalBatches[opts.quailBatchId]) ? globalBatches[opts.quailBatchId] : null;
         const cBatch = (opts.chicksBatchId && globalBatches[opts.chicksBatchId]) ? globalBatches[opts.chicksBatchId] : null;
+        const preContactLine = 'وهنتواصل معاك قبلها للتأكيد وتحديد الوقت المناسب ليك قبل الذبح وتحرك المندوب 🌿';
 
         if (opts.hasQuailInCart && qBatch) {
-            const dateText = window.getFriendlyBatchDatePhrase(qBatch.deliveryStart, qBatch.deliveryEnd);
+            const win = resolveSmartBatchWindow(qBatch);
+            const dateText = win.phrase;
             const countdown = getBatchRelativeCountdownText(qBatch);
             const noteObj = getBatchSmartCustomerNote(qBatch);
             blocks.push({
@@ -3442,7 +3564,8 @@
         }
 
         if (opts.hasChicksInCart && cBatch) {
-            const dateText = window.getFriendlyBatchDatePhrase(cBatch.deliveryStart, cBatch.deliveryEnd);
+            const win = resolveSmartBatchWindow(cBatch);
+            const dateText = win.phrase;
             const countdown = getBatchRelativeCountdownText(cBatch);
             const noteObj = getBatchSmartCustomerNote(cBatch);
             blocks.push({
@@ -3468,10 +3591,12 @@
         const waLines = [];
         blocks.forEach((b) => {
             waLines.push(`📅 ${b.badgeLabel}: *${b.batchName}*`);
-            waLines.push(`🗓️ موعد الاستلام المتوقع: *${b.dateText}*${b.countdown ? ` (${b.countdown})` : ''}`);
+            waLines.push(`🗓️ ميعاد التسليم المتوقع: *${b.dateText}*${b.countdown ? ` (${b.countdown})` : ''}`);
         });
-        if (isPureImmediate) {
-            waLines.push(`⚡ نوع الطلب: *طلب فوري طازج* (سيتم التواصل لتحديد أقرب ميعاد توصيل لـ ${opts.zoneName || 'منطقتك'})`);
+        if (blocks.length > 0) {
+            waLines.push(`📞 ${preContactLine}`);
+        } else {
+            waLines.push(`⚡ نوع الطلب: *طلب فوري طازج* (هنتواصل معاك قبل التحرك لتحديد أقرب ميعاد توصيل لـ ${opts.zoneName || 'منطقتك'})`);
         }
 
         return {
@@ -3479,14 +3604,14 @@
             hasImmediateItems,
             isPureImmediate,
             primaryDateText,
+            preContactLine,
             waScheduleText: waLines.join('\n')
         };
     }
 
     function buildSmartOrderWhatsAppMessage(d) {
-        const orderCodeLine = d.orderCode ? `🧾 كود الحجز: *#${d.orderCode}*\n` : '';
         const scheduleLine = d.deliverySchedule?.waScheduleText ? `${d.deliverySchedule.waScheduleText}\n` : '';
-        const custDetailsWa = `${orderCodeLine}👤 الاسم: ${d.customerName}\n📱 الموبايل: ${d.customerPhone}\n📍 المنطقة: ${d.zoneName}\n${d.customerAddress ? `🏠 العنوان: ${d.customerAddress}\n` : ''}${scheduleLine}🕒 وقت التسجيل: ${d.orderDateAr} - ${d.orderTime}`;
+        const custDetailsWa = `👤 الاسم: ${d.customerName}\n📱 الموبايل: ${d.customerPhone}\n📍 المنطقة: ${d.zoneName}\n${d.customerAddress ? `🏠 العنوان: ${d.customerAddress}\n` : ''}${scheduleLine}🕒 وقت التسجيل: ${d.orderDateAr} - ${d.orderTime}`;
 
         const rawTpl = String(globalSettings.whatsappTemplate || '').trim();
         let waMsg = '';
@@ -3512,9 +3637,6 @@
                 .replace(/\{الإجمالي_النهائي\}/g, `${d.finalTotal} ج.م`);
             if (d.deliverySchedule?.waScheduleText) {
                 waMsg += `\n\n${d.deliverySchedule.waScheduleText}`;
-            }
-            if (d.orderCode) {
-                waMsg = `🧾 *كود الحجز: #${d.orderCode}*\n` + waMsg;
             }
         } else {
             waMsg = `🌿 *طلب جديد — ${globalSettings.storeName || 'سمان ههيا'}*\n`
@@ -3545,37 +3667,42 @@
         const titleText = esc(uiTexts.successTitle || 'تم تأكيد حجزك بنجاح! 🎉');
         const sched = info.deliverySchedule || { blocks: [], isPureImmediate: !info.batchName };
         const itemsList = Array.isArray(info.orderItems) ? info.orderItems : [];
+        const preContactMsg = esc(sched.preContactLine || 'وهنتواصل معاك قبلها للتأكيد وتحديد الوقت المناسب ليك قبل الذبح وتحرك المندوب 🌿');
 
-        // 1. بطاقة موعد الاستلام الذكية المرتبطة بالدفعات الفعلية
+        // 1. بطاقة موعد التسليم الذكية (مبنية على اسم الدفعة + يومين أمان + جملة التواصل المسبق)
         let scheduleCardsHtml = '';
         if (sched.blocks && sched.blocks.length > 0) {
             scheduleCardsHtml = sched.blocks.map((b) => `
-                <div class="bg-gradient-to-l from-emerald-50 via-white to-amber-50/50 border border-emerald-200 rounded-2xl p-3 space-y-1.5 shadow-sm">
+                <div class="bg-gradient-to-l from-emerald-50 via-white to-amber-50/50 border border-emerald-200 rounded-2xl p-3 space-y-2 shadow-sm">
                     <div class="flex items-center justify-between gap-2">
                         <span class="inline-flex items-center gap-1.5 text-[10px] font-black text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-lg">
                             <i class="fa-solid ${esc(b.icon)} text-amber-600"></i> ${esc(b.badgeLabel)}
                         </span>
                         ${b.countdown ? `<span class="text-[10px] font-black bg-amber-400/25 text-amber-950 border border-amber-300 px-2 py-0.5 rounded-lg">${esc(b.countdown)}</span>` : ''}
                     </div>
-                    <div class="flex items-center justify-between gap-2 pt-0.5">
+                    <div class="flex items-center justify-between gap-2">
                         <span class="text-xs sm:text-sm font-black text-brand-navy truncate">${esc(b.batchName)}</span>
-                        <span class="text-xs font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-lg shrink-0">
+                        <span class="text-xs font-black text-rose-600 bg-rose-50 border border-rose-200 px-2.5 py-0.5 rounded-lg shrink-0">
                             <i class="fa-regular fa-calendar-check ml-1"></i>${esc(b.dateText)}
                         </span>
                     </div>
-                    ${b.statusNote ? `<p class="text-[10px] font-bold ${b.isUrgentNote ? 'text-amber-900 bg-amber-50 border-amber-200' : 'text-slate-600 bg-white border-slate-100'} border px-2.5 py-1 rounded-xl leading-snug"><i class="fa-solid fa-circle-info text-emerald-600 ml-1"></i>${esc(b.statusNote)}</p>` : ''}
+                    <div class="bg-white/95 border border-emerald-200/80 rounded-xl px-2.5 py-2 text-[11px] font-black text-emerald-950 leading-relaxed flex items-start gap-1.5">
+                        <i class="fa-solid fa-phone-volume text-emerald-600 mt-0.5 shrink-0"></i>
+                        <span>ميعاد التسليم المتوقع <strong>${esc(b.dateText)}</strong> — ${preContactMsg}</span>
+                    </div>
+                    ${b.isUrgentNote && b.statusNote ? `<p class="text-[10px] font-bold text-amber-900 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-xl leading-snug"><i class="fa-solid fa-bullhorn text-amber-600 ml-1"></i>${esc(b.statusNote)}</p>` : ''}
                 </div>`).join('');
         } else {
             scheduleCardsHtml = `
-                <div class="bg-gradient-to-l from-emerald-50 to-white border border-emerald-200 rounded-2xl p-3 space-y-1 shadow-sm">
+                <div class="bg-gradient-to-l from-emerald-50 to-white border border-emerald-200 rounded-2xl p-3 space-y-1.5 shadow-sm">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-[11px] font-black text-brand-navy flex items-center gap-1.5">
                             <i class="fa-solid fa-bolt text-amber-500"></i> طلب فوري طازج
                         </span>
-                        <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-lg">قيد المراجعة</span>
+                        <span class="text-[10px] font-black bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-lg">تم التسجيل</span>
                     </div>
-                    <p class="text-[11px] font-bold text-slate-600 leading-relaxed">
-                        تم تسجيل طلبك بنجاح! هنتواصل معاك قريباً لتأكيد أقرب ميعاد توصيل لـ <strong class="text-brand-navy">${esc(info.zoneName || 'منطقتك')}</strong>.
+                    <p class="text-[11px] font-bold text-slate-700 leading-relaxed">
+                        تم تسجيل طلبك بنجاح! هنتواصل معاك قبل التحرك لتحديد أقرب ميعاد توصيل مناسب ليك في <strong class="text-brand-navy">${esc(info.zoneName || 'منطقتك')}</strong> 🌿
                     </p>
                 </div>`;
         }
@@ -3644,17 +3771,14 @@
 
         const msgHTML = `
             <div dir="rtl" class="text-right space-y-2.5">
-                <!-- رأس إيصال زمردي ملكي -->
+                <!-- رأس إيصال زمردي ملكي بدون أرقام أو أكواد مزعجة -->
                 <div class="luxury-hero-bg text-white rounded-2xl p-3.5 text-center relative overflow-hidden border border-amber-400/25 shadow-md">
                     <div class="w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b261c] rounded-2xl flex items-center justify-center mx-auto text-xl shadow-lg mb-2">
                         <i class="fa-solid fa-check"></i>
                     </div>
                     <h3 class="font-black text-white text-base leading-snug">${titleText}</h3>
                     <p class="text-[11px] font-bold text-emerald-200 mt-0.5">نورت سمان ههيا يا ${firstName} 🌿 — طلبك اتحجز باسمك</p>
-                    <div class="flex items-center justify-center flex-wrap gap-1.5 mt-2.5">
-                        ${info.orderCode ? `<span class="bg-white/15 border border-white/20 text-amber-300 text-[10px] font-black px-2.5 py-0.5 rounded-full" dir="ltr">رقم الحجز: #${esc(info.orderCode)}</span>` : ''}
-                        ${info.orderTime ? `<span class="bg-white/10 border border-white/15 text-emerald-100 text-[10px] font-bold px-2.5 py-0.5 rounded-full">${esc(info.orderDateAr || '')} • ${esc(info.orderTime)}</span>` : ''}
-                    </div>
+                    ${info.orderTime ? `<div class="mt-2"><span class="bg-white/10 border border-white/15 text-emerald-100 text-[10px] font-bold px-3 py-0.5 rounded-full">${esc(info.orderDateAr || '')} • ${esc(info.orderTime)}</span></div>` : ''}
                 </div>
 
                 ${scheduleCardsHtml}
@@ -3705,6 +3829,7 @@
             }, 10);
         }
     }
+
 
 
     // =========================================================================
