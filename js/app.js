@@ -12,6 +12,9 @@
 
     let isSubmittingOrder = false;
     let activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
+    let globalWeightHolds = {};
+    let weightHoldsUnsubscribe = null;
+
     let liveNotiStarted = false;
     let lastCheckedCustomerPhone = '';
     let activeProductFilter = 'all';
@@ -126,14 +129,21 @@
     async function listenToDatabase() {
         if (!db) return;
         try {
-            const [settingsDoc, stockDoc, pricesDoc, oldPricesDoc, batchesDoc, discountsDoc] = await Promise.all([
+            const [settingsDoc, stockDoc, pricesDoc, oldPricesDoc, batchesDoc, discountsDoc, weightHoldsDoc] = await Promise.all([
                 db.collection('inventory').doc('settings').get(),
                 db.collection('inventory').doc('stock').get(),
                 db.collection('inventory').doc('prices').get(),
                 db.collection('inventory').doc('old_prices').get().catch(() => ({ exists: false })),
                 db.collection('inventory').doc('batches').get(),
-                db.collection('inventory').doc('discounts_status').get().catch(() => ({ exists: false }))
+                db.collection('inventory').doc('discounts_status').get().catch(() => ({ exists: false })),
+                db.collection('inventory').doc('weight_holds').get().catch(() => ({ exists: false }))
             ]);
+
+            if (weightHoldsDoc && weightHoldsDoc.exists) {
+                globalWeightHolds = weightHoldsDoc.data() || {};
+            }
+            startWeightHoldsLiveListener();
+
 
             if (settingsDoc.exists) {
                 const data = settingsDoc.data() || {};
@@ -322,15 +332,102 @@
         return Math.max(0, cap - bookedMain - inCartMain);
     }
 
+    function getAvailableWeightsForProduct(id) {
+        const p = productsInfo[id];
+        if (!p) return [];
+        const allW = U.parseWeightsArray(p.weightsList);
+        const heldPool = [];
+
+        Object.values(globalWeightHolds || {}).forEach((ordMap) => {
+            if (ordMap && Array.isArray(ordMap[id])) {
+                ordMap[id].forEach((g) => {
+                    const num = Number(g);
+                    if (!isNaN(num) && num > 0) heldPool.push(num);
+                });
+            }
+        });
+
+        if (heldPool.length === 0) return allW;
+
+        const available = [];
+        allW.forEach((w) => {
+            const idx = heldPool.indexOf(w);
+            if (idx > -1) heldPool.splice(idx, 1);
+            else available.push(w);
+        });
+        return available;
+    }
+
+    function reconcileWeightCartWithLiveHolds() {
+        let changed = false;
+        Object.keys(cart).forEach((id) => {
+            const item = cart[id];
+            if (!item || !item.isWeightBased || !Array.isArray(item.selectedWeightsGrams)) return;
+            const availW = getAvailableWeightsForProduct(id);
+            const usedIdx = new Set();
+            const keptGrams = [];
+            const keptIndices = [];
+
+            item.selectedWeightsGrams.forEach((g) => {
+                const gNum = Number(g);
+                let foundIdx = -1;
+                for (let i = 0; i < availW.length; i++) {
+                    if (!usedIdx.has(i) && availW[i] === gNum) {
+                        foundIdx = i;
+                        break;
+                    }
+                }
+                if (foundIdx > -1) {
+                    usedIdx.add(foundIdx);
+                    keptGrams.push(gNum);
+                    keptIndices.push(foundIdx);
+                } else {
+                    changed = true;
+                }
+            });
+
+            if (keptGrams.length === 0) {
+                delete cart[id];
+                changed = true;
+            } else {
+                const totalGrams = keptGrams.reduce((s, v) => s + v, 0);
+                item.selectedWeightsGrams = keptGrams;
+                item.selectedIndices = keptIndices;
+                item.quantity = Number((totalGrams / 1000).toFixed(3));
+                item.name = `${productsInfo[id]?.name || item.baseName || 'صنف'} [${keptGrams.join('+')}جم]`;
+            }
+        });
+
+        if (changed) {
+            saveCart();
+            showStoreToast('تم تحديث الأوزان المتاحة في سلتك بعد حجز عميل آخر', 'fa-circle-info text-amber-400');
+        }
+    }
+
+    function startWeightHoldsLiveListener() {
+        if (!db || weightHoldsUnsubscribe) return;
+        try {
+            weightHoldsUnsubscribe = db.collection('inventory').doc('weight_holds').onSnapshot((snap) => {
+                globalWeightHolds = snap.exists ? (snap.data() || {}) : {};
+                if (isStoreDataLoaded) {
+                    reconcileWeightCartWithLiveHolds();
+                    renderProducts();
+                    updateUI();
+                }
+            }, () => {});
+        } catch (e) {}
+    }
+
     function getPureAvailableStock(id) {
         const p = productsInfo[id];
         if (!p) return 0;
         const track = getProductTrackType(id);
 
-        // المسار 2-أ: فراخ تسمين / رومي بالوزن — مستقل تماماً (من مصفوفة الجرامات فقط)
+        // المسار 2-أ: فراخ تسمين / رومي بالوزن — مستقل تماماً (مع خصم الأوزان المحجوزة لحظياً)
         if (track === 'weight') {
-            return U.parseWeightsArray(p.weightsList).length;
+            return getAvailableWeightsForProduct(id).length;
         }
+
 
         // المسار 2-ب: البيض والمنتجات اليومية الفورية — مستقل تماماً عن جميع الدفعات
         if (track === 'immediate') {
@@ -384,7 +481,7 @@
         const track = getProductTrackType(id);
 
         if (track === 'weight') {
-            const allW = U.parseWeightsArray(p.weightsList);
+            const allW = getAvailableWeightsForProduct(id);
             const pickedCount = Array.isArray(cart[id]?.selectedWeightsGrams) ? cart[id].selectedWeightsGrams.length : 0;
             return Math.max(0, allW.length - pickedCount);
         }
@@ -1345,7 +1442,7 @@
 
     function buildWeightProductCard(id, item) {
         const kiloPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
-        const weightsArr = U.parseWeightsArray(item.weightsList);
+        const weightsArr = getAvailableWeightsForProduct(id);
         const pickedIndices = Array.isArray(cart[id]?.selectedIndices) ? cart[id].selectedIndices : [];
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
@@ -2573,7 +2670,59 @@
                     createdAt: firebase.firestore.FieldValue.serverTimestamp()
                 };
 
-                await db.collection('orders').add(orderData);
+                const newOrderRef = db.collection('orders').doc();
+                const weightItems = orderItems.filter((it) => it.isWeightBased && Array.isArray(it.selectedWeightsGrams) && it.selectedWeightsGrams.length > 0);
+                let holdCreatedForOrder = false;
+
+                if (weightItems.length > 0) {
+                    const holdsRef = db.collection('inventory').doc('weight_holds');
+                    const settingsRef = db.collection('inventory').doc('settings');
+
+                    await db.runTransaction(async (tx) => {
+                        const [holdsSnap, settingsSnap] = await Promise.all([tx.get(holdsRef), tx.get(settingsRef)]);
+                        const curHolds = holdsSnap.exists ? (holdsSnap.data() || {}) : {};
+                        const latestProds = (settingsSnap.exists && settingsSnap.data()?.productsData)
+                            ? settingsSnap.data().productsData
+                            : productsInfo;
+                        const orderHoldMap = {};
+
+                        for (const it of weightItems) {
+                            const pool = U.parseWeightsArray(latestProds[it.id]?.weightsList);
+                            Object.values(curHolds).forEach((ordMap) => {
+                                if (ordMap && Array.isArray(ordMap[it.id])) {
+                                    ordMap[it.id].forEach((g) => {
+                                        const idx = pool.indexOf(Number(g));
+                                        if (idx > -1) pool.splice(idx, 1);
+                                    });
+                                }
+                            });
+
+                            for (const reqG of it.selectedWeightsGrams) {
+                                const foundIdx = pool.indexOf(Number(reqG));
+                                if (foundIdx === -1) {
+                                    throw new Error(`WEIGHT_TAKEN:${it.name}:${reqG}`);
+                                }
+                                pool.splice(foundIdx, 1);
+                            }
+                            orderHoldMap[it.id] = it.selectedWeightsGrams.map((g) => Number(g));
+                        }
+
+                        tx.set(holdsRef, { [newOrderRef.id]: orderHoldMap }, { merge: true });
+                    });
+
+                    holdCreatedForOrder = true;
+                }
+
+                try {
+                    await newOrderRef.set(orderData);
+                } catch (orderWriteErr) {
+                    if (holdCreatedForOrder) {
+                        db.collection('inventory').doc('weight_holds').update({
+                            [newOrderRef.id]: firebase.firestore.FieldValue.delete()
+                        }).catch(() => {});
+                    }
+                    throw orderWriteErr;
+                }
 
                 const batchOps = db.batch();
                 batchOps.set(db.collection('inventory').doc('stats'), {
@@ -2659,7 +2808,17 @@
             showOrderSuccessModal({ customerName, customerPhone, batchName, interactiveTime, earnedLoyalty, newPromoCode });
         } catch (e) {
             console.error('Order Submit Error:', e);
-            showAlert('تعذر إرسال الطلب', 'حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة مرة أخرى بعد ثوانٍ.');
+            if (e && typeof e.message === 'string' && e.message.startsWith('WEIGHT_TAKEN:')) {
+                const parts = e.message.split(':');
+                const takenGrams = parts[2] ? `${(Number(parts[2]) / 1000).toFixed(2)} كجم` : 'أحد الأوزان';
+                reconcileWeightCartWithLiveHolds();
+                renderProducts();
+                updateUI();
+                showAlert('تم حجز هذا الوزن للتو ⚖️', `عذراً، الوزن (${takenGrams}) تم حجزه للتو من عميل آخر.
+تم تحديث الأوزان المتاحة أمامك الآن — يرجى اختيار وزن آخر متاح.`);
+            } else {
+                showAlert('تعذر إرسال الطلب', 'حدث خطأ في الاتصال بالسيرفر، يرجى المحاولة مرة أخرى بعد ثوانٍ.');
+            }
         } finally {
             isSubmittingOrder = false;
             checkoutBtn.disabled = false;
