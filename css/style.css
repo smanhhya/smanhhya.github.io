@@ -358,3 +358,23 @@ input[type=number]::-webkit-outer-spin-button {
 .floating-cart-wrap {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
 }
+
+/* تفاعل وتكبير صور المنتجات والعارض التفاعلي */
+.product-app-card img {
+  will-change: transform;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.product-app-card:active img {
+  transform: scale(1.04);
+}
+#image-viewer-img {
+  cursor: zoom-in;
+  touch-action: none;
+  will-change: transform;
+}
+#image-viewer-img.is-zoomed {
+  cursor: grab;
+}
+#image-viewer-img.is-zoomed:active {
+  cursor: grabbing;
+}
