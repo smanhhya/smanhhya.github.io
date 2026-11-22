@@ -1717,11 +1717,45 @@
           const trackType = getBatchTrackType(b);
           let autoMsg = 'طلبك محجوز ضمن هذه الدفعة وسيتم تجهيزه طازج يوم التسليم.';
 
-if (trackType === 'quail' && b.hatchDate) {
+          if (trackType === 'quail' && b.hatchDate) {
+            const ageDays = Math.max(0, Math.floor((nowMs - Number(b.hatchDate)) / 86400000));
+            const targetDays = Number(win.minAge) || 38;
+            const pct = Math.max(12, Math.min(100, Math.round((ageDays / targetDays) * 100)));
+            let stageText = '🌿 رعاية وتغذية طبيعية';
+            let pillText = '🌿 بالمزرعة';
+            let pillCls = 'bg-emerald-50 text-emerald-800 border-emerald-200';
+
+            if (b.slaughteredAt && !b.isOpen && !isFutureDelivery) {
+              stageText = '🛵 تم الذبح الطازج وجاري التوزيع';
+              pillText = '🛵 جاري التوزيع';
+              pillCls = 'bg-indigo-50 text-indigo-800 border-indigo-200';
+              autoMsg = 'تم الذبح الطازج لطلبك وجاري التغليف والتوزيع عبر المندوب الآن!';
+            } else if (ageDays >= targetDays) {
+              stageText = '🔪 جاهز للذبح الطازج والتسليم';
+              pillText = '🔪 جاهز للتسليم';
+              pillCls = 'bg-emerald-100 text-emerald-900 border-emerald-300';
+              autoMsg = 'دفعتك جاهزة تماماً للذبح الطازج والتسليم حسب جدول الدفعة!';
+            } else if (targetDays - ageDays <= 6) {
+              stageText = '✨ استكمال الأوزان النهائية قبل الذبح';
+              pillText = '✨ قرب يجهز';
+              pillCls = 'bg-amber-50 text-amber-800 border-amber-200';
+              autoMsg = 'السمان في مرحلته النهائية لاستكمال الأوزان الممتازة قبل الذبح الطازج.';
+            } else {
+              autoMsg = 'السمان في رعاية المزرعة بالتغذية الطبيعية حتى يصل للوزن المثالي يوم الذبح.';
+            }
+
+            if (growthFill) growthFill.style.width = `${(b.slaughteredAt && !b.isOpen && !isFutureDelivery) ? 100 : pct}%`;
+            if (growthLabel) growthLabel.textContent = stageText;
+            growthWrap?.classList.remove('hidden');
+            if (stagePill) {
+              stagePill.textContent = pillText;
+              stagePill.className = `text-[10px] font-black px-2.5 py-1 rounded-xl border shrink-0 ${pillCls}`;
+            }
           } else {
             growthWrap?.classList.add('hidden');
             stagePill?.classList.add('hidden');
           }
+
 
           const msgBox = document.getElementById('batch-msg-container');
           const msgText = document.getElementById('batch-customer-msg');
@@ -1772,6 +1806,8 @@ if (trackType === 'quail' && b.hatchDate) {
 
           await db.collection('orders').doc(currentOrder.id).update({
             status: 'completed',
+            completedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            completedAtMs: Date.now(),
             completedAtStr: now.toLocaleDateString('en-US'),
             completedTimeDisplay: dateStr,
             adminNote: finalAdminNote
