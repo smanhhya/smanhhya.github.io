@@ -1,16 +1,19 @@
 // sw.js - محرك السرعة والتخزين المؤقت الآمن (Network-First لملفات الكود لمنع تعليق التحديثات)
-const CACHE_NAME = 'sman-hhya-store-v10';
+const CACHE_NAME = 'sman-hhya-store-v11';
 
 
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './track.html',
+  './reviews.html',
   './css/style.css',
   './js/config.js',
   './js/app.js',
+  './js/floating-wa.js',
   './manifest.json'
 ];
+
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
