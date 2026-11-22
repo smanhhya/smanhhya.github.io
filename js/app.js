@@ -966,6 +966,90 @@
         window.openImageModal(targetSrc);
     };
 
+    // حالة التكبير والتحريك التفاعلي داخل عارض الصور (Pinch-to-Zoom + Pan + Double-Tap)
+    const lbZoomState = { scale: 1, tx: 0, ty: 0 };
+
+    function applyLightboxTransform(animate = false) {
+        const imgEl = document.getElementById('image-viewer-img');
+        const zoomBadge = document.getElementById('img-viewer-zoom-pct');
+        if (!imgEl) return;
+
+        if (lbZoomState.scale <= 1.02) {
+            lbZoomState.scale = 1;
+            lbZoomState.tx = 0;
+            lbZoomState.ty = 0;
+        } else {
+            const maxShiftX = (imgEl.offsetWidth || 300) * (lbZoomState.scale - 1) * 0.6;
+            const maxShiftY = (imgEl.offsetHeight || 300) * (lbZoomState.scale - 1) * 0.6;
+            lbZoomState.tx = Math.max(-maxShiftX, Math.min(maxShiftX, lbZoomState.tx));
+            lbZoomState.ty = Math.max(-maxShiftY, Math.min(maxShiftY, lbZoomState.ty));
+        }
+
+        imgEl.style.transition = animate ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
+        imgEl.style.transform = `translate3d(${lbZoomState.tx}px, ${lbZoomState.ty}px, 0) scale(${lbZoomState.scale})`;
+        imgEl.classList.toggle('is-zoomed', lbZoomState.scale > 1.02);
+        if (zoomBadge) zoomBadge.textContent = `${Math.round(lbZoomState.scale * 100)}%`;
+    }
+
+    window.resetLightboxZoom = function (animate = true) {
+        lbZoomState.scale = 1;
+        lbZoomState.tx = 0;
+        lbZoomState.ty = 0;
+        applyLightboxTransform(animate);
+    };
+
+    window.stepLightboxZoom = function (delta) {
+        const next = Math.max(1, Math.min(3.5, Number((lbZoomState.scale + delta).toFixed(2))));
+        lbZoomState.scale = next;
+        if (next === 1) {
+            lbZoomState.tx = 0;
+            lbZoomState.ty = 0;
+        }
+        applyLightboxTransform(true);
+    };
+
+    // حالة التكبير والتحريك التفاعلي داخل عارض الصور (Pinch-to-Zoom + Pan + Double-Tap)
+    const lbZoomState = { scale: 1, tx: 0, ty: 0 };
+
+    function applyLightboxTransform(animate = false) {
+        const imgEl = document.getElementById('image-viewer-img');
+        const zoomBadge = document.getElementById('img-viewer-zoom-pct');
+        if (!imgEl) return;
+
+        if (lbZoomState.scale <= 1.02) {
+            lbZoomState.scale = 1;
+            lbZoomState.tx = 0;
+            lbZoomState.ty = 0;
+        } else {
+            const maxShiftX = (imgEl.offsetWidth || 300) * (lbZoomState.scale - 1) * 0.6;
+            const maxShiftY = (imgEl.offsetHeight || 300) * (lbZoomState.scale - 1) * 0.6;
+            lbZoomState.tx = Math.max(-maxShiftX, Math.min(maxShiftX, lbZoomState.tx));
+            lbZoomState.ty = Math.max(-maxShiftY, Math.min(maxShiftY, lbZoomState.ty));
+        }
+
+        imgEl.style.transition = animate ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
+        imgEl.style.transform = `translate3d(${lbZoomState.tx}px, ${lbZoomState.ty}px, 0) scale(${lbZoomState.scale})`;
+        imgEl.classList.toggle('is-zoomed', lbZoomState.scale > 1.02);
+        if (zoomBadge) zoomBadge.textContent = `${Math.round(lbZoomState.scale * 100)}%`;
+    }
+
+    window.resetLightboxZoom = function (animate = true) {
+        lbZoomState.scale = 1;
+        lbZoomState.tx = 0;
+        lbZoomState.ty = 0;
+        applyLightboxTransform(animate);
+    };
+
+    window.stepLightboxZoom = function (delta) {
+        const next = Math.max(1, Math.min(3.5, Number((lbZoomState.scale + delta).toFixed(2))));
+        lbZoomState.scale = next;
+        if (next === 1) {
+            lbZoomState.tx = 0;
+            lbZoomState.ty = 0;
+        }
+        applyLightboxTransform(true);
+    };
+
     function renderLightboxFrame() {
         const imgEl = document.getElementById('image-viewer-img');
         const loader = document.getElementById('img-loader');
@@ -979,6 +1063,7 @@
         const curSrc = lightboxGalleryList[lightboxCurrentIdx];
         const hasMulti = lightboxGalleryList.length > 1;
 
+        window.resetLightboxZoom(false);
         if (loader) loader.style.display = 'block';
         imgEl.src = curSrc;
 
@@ -1040,15 +1125,22 @@
             };
             modal.innerHTML = `
                 <div class="w-full max-w-4xl flex items-center justify-between gap-2 z-20 shrink-0" onclick="event.stopPropagation()">
-                    <span id="img-viewer-counter" class="bg-white/15 text-amber-300 border border-white/15 text-xs font-black px-3 py-1.5 rounded-full">1 / 1</span>
+                    <div class="flex items-center gap-1.5">
+                        <span id="img-viewer-counter" class="bg-white/15 text-amber-300 border border-white/15 text-xs font-black px-3 py-1.5 rounded-full">1 / 1</span>
+                        <div class="flex items-center gap-1 bg-white/10 border border-white/15 rounded-full p-1">
+                            <button type="button" onclick="stepLightboxZoom(-0.4)" aria-label="تصغير" class="w-7 h-7 rounded-full hover:bg-white/20 text-white text-xs font-black flex items-center justify-center">−</button>
+                            <button type="button" id="img-viewer-zoom-pct" onclick="resetLightboxZoom(true)" title="إعادة للحجم الأصلي" class="text-[11px] font-black text-amber-300 px-2" dir="ltr">100%</button>
+                            <button type="button" onclick="stepLightboxZoom(0.4)" aria-label="تكبير" class="w-7 h-7 rounded-full hover:bg-white/20 text-white text-xs font-black flex items-center justify-center">+</button>
+                        </div>
+                    </div>
                     <button type="button" onclick="closeImageViewer(); if (window.location.hash === '#catalog') history.back();" aria-label="إغلاق المعرض" class="bg-white/15 hover:bg-rose-500 text-white rounded-full w-10 h-10 flex items-center justify-center transition-colors">
                         <i class="fa-solid fa-xmark text-xl"></i>
                     </button>
                 </div>
 
-                <div id="img-viewer-stage" class="relative w-full max-w-4xl flex-1 flex items-center justify-center my-2 min-h-0" onclick="event.stopPropagation()">
+                <div id="img-viewer-stage" class="relative w-full max-w-4xl flex-1 flex items-center justify-center my-2 min-h-0 overflow-hidden" style="touch-action: none;" onclick="event.stopPropagation()">
                     <i class="fa-solid fa-spinner fa-spin absolute text-amber-400 text-3xl z-0" id="img-loader"></i>
-                    <img id="image-viewer-img" src="" alt="" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[75vh] object-contain rounded-2xl shadow-2xl scale-95 transition-transform duration-200 relative z-10">
+                    <img id="image-viewer-img" src="" alt="" draggable="false" onload="document.getElementById('img-loader').style.display='none'" class="max-w-full max-h-[76vh] object-contain rounded-2xl shadow-2xl relative z-10 select-none">
 
                     <button type="button" id="img-viewer-prev" onclick="event.stopPropagation(); stepLightboxImage(-1)" aria-label="السابق" class="catalog-nav-btn right-1 sm:right-3">
                         <i class="fa-solid fa-chevron-right text-base"></i>
@@ -1058,18 +1150,110 @@
                     </button>
                 </div>
 
-                <div id="img-viewer-thumbs" class="w-full max-w-2xl flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1 z-20 shrink-0" onclick="event.stopPropagation()"></div>`;
+                <div class="w-full max-w-2xl flex flex-col items-center gap-2 z-20 shrink-0" onclick="event.stopPropagation()">
+                    <span class="text-[10px] font-bold text-emerald-200/75">💡 اضغط مرتين أو قرّب بإصبعين للتكبير واسحب الصورة لمشاهدة التفاصيل</span>
+                    <div id="img-viewer-thumbs" class="w-full flex items-center justify-center gap-2 overflow-x-auto no-scrollbar py-1"></div>
+                </div>`;
             document.body.appendChild(modal);
 
+            // محرك اللمس والتكبير والتحريك الكامل (Pinch + Drag/Pan + Double-Tap + Swipe)
             const lbStage = document.getElementById('img-viewer-stage');
             if (lbStage) {
-                lbStage.addEventListener('touchstart', (e) => {
-                    lightboxTouchStartX = e.changedTouches[0]?.clientX || 0;
-                }, { passive: true });
-                lbStage.addEventListener('touchend', (e) => {
-                    const diff = (e.changedTouches[0]?.clientX || 0) - lightboxTouchStartX;
-                    if (Math.abs(diff) > 40) window.stepLightboxImage(diff > 0 ? 1 : -1);
-                }, { passive: true });
+                const ptrs = new Map();
+                let lastPos = null;
+                let lastDist = 0;
+                let lastTapMs = 0;
+                let swipeStartX = 0;
+                let movedPx = 0;
+
+                lbStage.addEventListener('pointerdown', (e) => {
+                    if (e.target.closest('button')) return;
+                    try { lbStage.setPointerCapture(e.pointerId); } catch (err) {}
+                    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+                    movedPx = 0;
+                    if (ptrs.size === 1) {
+                        lastPos = { x: e.clientX, y: e.clientY };
+                        swipeStartX = e.clientX;
+                        lastDist = 0;
+                    } else if (ptrs.size === 2) {
+                        const arr = Array.from(ptrs.values());
+                        lastDist = Math.hypot(arr[1].x - arr[0].x, arr[1].y - arr[0].y);
+                        lastPos = { x: (arr[0].x + arr[1].x) / 2, y: (arr[0].y + arr[1].y) / 2 };
+                    }
+                });
+
+                lbStage.addEventListener('pointermove', (e) => {
+                    if (!ptrs.has(e.pointerId)) return;
+                    ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+                    if (ptrs.size === 2) {
+                        const arr = Array.from(ptrs.values());
+                        const dist = Math.hypot(arr[1].x - arr[0].x, arr[1].y - arr[0].y);
+                        const mid = { x: (arr[0].x + arr[1].x) / 2, y: (arr[0].y + arr[1].y) / 2 };
+                        if (lastDist > 0) {
+                            lbZoomState.scale = Math.max(1, Math.min(3.5, lbZoomState.scale * (dist / lastDist)));
+                        }
+                        if (lastPos && lbZoomState.scale > 1.02) {
+                            lbZoomState.tx += (mid.x - lastPos.x);
+                            lbZoomState.ty += (mid.y - lastPos.y);
+                        }
+                        lastDist = dist;
+                        lastPos = mid;
+                        movedPx = 99;
+                        applyLightboxTransform(false);
+                    } else if (ptrs.size === 1 && lastPos) {
+                        const dx = e.clientX - lastPos.x;
+                        const dy = e.clientY - lastPos.y;
+                        movedPx += Math.hypot(dx, dy);
+                        if (lbZoomState.scale > 1.02) {
+                            lbZoomState.tx += dx;
+                            lbZoomState.ty += dy;
+                            applyLightboxTransform(false);
+                        }
+                        lastPos = { x: e.clientX, y: e.clientY };
+                    }
+                });
+
+                const finishPtr = (e) => {
+                    if (!ptrs.has(e.pointerId)) return;
+                    const wasSingle = ptrs.size === 1;
+                    ptrs.delete(e.pointerId);
+
+                    if (wasSingle) {
+                        const diffX = e.clientX - swipeStartX;
+                        if (lbZoomState.scale <= 1.02 && Math.abs(diffX) > 48 && lightboxGalleryList.length > 1) {
+                            window.stepLightboxImage(diffX > 0 ? 1 : -1);
+                        } else if (movedPx < 10) {
+                            const nowMs = Date.now();
+                            if (nowMs - lastTapMs < 300) {
+                                if (lbZoomState.scale > 1.05) {
+                                    window.resetLightboxZoom(true);
+                                } else {
+                                    lbZoomState.scale = 2.2;
+                                    lbZoomState.tx = 0;
+                                    lbZoomState.ty = 0;
+                                    applyLightboxTransform(true);
+                                }
+                                lastTapMs = 0;
+                            } else {
+                                lastTapMs = nowMs;
+                            }
+                        }
+                        lastPos = null;
+                        lastDist = 0;
+                    } else if (ptrs.size === 1) {
+                        const p = Array.from(ptrs.values())[0];
+                        lastPos = { x: p.x, y: p.y };
+                        lastDist = 0;
+                    }
+                };
+                lbStage.addEventListener('pointerup', finishPtr);
+                lbStage.addEventListener('pointercancel', finishPtr);
+
+                lbStage.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    window.stepLightboxZoom(e.deltaY < 0 ? 0.25 : -0.25);
+                }, { passive: false });
             }
 
             document.addEventListener('keydown', (e) => {
@@ -1087,14 +1271,9 @@
         }
 
         renderLightboxFrame();
-        const imgEl = document.getElementById('image-viewer-img');
         modal.classList.remove('hidden');
         setTimeout(() => {
             modal.classList.remove('opacity-0');
-            if (imgEl) {
-                imgEl.classList.remove('scale-95');
-                imgEl.classList.add('scale-100');
-            }
         }, 10);
         try { history.pushState({ modalOpen: true }, '', '#catalog'); } catch (e) {}
     };
@@ -1102,13 +1281,13 @@
     window.closeImageViewer = function () {
         const modal = document.getElementById('image-viewer-modal');
         if (modal && !modal.classList.contains('hidden')) {
+            window.resetLightboxZoom(false);
             modal.classList.add('opacity-0');
             setTimeout(() => modal.classList.add('hidden'), 200);
         }
     };
     const closeImageViewer = window.closeImageViewer;
     window.addEventListener('popstate', closeImageViewer);
-
     // =========================================================================
     // 5. عارض القصص التفاعلي (Instagram Stories Viewer)
     // =========================================================================
@@ -1567,17 +1746,13 @@
         if (batch.hatchDate && getBatchTrackType(batch) === 'quail') {
             const age = Math.max(0, Math.floor((Date.now() - Number(batch.hatchDate)) / 86400000));
             const minSafeAge = Number(batch.slaughterAgeMin) || 38;
-            const maxSafeAge = Math.max(45, Number(batch.slaughterAgeMax) || Number(batch.slaughterAge) || 45);
             if (age >= minSafeAge) {
-                return { isUrgent: false, text: 'فترة الجاهزية والذبح الطازج الآن — هنتواصل معاك قبلها 🔪' };
+                return { isUrgent: false, text: 'الدفعة جاهزة للذبح الطازج — هنتواصل معاك قبل التسليم 🌿' };
             }
             if (minSafeAge - age <= 5) {
-                return { isUrgent: false, text: `قربت تجهز خلال أيام — التسليم ${win.phrase} وهنتواصل معاك قبلها` };
+                return { isUrgent: false, text: `قربت تجهز للتسليم — ${win.phrase} وهنتواصل معاك قبلها ✨` };
             }
-            if (age <= 15) {
-                return { isUrgent: false, text: 'مرحلة التحضين والرعاية 🐣 — هنتواصل معاك قبل التسليم' };
-            }
-            return { isUrgent: false, text: `مرحلة التسمين وبناء الوزن 📈 — الذبح بعمر ${minSafeAge}–${maxSafeAge} يوم` };
+            return { isUrgent: false, text: 'الحجز مفتوح الآن — هنتواصل معاك للتأكيد قبل الذبح والتسليم 🌿' };
         }
         return { isUrgent: false, text: 'هنتواصل معاك قبل التسليم للتأكيد وتحديد الوقت المناسب 🌿' };
     }
@@ -1993,6 +2168,12 @@
         const imgEl = document.getElementById('pq-img');
         imgEl.src = imgSrc || '';
         imgEl.style.display = imgSrc ? 'block' : 'none';
+        imgEl.onclick = imgSrc ? () => window.openImageModal(imgSrc) : null;
+        const pqZoomBtn = document.getElementById('pq-zoom-trigger');
+        if (pqZoomBtn) {
+            pqZoomBtn.classList.toggle('hidden', !imgSrc);
+            pqZoomBtn.onclick = imgSrc ? (e) => { e.stopPropagation(); window.openImageModal(imgSrc); } : null;
+        }
         document.getElementById('pq-weight-badge').textContent = item.weight || 'طازج بالطلب';
         document.getElementById('pq-name').textContent = item.name;
         document.getElementById('pq-tip').textContent = getCookingTipForProduct(id, item);
