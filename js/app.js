@@ -1008,47 +1008,7 @@
         applyLightboxTransform(true);
     };
 
-    // حالة التكبير والتحريك التفاعلي داخل عارض الصور (Pinch-to-Zoom + Pan + Double-Tap)
-    const lbZoomState = { scale: 1, tx: 0, ty: 0 };
 
-    function applyLightboxTransform(animate = false) {
-        const imgEl = document.getElementById('image-viewer-img');
-        const zoomBadge = document.getElementById('img-viewer-zoom-pct');
-        if (!imgEl) return;
-
-        if (lbZoomState.scale <= 1.02) {
-            lbZoomState.scale = 1;
-            lbZoomState.tx = 0;
-            lbZoomState.ty = 0;
-        } else {
-            const maxShiftX = (imgEl.offsetWidth || 300) * (lbZoomState.scale - 1) * 0.6;
-            const maxShiftY = (imgEl.offsetHeight || 300) * (lbZoomState.scale - 1) * 0.6;
-            lbZoomState.tx = Math.max(-maxShiftX, Math.min(maxShiftX, lbZoomState.tx));
-            lbZoomState.ty = Math.max(-maxShiftY, Math.min(maxShiftY, lbZoomState.ty));
-        }
-
-        imgEl.style.transition = animate ? 'transform 0.22s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
-        imgEl.style.transform = `translate3d(${lbZoomState.tx}px, ${lbZoomState.ty}px, 0) scale(${lbZoomState.scale})`;
-        imgEl.classList.toggle('is-zoomed', lbZoomState.scale > 1.02);
-        if (zoomBadge) zoomBadge.textContent = `${Math.round(lbZoomState.scale * 100)}%`;
-    }
-
-    window.resetLightboxZoom = function (animate = true) {
-        lbZoomState.scale = 1;
-        lbZoomState.tx = 0;
-        lbZoomState.ty = 0;
-        applyLightboxTransform(animate);
-    };
-
-    window.stepLightboxZoom = function (delta) {
-        const next = Math.max(1, Math.min(3.5, Number((lbZoomState.scale + delta).toFixed(2))));
-        lbZoomState.scale = next;
-        if (next === 1) {
-            lbZoomState.tx = 0;
-            lbZoomState.ty = 0;
-        }
-        applyLightboxTransform(true);
-    };
 
     function renderLightboxFrame() {
         const imgEl = document.getElementById('image-viewer-img');
