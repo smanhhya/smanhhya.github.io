@@ -1019,17 +1019,18 @@
         if (resItems) {
           resItems.innerHTML = items.length > 0
             ? items.map((i) => {
-                const lineVal = Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
-                const isGift = Number(i.price) === 0;
+                const isPendingW = Boolean(i.pendingWeight);
+                const lineVal = isPendingW ? 0 : Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
+                const isGift = !isPendingW && Number(i.price) === 0;
                 return `
-                <div class="flex justify-between items-center gap-2 ${isGift ? 'bg-amber-50/70 border-amber-200' : 'bg-[#faf8f3] border-slate-200/70'} border px-3 py-2.5 rounded-2xl">
+                <div class="flex justify-between items-center gap-2 ${isPendingW ? 'bg-indigo-50/60 border-indigo-200' : (isGift ? 'bg-amber-50/70 border-amber-200' : 'bg-[#faf8f3] border-slate-200/70')} border px-3 py-2.5 rounded-2xl">
                   <div class="min-w-0 flex-1">
                     <span class="text-xs sm:text-sm font-black text-brand-navy block truncate">${esc(i.name)}</span>
-                    <span class="text-[10px] font-bold text-slate-400">${isGift ? '🎁 هدية مجانية من النقاط' : `${Number(i.price) || 0} ج × ${esc(i.quantity)}`}</span>
+                    <span class="text-[10px] font-bold ${isPendingW ? 'text-indigo-700' : 'text-slate-400'}">${isPendingW ? `⏳ حجز ${esc(i.birdsCount || 1)} عدد • سعر الكيلو ${Number(i.price) || 0} ج` : (isGift ? '🎁 هدية مجانية من النقاط' : `${Number(i.price) || 0} ج × ${esc(i.quantity)}`)}</span>
                   </div>
                   <div class="text-left shrink-0 flex items-center gap-2">
-                    <span class="text-[11px] font-black ${isGift ? 'text-amber-800 bg-amber-100 border-amber-300' : 'text-emerald-800 bg-emerald-50 border-emerald-200'} px-2.5 py-1 rounded-xl border">
-                      ${isGift ? 'مجاني 🎁' : `${lineVal} ج`}
+                    <span class="text-[11px] font-black ${isPendingW ? 'text-indigo-800 bg-white border-indigo-200' : (isGift ? 'text-amber-800 bg-amber-100 border-amber-300' : 'text-emerald-800 bg-emerald-50 border-emerald-200')} px-2.5 py-1 rounded-xl border">
+                      ${isPendingW ? '⚖️ يتحدد بالميزان' : (isGift ? 'مجاني 🎁' : `${lineVal} ج`)}
                     </span>
                   </div>
                 </div>`;
