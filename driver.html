@@ -634,7 +634,11 @@
                                 countNoAnswer++;
                             } else if (data.status === 'completed') {
                                 countCompleted++;
-                                if(data.paymentMethod !== 'online') collectedCash += orderTotal;
+                                if (data.paymentMethod === 'split') {
+                                    collectedCash += (data.paidCash !== undefined ? Number(data.paidCash) : Math.max(0, orderTotal - (Number(data.paidOnline) || 0)));
+                                } else if (data.paymentMethod !== 'online') {
+                                    collectedCash += orderTotal;
+                                }
                                 driverEarnings += fee;
                             }
                         }
@@ -690,7 +694,9 @@
             }
             let waPhone = cleanPhone.startsWith('0') ? '2' + cleanPhone : cleanPhone;
             let isOnline = (order.paymentMethod === 'online');
-            let amountText = isOnline ? 'الطلب مدفوع مسبقاً (أونلاين) ✅' : `المبلغ المطلوب: ${order.total || 0} ج.م 💵`;
+            let isSplit = (order.paymentMethod === 'split');
+            let splitCash = isSplit ? (order.paidCash !== undefined ? Number(order.paidCash) : Math.max(0, (Number(order.total) || 0) - (Number(order.paidOnline) || 0))) : (Number(order.total) || 0);
+            let amountText = isOnline ? 'الطلب مدفوع مسبقاً (أونلاين) ✅' : (isSplit ? `المتبقي كاش عند الاستلام: ${splitCash} ج.م 💵` : `المبلغ المطلوب: ${order.total || 0} ج.م 💵`);
 
             let msg = `أهلاً بك أ/ ${order.customerName || 'عميلنا العزيز'} 🌹\nمعك كابتن (${currentDriverName}) مندوب *"سمان ههيا"* 🛵\nأنا في الطريق إليك الآن لتسليم طلبك.\n${amountText}\nيرجى الاستعداد للاستلام، وشكراً لتعاونكم!`;
             window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -789,8 +795,10 @@
                             <div class="text-left">
                                 ${isOnline 
                                     ? `<span class="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-lg inline-block">خالص أونلاين</span>` 
-                                    : `<span class="bg-amber-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-lg inline-block">تحصيل كاش</span>`}
-                                <div class="font-black text-brand-primary text-2xl mt-0.5 leading-none">${isOnline ? '0' : (o.total || 0)} <span class="text-xs font-bold">ج.م</span></div>
+                                    : (o.paymentMethod === 'split'
+                                        ? `<span class="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-0.5 rounded-lg inline-block">نص ونص (كاش)</span>`
+                                        : `<span class="bg-amber-500 text-white text-[10px] font-black px-2.5 py-0.5 rounded-lg inline-block">تحصيل كاش</span>`)}
+                                <div class="font-black text-brand-primary text-2xl mt-0.5 leading-none">${isOnline ? '0' : (o.paymentMethod === 'split' ? (o.paidCash !== undefined ? Number(o.paidCash) : Math.max(0, (Number(o.total) || 0) - (Number(o.paidOnline) || 0))) : (o.total || 0))} <span class="text-xs font-bold">ج.م</span></div>
                             </div>
                         </div>
 
@@ -857,15 +865,18 @@
                 color: 'emerald',
                 confirmText: 'نعم، تم التسليم',
                 onConfirm: async () => {
-                    const nowStr = new Date().toLocaleDateString('en-US');
-                    const nowTimeStr = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit', hour12: true});
+                    const nowObj = new Date();
+                    const nowStr = nowObj.toLocaleDateString('en-US');
+                    const nowTimeStr = nowObj.toLocaleString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit' });
                     try { 
                         await db.collection('orders').doc(orderId).update({ 
                             status: 'completed', 
                             completedAt: firebase.firestore.FieldValue.serverTimestamp(), 
+                            completedAtMs: Date.now(),
                             completedAtStr: nowStr, 
                             completedTimeDisplay: nowTimeStr 
-                        }); 
+                        });
+
                         showToast('عاش يا بطل! تم تسجيل التسليم بنجاح ✅');
                     } catch(e) {
                         showToast('حدث خطأ أثناء التحديث، حاول مجدداً', 'error');
