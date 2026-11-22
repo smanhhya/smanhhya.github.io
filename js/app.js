@@ -2071,31 +2071,111 @@
             </div>
         </div>`;
     }
+    function getPrebookAvailableCount(id) {
+        return Math.max(0, Math.floor(Number(globalStock[id + '_prebook']) || 0));
+    }
+
+    window.stepPrebookWeightCart = function (id, delta) {
+        if (globalSettings.storeOpen === false) return;
+        const p = productsInfo[id];
+        if (!p) return;
+
+        const maxAvail = getPrebookAvailableCount(id);
+        const curCnt = (cart[id] && cart[id].pendingWeight) ? (Number(cart[id].birdsCount) || 0) : 0;
+        const nextCnt = curCnt + Number(delta);
+
+        if (nextCnt <= 0) {
+            delete cart[id];
+        } else {
+            if (nextCnt > maxAvail) {
+                showStoreToast(`المتاح للحجز حالياً (${maxAvail}) فقط`, 'fa-circle-exclamation text-amber-400');
+                return;
+            }
+            const kiloPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
+            cart[id] = {
+                isWeightBased: true,
+                pendingWeight: true,
+                birdsCount: nextCnt,
+                quantity: 0,
+                price: kiloPrice,
+                baseName: p.name,
+                name: `${p.name} [حجز ${nextCnt} عدد — يتحدد بالميزان يوم الذبح]`
+            };
+            if (delta > 0 && curCnt === 0) {
+                showStoreToast(`تم حجز (${nextCnt}) ${p.name} — السعر يتحدد بالميزان يوم الذبح ⚖️`);
+            }
+        }
+
+        if (navigator.vibrate) navigator.vibrate(25);
+        saveCart();
+        renderProducts();
+        updateUI();
+    };
 
     function buildWeightProductCard(id, item) {
         const kiloPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : item.basePrice) || 0;
         const weightsArr = getAvailableWeightsForProduct(id);
-        const pickedIndices = Array.isArray(cart[id]?.selectedIndices) ? cart[id].selectedIndices : [];
+        const prebookAvail = getPrebookAvailableCount(id);
+        const pickedIndices = (cart[id] && !cart[id].pendingWeight && Array.isArray(cart[id].selectedIndices)) ? cart[id].selectedIndices : [];
+        const prebookInCart = (cart[id] && cart[id].pendingWeight) ? (Number(cart[id].birdsCount) || 0) : 0;
+        const totalInCart = pickedIndices.length + prebookInCart;
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
 
-        const chipsHtml = weightsArr.length > 0
-            ? weightsArr.map((grams, idx) => {
-                const kg = (grams / 1000).toFixed(2);
-                const estPrice = Math.round((grams / 1000) * kiloPrice);
-                const isPicked = pickedIndices.includes(idx);
-                return `
-                    <button type="button" onclick="toggleWeightBirdInCart('${safeId}', ${idx}, ${grams})" class="px-2.5 py-1.5 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1.5 ${
-                        isPicked ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
-                    }">
-                        <i class="fa-solid ${isPicked ? 'fa-check-circle text-amber-300' : 'fa-plus text-indigo-500'} text-[10px]"></i>
-                        <span>${kg} كجم (${estPrice} ج)</span>
-                    </button>`;
-            }).join('')
-            : `<span class="text-xs font-bold text-slate-400">نفذت الأوزان المتاحة حالياً — تابعنا في الدفعة القادمة</span>`;
+        const readyWeightsSectionHtml = weightsArr.length > 0
+            ? `<div class="bg-indigo-50/50 p-2.5 rounded-2xl border border-indigo-100">
+                   <p class="text-[10px] font-black text-indigo-900 mb-2"><i class="fa-solid fa-scale-balanced ml-1 text-indigo-500"></i> أوزان جاهزة وموزونة — اضغط على الوزن المناسب:</p>
+                   <div class="flex flex-wrap gap-1.5">
+                       ${weightsArr.map((grams, idx) => {
+                           const kg = (grams / 1000).toFixed(2);
+                           const estPrice = Math.round((grams / 1000) * kiloPrice);
+                           const isPicked = pickedIndices.includes(idx);
+                           return `
+                               <button type="button" onclick="toggleWeightBirdInCart('${safeId}', ${idx}, ${grams})" class="px-2.5 py-1.5 rounded-xl text-[11px] font-black border transition-all flex items-center gap-1.5 ${
+                                   isPicked ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-50'
+                               }">
+                                   <i class="fa-solid ${isPicked ? 'fa-check-circle text-amber-300' : 'fa-plus text-indigo-500'} text-[10px]"></i>
+                                   <span>${kg} كجم (${estPrice} ج)</span>
+                               </button>`;
+                       }).join('')}
+                   </div>
+               </div>`
+            : '';
+
+        const prebookSectionHtml = prebookAvail > 0
+            ? `<div class="bg-amber-50/80 p-2.5 rounded-2xl border border-amber-200 flex items-center justify-between gap-2.5">
+                   <div class="min-w-0 flex-1">
+                       <p class="text-[11px] font-black text-amber-950 flex items-center gap-1">
+                           <i class="fa-solid fa-clock text-amber-600 text-[10px]"></i>
+                           <span>حجز بالعدد للذبح الطازج (متاح ${prebookAvail})</span>
+                       </p>
+                       <p class="text-[10px] font-bold text-amber-800 mt-0.5">⚖️ السعر النهائي يتحدد بالميزان يوم الذبح</p>
+                   </div>
+                   ${prebookInCart > 0 ? `
+                       <div class="flex items-center gap-1 bg-white border-2 border-amber-400 rounded-xl p-0.5 shrink-0">
+                           <button type="button" onclick="stepPrebookWeightCart('${safeId}', 1)" class="w-8 h-8 bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center active:scale-90">+</button>
+                           <span class="font-black text-brand-navy text-xs min-w-[22px] text-center">${prebookInCart}</span>
+                           <button type="button" onclick="stepPrebookWeightCart('${safeId}', -1)" class="w-8 h-8 bg-rose-50 text-rose-600 rounded-lg font-black text-sm flex items-center justify-center active:scale-90">-</button>
+                       </div>
+                   ` : `
+                       <button type="button" onclick="stepPrebookWeightCart('${safeId}', 1)" class="bg-brand-navy hover:bg-emerald-800 text-amber-300 px-3 py-2 rounded-xl text-[11px] font-black shadow-sm flex items-center gap-1 shrink-0 active:scale-95 transition-all">
+                           <i class="fa-solid fa-plus text-[10px]"></i> احجز عدد
+                       </button>
+                   `}
+               </div>`
+            : '';
+
+        const emptyNoticeHtml = (!readyWeightsSectionHtml && !prebookSectionHtml)
+            ? `<div class="bg-slate-50 p-2.5 rounded-2xl border border-slate-200 text-center text-xs font-bold text-slate-400">نفذت الكمية المتاحة حالياً — تابعنا في الدفعة القادمة</div>`
+            : '';
+
+        const availSummaryTxt = [
+            weightsArr.length > 0 ? `جاهز بالميزان (${weightsArr.length})` : '',
+            prebookAvail > 0 ? `متاح للحجز بالعدد (${prebookAvail})` : ''
+        ].filter(Boolean).join(' • ') || 'غير متاح حالياً';
 
         return `
-        <div class="bg-white rounded-3xl shadow-sm border-2 ${pickedIndices.length > 0 ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-indigo-100'} p-3.5 space-y-2.5">
+        <div class="bg-white rounded-3xl shadow-sm border-2 ${totalInCart > 0 ? 'border-indigo-500 ring-2 ring-indigo-100' : 'border-indigo-100'} p-3.5 space-y-2.5">
             <div class="flex items-center justify-between gap-3">
                 <div class="flex items-center gap-2.5 min-w-0">
                     ${imgSrc
@@ -2103,17 +2183,17 @@
                         : `<div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0"><i class="fa-solid fa-scale-balanced text-lg"></i></div>`}
                     <div class="min-w-0">
                         <h3 class="text-sm font-black text-indigo-950 truncate">${esc(item.name)}</h3>
-                        <p class="text-[11px] font-bold text-slate-500">سعر الكيلو: <strong class="text-indigo-700">${kiloPrice} ج.م</strong> • متاح (${weightsArr.length})</p>
+                        <p class="text-[11px] font-bold text-slate-500">سعر الكيلو: <strong class="text-indigo-700">${kiloPrice} ج.م</strong> • ${availSummaryTxt}</p>
                     </div>
                 </div>
-                ${pickedIndices.length > 0 ? `<span class="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0">بالسلة: ${pickedIndices.length}</span>` : ''}
+                ${totalInCart > 0 ? `<span class="bg-indigo-600 text-white text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0">بالسلة: ${totalInCart}</span>` : ''}
             </div>
-            <div class="bg-indigo-50/50 p-2.5 rounded-2xl border border-indigo-100">
-                <p class="text-[10px] font-black text-indigo-900 mb-2"><i class="fa-solid fa-hand-pointer ml-1 text-indigo-500"></i> اضغط على الوزن المناسب لإضافته لسلتك:</p>
-                <div class="flex flex-wrap gap-1.5">${chipsHtml}</div>
-            </div>
+            ${readyWeightsSectionHtml}
+            ${prebookSectionHtml}
+            ${emptyNoticeHtml}
         </div>`;
     }
+
 
     window.openProductQuickView = function (id) {
         const item = productsInfo[id];
@@ -2260,8 +2340,9 @@
         if (!p) return;
 
         const kiloPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
-        const existing = cart[id] || {
+        const existing = (cart[id] && !cart[id].pendingWeight) ? cart[id] : {
             isWeightBased: true,
+            pendingWeight: false,
             name: p.name,
             baseName: p.name,
             price: kiloPrice,
@@ -2568,6 +2649,10 @@
     window.updateQuantity = function (id, delta) {
         if (!cart[id] || globalSettings.storeOpen === false) return;
         if (cart[id].isWeightBased) {
+            if (cart[id].pendingWeight) {
+                window.stepPrebookWeightCart(id, delta);
+                return;
+            }
             if (delta < 0) {
                 delete cart[id];
                 saveCart();
@@ -2689,7 +2774,9 @@
             const item = cart[id];
             const unitPrice = Number(globalPrices[id] !== undefined ? globalPrices[id] : productsInfo[id].basePrice) || 0;
             item.price = unitPrice;
-            sum += Math.round((Number(item.quantity) || 0) * unitPrice);
+            if (!item.pendingWeight) {
+                sum += Math.round((Number(item.quantity) || 0) * unitPrice);
+            }
         });
         return sum;
     }
@@ -2710,12 +2797,15 @@
             const p = productsInfo[id];
             const item = cart[id];
             item.price = Number(globalPrices[id] !== undefined ? globalPrices[id] : p.basePrice) || 0;
-            const lineTotal = Math.round((Number(item.quantity) || 0) * item.price);
+            const isPendingW = Boolean(item.pendingWeight);
+            const lineTotal = isPendingW ? 0 : Math.round((Number(item.quantity) || 0) * item.price);
             subTotalPrice += lineTotal;
-            totalItems += item.isWeightBased ? (item.selectedWeightsGrams?.length || 1) : Number(item.quantity);
+            totalItems += isPendingW ? (Number(item.birdsCount) || 1) : (item.isWeightBased ? (item.selectedWeightsGrams?.length || 1) : Number(item.quantity));
 
             const thumbSrc = (Array.isArray(p.images) && p.images[0]) ? p.images[0] : '';
-            step2Lines.push(`<div class="flex justify-between items-center text-slate-700 font-bold"><span>${esc(item.quantity)} × ${esc(item.name)}</span><strong class="text-brand-navy">${lineTotal} ج.م</strong></div>`);
+            step2Lines.push(isPendingW
+                ? `<div class="flex justify-between items-center text-amber-900 font-bold"><span>⏳ ${esc(item.birdsCount || 1)} عدد × ${esc(item.baseName || p.name)}</span><strong class="text-indigo-700 text-[10px]">⚖️ يتحدد بالميزان</strong></div>`
+                : `<div class="flex justify-between items-center text-slate-700 font-bold"><span>${esc(item.quantity)} × ${esc(item.name)}</span><strong class="text-brand-navy">${lineTotal} ج.م</strong></div>`);
 
             if (cartItemsContainer) {
                 const safeId = escAttr(id);
@@ -2723,7 +2813,21 @@
                     ? `<img src="${esc(thumbSrc)}" alt="${esc(item.name)}" class="w-13 h-13 w-[52px] h-[52px] rounded-xl object-cover shrink-0 border border-slate-100 bg-slate-50">`
                     : `<div class="w-[52px] h-[52px] rounded-xl bg-emerald-50 text-brand-navy flex items-center justify-center shrink-0"><i class="fa-solid fa-kiwi-bird text-lg"></i></div>`;
 
-                cartItemsContainer.innerHTML += item.isWeightBased
+                cartItemsContainer.innerHTML += isPendingW
+                    ? `
+                    <div class="bg-amber-50/70 p-2.5 rounded-2xl border border-amber-200 flex items-center gap-2.5 shadow-sm">
+                        ${thumbHtml}
+                        <div class="min-w-0 flex-1">
+                            <h4 class="font-black text-amber-950 text-xs truncate">${esc(item.baseName || p.name)}</h4>
+                            <div class="text-indigo-800 font-black text-[10px] mt-0.5">⚖️ يتحدد بالميزان يوم الذبح (الكيلو ${item.price} ج)</div>
+                        </div>
+                        <div class="flex items-center gap-1 bg-white rounded-xl p-1 border border-amber-300 h-[34px] shrink-0">
+                            <button type="button" onclick="stepPrebookWeightCart('${safeId}', 1)" class="w-7 h-full bg-brand-navy text-white rounded-lg font-black text-sm flex items-center justify-center active:scale-90">+</button>
+                            <span class="font-black text-brand-navy min-w-[20px] text-center text-xs">${item.birdsCount || 1}</span>
+                            <button type="button" onclick="stepPrebookWeightCart('${safeId}', -1)" class="w-7 h-full bg-rose-50 text-rose-500 rounded-lg font-black text-sm flex items-center justify-center active:scale-90">-</button>
+                        </div>
+                    </div>`
+                    : (item.isWeightBased
                     ? `
                     <div class="bg-white p-2.5 rounded-2xl border border-indigo-100 flex items-center gap-2.5 shadow-sm">
                         ${thumbHtml}
@@ -2734,6 +2838,7 @@
                         <button type="button" onclick="updateQuantity('${safeId}', -1)" class="bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white w-8 h-8 rounded-xl flex items-center justify-center shrink-0 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
                     </div>`
                     : `
+
                     <div class="bg-white p-2.5 rounded-2xl border border-slate-200/70 flex items-center gap-2.5 shadow-sm">
                         ${thumbHtml}
                         <div class="min-w-0 flex-1">
@@ -2749,7 +2854,7 @@
                             <span class="font-black text-brand-navy min-w-[20px] text-center text-xs">${item.quantity}</span>
                             <button type="button" onclick="updateQuantity('${safeId}', -1)" class="w-7 h-full bg-white text-rose-500 rounded-lg shadow-sm font-black text-sm flex items-center justify-center active:scale-90">-</button>
                         </div>
-                    </div>`;
+                    </div>`);
             }
         });
 
@@ -2892,7 +2997,8 @@
 
         const proceedBtn = document.getElementById('btn-proceed-checkout');
         const hint1 = document.getElementById('checkout-hint');
-        const meetsMin = subTotalPrice >= (Number(globalSettings.minOrder) || 0);
+        const hasPendingWeightInCart = Object.values(cart).some((it) => it && it.pendingWeight);
+        const meetsMin = hasPendingWeightInCart || (subTotalPrice >= (Number(globalSettings.minOrder) || 0));
         if (proceedBtn) {
             const canProceed = Object.keys(cart).length > 0 && meetsMin;
             proceedBtn.disabled = !canProceed;
@@ -3392,6 +3498,20 @@
         Object.keys(cart).forEach((id) => {
             if (!productsInfo[id]) return;
             const item = cart[id];
+            if (item.pendingWeight) {
+                const cnt = Number(item.birdsCount) || 1;
+                orderItems.push({
+                    id,
+                    name: item.name,
+                    quantity: 0,
+                    price: item.price,
+                    birdsCount: cnt,
+                    isWeightBased: true,
+                    pendingWeight: true
+                });
+                itemsWaStr += `▪ ${item.name}\n  └ ${cnt} عدد (سعر الكيلو ${item.price} ج — يتحدد بالميزان يوم الذبح)\n`;
+                return;
+            }
             const lineTotal = Math.round(item.quantity * item.price);
             const cleanItemObj = { id, name: item.name, quantity: item.quantity, price: item.price };
             if (item.isWeightBased && Array.isArray(item.selectedWeightsGrams)) {
@@ -3401,6 +3521,7 @@
             orderItems.push(cleanItemObj);
             itemsWaStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${lineTotal} ج.م\n`;
         });
+
 
         const notesChunks = [];
         if (walletUsed) notesChunks.push(`🎁 العميل فعّل خصم المحفظة (${walletDiscount} ج.م) بـ ${walletPtsToDeduct} نقطة.`);
@@ -3536,6 +3657,10 @@
                 const chicksBookedUpdates = {};
 
                 orderItems.forEach((it) => {
+                    if (it.pendingWeight) {
+                        stockUpdates[it.id + '_prebook'] = firebase.firestore.FieldValue.increment(-(Number(it.birdsCount) || 1));
+                        return;
+                    }
                     if (it.isWeightBased) return;
                     const trk = getProductTrackType(it.id);
                     stockUpdates[it.id] = firebase.firestore.FieldValue.increment(-it.quantity);
@@ -3870,6 +3995,12 @@
 
         // 3. ملخص إيصال الطلب المختصر
         const receiptRowsHtml = itemsList.map((it) => {
+            if (it.pendingWeight) {
+                return `<div class="flex items-center justify-between gap-2 text-[11px] font-bold text-amber-900">
+                    <span class="truncate">⏳ ${esc(it.birdsCount || 1)} عدد × ${esc(it.name)}</span>
+                    <strong class="text-indigo-700 shrink-0 text-[10px]">⚖️ يتحدد بالميزان</strong>
+                </div>`;
+            }
             const lineTotal = Math.round((Number(it.quantity) || 0) * (Number(it.price) || 0));
             return `<div class="flex items-center justify-between gap-2 text-[11px] font-bold text-slate-700">
                 <span class="truncate">${esc(it.quantity)} × ${esc(it.name)}</span>
