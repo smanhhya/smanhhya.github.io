@@ -253,9 +253,9 @@
             <div id="batch-growth-fill" class="h-full bg-gradient-to-l from-amber-400 to-emerald-600 rounded-full transition-all duration-700" style="width: 10%;"></div>
           </div>
           <div class="flex justify-between text-[9px] font-bold text-slate-400">
-            <span>تحضين 🐣</span>
-            <span>تسمين 📈</span>
-            <span>جاهزية 38–45ي 🔪</span>
+            <span>رعاية بالمزرعة 🌿</span>
+            <span>استكمال الوزن ✨</span>
+            <span>ذبح طازج 🔪</span>
             <span>توصيل 🛵</span>
           </div>
         </div>
@@ -1716,51 +1716,7 @@
           const trackType = getBatchTrackType(b);
           let autoMsg = 'طلبك محجوز ضمن هذه الدفعة وسيتم تجهيزه طازج يوم التسليم.';
 
-          if (trackType === 'quail' && b.hatchDate) {
-            const age = Math.max(0, Math.floor((nowMs - Number(b.hatchDate)) / 86400000));
-            const pct = Math.min(100, Math.max(10, Math.round((age / win.maxAge) * 100)));
-            if (growthWrap && growthFill && growthLabel) {
-              growthWrap.classList.remove('hidden');
-              growthFill.style.width = `${pct}%`;
-              growthLabel.textContent = `عمر القطيع: ${age} يوم`;
-            }
-
-            if (b.slaughteredAt && !b.isOpen && !isFutureDelivery) {
-              autoMsg = '🛵 تم الذبح الطازج وجاري التوزيع مع المناديب الآن!';
-              if (stagePill) {
-                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-indigo-50 text-indigo-700 border-indigo-200 shrink-0';
-                stagePill.textContent = '🛵 جاري التوزيع';
-                stagePill.classList.remove('hidden');
-              }
-            } else if (age >= win.minAge) {
-              autoMsg = `🔪 الدفعة الآن في فترة الجاهزية والذبح الطازج الآمنة (${win.minAge}–${win.maxAge} يوم).`;
-              if (stagePill) {
-                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-emerald-50 text-emerald-800 border-emerald-200 shrink-0';
-                stagePill.textContent = '🔪 فترة الذبح الآمنة';
-                stagePill.classList.remove('hidden');
-              }
-            } else if (win.minAge - age <= 5) {
-              autoMsg = '⏳ الدفعة بتكمل أوزانها النهائية حالياً وقربت تجهز للتسليم!';
-              if (stagePill) {
-                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-amber-50 text-amber-800 border-amber-200 shrink-0';
-                stagePill.textContent = '⏳ قربت تجهز';
-                stagePill.classList.remove('hidden');
-              }
-            } else if (age <= 15) {
-              autoMsg = '🐣 السمان حالياً في مرحلة التحضين والرعاية الأولية لنقدم لك أفضل جودة.';
-              if (stagePill) {
-                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-sky-50 text-sky-700 border-sky-200 shrink-0';
-                stagePill.textContent = '🐣 مرحلة التحضين';
-                stagePill.classList.remove('hidden');
-              }
-            } else {
-              autoMsg = `📈 السمان في مرحلة التسمين وبناء اللحم (الذبح الآمن ${win.minAge}–${win.maxAge} يوم).`;
-              if (stagePill) {
-                stagePill.className = 'text-[10px] font-black px-2.5 py-1 rounded-xl border bg-purple-50 text-purple-700 border-purple-200 shrink-0';
-                stagePill.textContent = '📈 مرحلة التسمين';
-                stagePill.classList.remove('hidden');
-              }
-            }
+if (trackType === 'quail' && b.hatchDate) {
           } else {
             growthWrap?.classList.add('hidden');
             stagePill?.classList.add('hidden');
