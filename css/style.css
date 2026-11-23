@@ -375,6 +375,95 @@ input[type=number]::-webkit-outer-spin-button {
 #image-viewer-img.is-zoomed {
   cursor: grab;
 }
-#image-viewer-img.is-zoomed:active {
-  cursor: grabbing;
+/* ========================================================================= */
+/* 🎨 محرك القوالب والأقسام المرن (Storefront Builder Themes & Card Styles) */
+/* ========================================================================= */
+.sb-force-hidden {
+  display: none !important;
+}
+
+#store-wrapper.sb-ordered-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+#store-wrapper.sb-ordered-wrapper > * {
+  margin-top: 0 !important;
+}
+
+/* 1. ثيم ليالي رمضان والعيد */
+body.theme-ramadan_gold {
+  --brand-navy: #1e1b4b;
+  --brand-emerald: #312e81;
+  --brand-yellow: #fbbf24;
+  --brand-cream: #f8f7ff;
+  background-color: #f8f7ff;
+}
+body.theme-ramadan_gold nav {
+  background-color: rgba(15, 23, 42, 0.96) !important;
+}
+body.theme-ramadan_gold .luxury-hero-bg {
+  background: radial-gradient(circle at 18% 20%, rgba(251, 191, 36, 0.22), transparent 45%),
+              radial-gradient(circle at 85% 80%, rgba(99, 102, 241, 0.25), transparent 45%),
+              linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #312e81 100%) !important;
+}
+
+/* 2. ثيم مودرن ناصع وبسيط */
+body.theme-clean_modern {
+  --brand-navy: #065f46;
+  --brand-emerald: #047857;
+  --brand-yellow: #10b981;
+  --brand-cream: #ffffff;
+  background-color: #f8fafc;
+}
+body.theme-clean_modern nav {
+  background-color: rgba(6, 78, 59, 0.96) !important;
+}
+body.theme-clean_modern .luxury-hero-bg {
+  background: linear-gradient(135deg, #065f46 0%, #059669 65%, #10b981 100%) !important;
+}
+
+/* 3. ثيم التراثي الدافئ (للعزومات) */
+body.theme-warm_heritage {
+  --brand-navy: #7f1d1d;
+  --brand-emerald: #991b1b;
+  --brand-yellow: #f59e0b;
+  --brand-cream: #fffbf5;
+  background-color: #fffbf5;
+}
+body.theme-warm_heritage nav {
+  background-color: rgba(69, 10, 10, 0.96) !important;
+}
+body.theme-warm_heritage .luxury-hero-bg {
+  background: radial-gradient(circle at 20% 20%, rgba(245, 158, 11, 0.22), transparent 45%),
+              linear-gradient(135deg, #450a0a 0%, #7f1d1d 55%, #991b1b 100%) !important;
+}
+
+/* نظام عرض الكروت: كروت أفقية عريضة (Wide List) */
+body.cards-style-wide_list #products-container,
+body.cards-style-wide_list #extras-container {
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+}
+@media (min-width: 768px) {
+  body.cards-style-wide_list #products-container,
+  body.cards-style-wide_list #extras-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+body.cards-style-wide_list .product-app-card {
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 0.75rem !important;
+  padding: 0.65rem !important;
+}
+body.cards-style-wide_list .product-app-card > div:first-child {
+  width: 6.5rem !important;
+  height: 6.5rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* نظام عرض الكروت: كروت فخمة بإطار ذهبي (Luxury Tall) */
+body.cards-style-luxury_tall .product-app-card {
+  border: 1.5px solid rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 0 10px 26px -8px rgba(15, 52, 38, 0.14) !important;
 }
