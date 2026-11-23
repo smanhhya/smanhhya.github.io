@@ -2051,6 +2051,9 @@
       };
 
       window.addEventListener('DOMContentLoaded', () => {
+        if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+          navigator.serviceWorker.register('./sw.js').catch(() => {});
+        }
         const params = new URLSearchParams(window.location.search);
         const phoneParam = params.get('phone');
         const phoneInput = document.getElementById('customer-phone');
