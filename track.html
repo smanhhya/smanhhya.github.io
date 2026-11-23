@@ -497,6 +497,7 @@
         firebase.initializeApp(FIREBASE_CONFIG);
       }
       const db = firebase.firestore();
+      try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch (e) {}
 
       let currentOrder = null;
       let allActiveOrders = [];
@@ -519,7 +520,49 @@
       let dialogResolver = null;
 
       function getDocServerFirst(docRef) {
-        return docRef.get({ source: 'server' }).catch(() => docRef.get().catch(() => ({ exists: false })));
+        if (!navigator.onLine) {
+          return docRef.get({ source: 'cache' }).catch(() => ({ exists: false }));
+        }
+        return new Promise((resolve) => {
+          let settled = false;
+          const timer = setTimeout(() => {
+            docRef.get({ source: 'cache' }).then((cDoc) => {
+              if (!settled && cDoc && cDoc.exists) { settled = true; resolve(cDoc); }
+            }).catch(() => {});
+          }, 1800);
+          docRef.get({ source: 'server' }).then((sDoc) => {
+            clearTimeout(timer);
+            if (!settled) { settled = true; resolve(sDoc); }
+          }).catch(() => {
+            clearTimeout(timer);
+            docRef.get({ source: 'cache' }).then((cDoc) => {
+              if (!settled) { settled = true; resolve(cDoc); }
+            }).catch(() => {
+              if (!settled) { settled = true; resolve({ exists: false }); }
+            });
+          });
+        });
+      }
+
+      const TRACK_MIRROR_KEY = 'sman_last_tracked_orders_v1';
+      function saveTrackedOrdersMirror(normPhone, activeArr, pastArr) {
+        try {
+          localStorage.setItem(TRACK_MIRROR_KEY, JSON.stringify({
+            phone: normPhone,
+            ts: Date.now(),
+            active: (activeArr || []).slice(0, 10),
+            past: (pastArr || []).slice(0, 15)
+          }));
+        } catch (e) {}
+      }
+      function readTrackedOrdersMirror(normPhone) {
+        try {
+          const raw = localStorage.getItem(TRACK_MIRROR_KEY);
+          if (!raw) return null;
+          const d = JSON.parse(raw);
+          if (d && d.phone === normPhone && Array.isArray(d.active) && d.active.length > 0) return d;
+        } catch (e) {}
+        return null;
       }
 
       function showTrackToast(text, iconCls = 'fa-circle-check text-emerald-400') {
@@ -775,13 +818,32 @@
         btn.disabled = true;
         document.getElementById('error-msg')?.classList.add('hidden');
 
+        // عرض فوري من المرآة المحلية في 0ms لو العميل سبق وتتبع نفس الرقم (يعمل حتى بدون إنترنت)
+        const cachedTrack = readTrackedOrdersMirror(phone);
+        if (cachedTrack) {
+          allActiveOrders = cachedTrack.active;
+          pastOrders = cachedTrack.past || [];
+          currentOrder = allActiveOrders[0];
+          const histPillFast = document.getElementById('history-count-pill');
+          if (histPillFast) histPillFast.textContent = `${pastOrders.length} طلب`;
+          renderOrderTabs();
+          displayResult();
+          if (!navigator.onLine) {
+            showTrackToast('تم عرض آخر حالة محفوظة لطلبك بدون إنترنت ⚡', 'fa-bolt text-amber-400');
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>عرض حالة طلبي الآن</span>';
+            btn.disabled = false;
+            return;
+          }
+        }
+
         try {
-          await configReadyPromise;
+          await Promise.race([configReadyPromise, new Promise((r) => setTimeout(r, 900))]);
           const candidates = buildPhoneCandidates(phone, rawInput);
+          const getOpt = !navigator.onLine ? { source: 'cache' } : undefined;
           const queries = [];
           candidates.forEach((pVal) => {
-            queries.push(db.collection('orders').where('customerPhone', '==', pVal).limit(20).get().catch(() => null));
-            queries.push(db.collection('orders').where('customerPhone2', '==', pVal).limit(20).get().catch(() => null));
+            queries.push(db.collection('orders').where('customerPhone', '==', pVal).limit(20).get(getOpt).catch(() => null));
+            queries.push(db.collection('orders').where('customerPhone2', '==', pVal).limit(20).get(getOpt).catch(() => null));
           });
 
           const snaps = await Promise.all(queries);
@@ -807,12 +869,15 @@
           if (allActiveOrders.length === 0) {
             if (pastOrders.length > 0) {
               allActiveOrders = [pastOrders[0]];
+            } else if (!cachedTrack) {
+              showError(!navigator.onLine ? 'أنت غير متصل بالإنترنت ولا توجد نسخة محفوظة لهذا الرقم بعد.' : 'لا توجد طلبات مسجلة بهذا الرقم حالياً.');
+              return;
             } else {
-              showError('لا توجد طلبات مسجلة بهذا الرقم حالياً.');
               return;
             }
           }
 
+          saveTrackedOrdersMirror(phone, allActiveOrders, pastOrders);
           document.getElementById('history-section')?.classList.add('hidden');
           const histPill = document.getElementById('history-count-pill');
           if (histPill) histPill.textContent = `${pastOrders.length} طلب`;
@@ -820,6 +885,7 @@
           renderOrderTabs();
           window.selectOrder(0);
         } catch (error) {
+
           console.error('Track Order Error:', error);
           showError('تعذر الاتصال بالنظام، يرجى المحاولة مرة أخرى.');
         } finally {
