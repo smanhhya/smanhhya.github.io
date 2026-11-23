@@ -218,6 +218,10 @@
                 firebase.initializeApp(FIREBASE_CONFIG);
             }
             const db = firebase.firestore();
+            try { db.enablePersistence({ synchronizeTabs: true }).catch(() => {}); } catch (e) {}
+            if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            }
 
             let allPublicReviews = [];
             let liveProductsMap = {};
@@ -240,8 +244,31 @@
                 }, 2200);
             }
 
+            const REVIEWS_MIRROR_KEY = 'sman_public_reviews_cache_v1';
+
             function getServerFirst(ref) {
-                return ref.get({ source: 'server' }).catch(() => ref.get().catch(() => null));
+                if (!navigator.onLine) {
+                    return ref.get({ source: 'cache' }).catch(() => null);
+                }
+                return new Promise((resolve) => {
+                    let settled = false;
+                    const timer = setTimeout(() => {
+                        ref.get({ source: 'cache' }).then((cSnap) => {
+                            if (!settled && cSnap) { settled = true; resolve(cSnap); }
+                        }).catch(() => {});
+                    }, 2000);
+                    ref.get({ source: 'server' }).then((sSnap) => {
+                        clearTimeout(timer);
+                        if (!settled) { settled = true; resolve(sSnap); }
+                    }).catch(() => {
+                        clearTimeout(timer);
+                        ref.get({ source: 'cache' }).then((cSnap) => {
+                            if (!settled) { settled = true; resolve(cSnap); }
+                        }).catch(() => {
+                            if (!settled) { settled = true; resolve(null); }
+                        });
+                    });
+                });
             }
 
             async function loadPublicReviews() {
@@ -249,6 +276,28 @@
                 const grid = document.getElementById('public-reviews-grid');
                 const emptyBox = document.getElementById('reviews-empty-state');
                 const filtersBar = document.getElementById('filters-bar');
+
+                // فتح فوري في 0ms من الكاش المحلي حتى قبل رد الإنترنت
+                let hadCachedReviews = false;
+                try {
+                    const cachedRaw = localStorage.getItem(REVIEWS_MIRROR_KEY);
+                    if (cachedRaw) {
+                        const cObj = JSON.parse(cachedRaw);
+                        if (cObj && Array.isArray(cObj.reviews) && cObj.reviews.length > 0) {
+                            allPublicReviews = cObj.reviews;
+                            if (cObj.products) liveProductsMap = cObj.products;
+                            if (cObj.prices) livePricesMap = cObj.prices;
+                            hadCachedReviews = true;
+                            updateHeroSummaryStats();
+                            renderZoneFilterPills();
+                            loader?.classList.add('hidden');
+                            emptyBox?.classList.add('hidden');
+                            filtersBar?.classList.remove('hidden');
+                            grid?.classList.remove('hidden');
+                            renderReviewsGrid();
+                        }
+                    }
+                } catch (e) {}
 
                 try {
                     const [revSnap, setSnap, priceSnap] = await Promise.all([
@@ -282,8 +331,23 @@
                         });
                     }
 
+                    if (list.length === 0 && hadCachedReviews && !navigator.onLine) {
+                        return;
+                    }
+
                     list.sort((a, b) => (Number(b.publishedAt || b.ratedAt) || 0) - (Number(a.publishedAt || a.ratedAt) || 0));
                     allPublicReviews = list;
+
+                    if (list.length > 0) {
+                        try {
+                            localStorage.setItem(REVIEWS_MIRROR_KEY, JSON.stringify({
+                                ts: Date.now(),
+                                reviews: list,
+                                products: liveProductsMap,
+                                prices: livePricesMap
+                            }));
+                        } catch (e) {}
+                    }
 
                     updateHeroSummaryStats();
                     renderZoneFilterPills();
@@ -301,9 +365,11 @@
                     }
                 } catch (err) {
                     console.error('Public reviews fetch error:', err);
-                    loader?.classList.add('hidden');
-                    grid?.classList.add('hidden');
-                    emptyBox?.classList.remove('hidden');
+                    if (!hadCachedReviews) {
+                        loader?.classList.add('hidden');
+                        grid?.classList.add('hidden');
+                        emptyBox?.classList.remove('hidden');
+                    }
                 }
             }
 
