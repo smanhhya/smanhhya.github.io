@@ -844,6 +844,7 @@
 
         renderCatalogFilmstrip();
         applyUITexts();
+        applyStorefrontBuilderConfig();
     }
 
     function renderDeliveryZones() {
@@ -4254,5 +4255,183 @@
             triggerOne();
             setInterval(triggerOne, 26000);
         }, 9000);
+    }
+
+    // =========================================================================
+    // 🎨 13. محرك تطبيق القالب والأقسام والبلوكات الحرة (Storefront Builder Engine)
+    // =========================================================================
+    const SB_THEME_CLASSES = ['theme-royal_emerald', 'theme-ramadan_gold', 'theme-clean_modern', 'theme-warm_heritage'];
+    const SB_CARD_CLASSES = ['cards-style-grid_2', 'cards-style-wide_list', 'cards-style-luxury_tall'];
+
+    function buildCustomBlockCardHTML(blk) {
+        const styleMap = {
+            emerald: {
+                wrap: 'luxury-hero-bg text-white border border-amber-400/30 shadow-lg',
+                badge: 'bg-amber-400/20 text-amber-300 border border-amber-400/35',
+                title: 'text-white',
+                body: 'text-emerald-100/90',
+                btn: 'bg-amber-400 hover:bg-amber-300 text-[#0b261c]'
+            },
+            gold: {
+                wrap: 'bg-gradient-to-l from-amber-100 via-amber-50 to-white text-amber-950 border-2 border-amber-300 shadow-md',
+                badge: 'bg-amber-500 text-slate-950',
+                title: 'text-amber-950',
+                body: 'text-amber-900/85',
+                btn: 'bg-brand-navy hover:opacity-95 text-amber-300'
+            },
+            promo: {
+                wrap: 'bg-gradient-to-l from-rose-700 via-red-600 to-rose-700 text-white border border-amber-300/40 shadow-lg',
+                badge: 'bg-white/20 text-amber-200 border border-white/25',
+                title: 'text-white',
+                body: 'text-rose-50/95',
+                btn: 'bg-amber-400 hover:bg-amber-300 text-slate-950'
+            },
+            clean: {
+                wrap: 'bg-white text-slate-800 border border-emerald-900/15 shadow-sm',
+                badge: 'bg-emerald-50 text-emerald-800 border border-emerald-200',
+                title: 'text-brand-navy',
+                body: 'text-slate-600',
+                btn: 'bg-brand-navy hover:opacity-95 text-white'
+            }
+        };
+        const st = styleMap[blk.style] || styleMap.emerald;
+        const safeImg = String(blk.imageUrl || '').trim();
+        const imgHtml = safeImg
+            ? `<img src="${esc(safeImg)}" alt="${esc(blk.title || '')}" loading="lazy" onclick="openImageModal('${escAttr(safeImg)}')" class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover border border-white/25 shadow-sm shrink-0 cursor-zoom-in">`
+            : '';
+
+        let actionHtml = '';
+        const btnLabel = String(blk.btnText || '').trim() || 'اعرف المزيد';
+        if (blk.btnAction === 'feast') {
+            actionHtml = `<button type="button" onclick="openFeastCalculator()" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-solid fa-calculator"></i> ${esc(btnLabel)}</button>`;
+        } else if (blk.btnAction === 'products') {
+            actionHtml = `<button type="button" onclick="document.getElementById('quail-section-wrap')?.scrollIntoView({behavior:'smooth'})" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-solid fa-basket-shopping"></i> ${esc(btnLabel)}</button>`;
+        } else if (blk.btnAction === 'whatsapp') {
+            const waNum = U.formatWaPhone(globalSettings.storePhone || '01208027294');
+            const waText = encodeURIComponent(`مرحباً سمان ههيا، أستفسر عن: ${blk.title || 'العرض الحالي'}`);
+            actionHtml = `<a href="https://wa.me/${waNum}?text=${waText}" target="_blank" rel="noopener" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-brands fa-whatsapp text-sm"></i> ${esc(btnLabel)}</a>`;
+        } else if (blk.btnAction === 'kitchen') {
+            actionHtml = `<a href="./kitchen/" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-solid fa-fire-burner"></i> ${esc(btnLabel)}</a>`;
+        } else if (blk.btnAction === 'track') {
+            actionHtml = `<a href="track.html" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-solid fa-route"></i> ${esc(btnLabel)}</a>`;
+        } else if (blk.btnAction === 'url' && /^https?:\/\//i.test(String(blk.btnUrl || '').trim())) {
+            actionHtml = `<a href="${esc(blk.btnUrl.trim())}" target="_blank" rel="noopener noreferrer" class="${st.btn} px-4 py-2 rounded-xl text-xs font-black shadow-sm transition-all active:scale-95 inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> ${esc(btnLabel)}</a>`;
+        }
+
+        return `
+        <div class="rounded-3xl p-4 sm:p-5 ${st.wrap} flex items-center justify-between gap-3.5 animate-slide">
+            <div class="min-w-0 flex-1 space-y-1.5 text-right">
+                ${blk.badge ? `<span class="inline-block text-[10px] font-black px-2.5 py-0.5 rounded-full ${st.badge}">${esc(blk.badge)}</span>` : ''}
+                ${blk.title ? `<h3 class="text-sm sm:text-base font-black leading-snug ${st.title}">${esc(blk.title)}</h3>` : ''}
+                ${blk.body ? `<p class="text-xs font-bold leading-relaxed ${st.body}">${esc(blk.body)}</p>` : ''}
+                ${actionHtml ? `<div class="pt-1.5">${actionHtml}</div>` : ''}
+            </div>
+            ${imgHtml}
+        </div>`;
+    }
+
+    function applyStorefrontBuilderConfig() {
+        const sb = (globalSettings && globalSettings.storefrontBuilder && typeof globalSettings.storefrontBuilder === 'object')
+            ? globalSettings.storefrontBuilder
+            : null;
+        if (!sb) return;
+
+        // 1. تطبيق الثيم المختار
+        document.body.classList.remove(...SB_THEME_CLASSES);
+        const themeId = sb.themePreset || 'royal_emerald';
+        document.body.classList.add(`theme-${themeId}`);
+
+        // 2. تطبيق شكل عرض كروت المنتجات
+        document.body.classList.remove(...SB_CARD_CLASSES);
+        const cardStyle = sb.cardStyle || 'grid_2';
+        document.body.classList.add(`cards-style-${cardStyle}`);
+
+        // 3. تحديث شارة الهيدر الذهبية إن كانت مخصصة
+        if (sb.heroBadgeText && sb.heroBadgeText.trim()) {
+            const heroBadgeSpan = document.querySelector('header .rounded-full span');
+            if (heroBadgeSpan) heroBadgeSpan.textContent = sb.heroBadgeText.trim();
+        }
+
+        // 4. التحكم في إظهار/إخفاء الأقسام بدون التعارض مع إخفاء الأقسام الفارغة
+        const vis = sb.visibility || {};
+        const setForceHide = (el, hideBool) => {
+            if (!el) return;
+            el.classList.toggle('sb-force-hidden', Boolean(hideBool));
+        };
+
+        const storiesSec = document.getElementById('stories-strip')?.closest('section');
+        const feastBtn = document.querySelector('#store-wrapper button[onclick="openFeastCalculator()"]');
+        const filterPills = document.getElementById('store-filter-pills');
+        const sizeCompare = document.getElementById('quail-size-compare-card');
+        const quailWrap = document.getElementById('quail-section-wrap');
+        const extrasWrap = document.getElementById('extras-section-wrap');
+        const weightWrap = document.getElementById('weight-section-wrap');
+        const customWrap = document.getElementById('custom-sections-wrap');
+        const galleryWrap = document.getElementById('main-slider-container');
+        const faqSec = document.getElementById('store-faq-section');
+
+        setForceHide(storiesSec, vis.stories === false);
+        setForceHide(feastBtn, vis.feastBanner === false);
+        setForceHide(filterPills, vis.filterPills === false);
+        setForceHide(sizeCompare, vis.sizeCompare === false);
+        setForceHide(quailWrap, vis.quail === false);
+        setForceHide(extrasWrap, vis.extras === false);
+        setForceHide(weightWrap, vis.weight === false);
+        setForceHide(customWrap, vis.custom === false);
+        setForceHide(galleryWrap, vis.gallery === false);
+        setForceHide(faqSec, vis.faq === false);
+
+        // 5. ترتيب الأقسام داخل #store-wrapper بأمان تام عبر CSS Flex Order
+        const storeWrapper = document.getElementById('store-wrapper');
+        if (storeWrapper) {
+            storeWrapper.classList.add('sb-ordered-wrapper');
+            const topControlsDiv = storeWrapper.firstElementChild;
+            if (topControlsDiv) topControlsDiv.style.order = '5';
+
+            const orderArr = Array.isArray(sb.sectionsOrder) && sb.sectionsOrder.length > 0
+                ? sb.sectionsOrder
+                : ['quail', 'extras', 'weight', 'custom', 'gallery'];
+
+            const sectionElMap = {
+                quail: quailWrap,
+                extras: extrasWrap,
+                weight: weightWrap,
+                custom: customWrap,
+                gallery: galleryWrap
+            };
+
+            orderArr.forEach((key, idx) => {
+                const el = sectionElMap[key];
+                if (el) el.style.order = String((idx + 1) * 20);
+            });
+
+            // 6. حقن البلوكات الحرة المخصصة في المواضع المختارة (top / after_quail / bottom)
+            const activeBlocks = (Array.isArray(sb.customBlocks) ? sb.customBlocks : []).filter(b => b && b.enabled !== false && (b.title || b.body));
+            const slots = { top: [], after_quail: [], bottom: [] };
+            activeBlocks.forEach(b => {
+                const pos = slots[b.position] ? b.position : 'top';
+                slots[pos].push(b);
+            });
+
+            const quailOrderNum = quailWrap && quailWrap.style.order ? parseInt(quailWrap.style.order, 10) : 20;
+            const slotOrderNums = { top: 2, after_quail: quailOrderNum + 5, bottom: 200 };
+
+            ['top', 'after_quail', 'bottom'].forEach(posKey => {
+                const slotId = `sb-custom-slot-${posKey}`;
+                let slotEl = document.getElementById(slotId);
+                if (slots[posKey].length === 0) {
+                    if (slotEl) slotEl.remove();
+                    return;
+                }
+                if (!slotEl) {
+                    slotEl = document.createElement('div');
+                    slotEl.id = slotId;
+                    slotEl.className = 'space-y-3';
+                    storeWrapper.appendChild(slotEl);
+                }
+                slotEl.style.order = String(slotOrderNums[posKey]);
+                slotEl.innerHTML = slots[posKey].map(buildCustomBlockCardHTML).join('');
+            });
+        }
     }
 })();
