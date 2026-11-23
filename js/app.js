@@ -256,9 +256,61 @@
     };
 
     // =========================================================================
-    // 2. الاتصال السريع بقاعدة البيانات مع التخزين المخبأ ووضع الإنقاذ
+    // 2. الاتصال السريع بقاعدة البيانات مع المرآة الفورية (0ms) والعمل أوفلاين
     // =========================================================================
+    const STOREFRONT_MIRROR_KEY = 'sman_storefront_fast_mirror_v1';
+
+    function saveStorefrontFastMirror() {
+        try {
+            const payload = {
+                ts: Date.now(),
+                globalSettings,
+                productsInfo,
+                globalStock,
+                globalPrices,
+                globalOldPrices,
+                globalDiscounts,
+                globalBatches,
+                globalDeliveryZones,
+                globalWeightHolds
+            };
+            localStorage.setItem(STOREFRONT_MIRROR_KEY, JSON.stringify(payload));
+        } catch (e) {}
+    }
+
+    function hydrateStorefrontFastMirror() {
+        try {
+            const raw = localStorage.getItem(STOREFRONT_MIRROR_KEY);
+            if (!raw) return false;
+            const m = JSON.parse(raw);
+            if (!m || !m.productsInfo || Object.keys(m.productsInfo).length === 0) return false;
+            if (m.globalSettings) Object.assign(globalSettings, m.globalSettings);
+            productsInfo = m.productsInfo;
+            if (m.globalStock) Object.assign(globalStock, m.globalStock);
+            if (m.globalPrices) Object.assign(globalPrices, m.globalPrices);
+            if (m.globalOldPrices) Object.assign(globalOldPrices, m.globalOldPrices);
+            if (m.globalDiscounts) Object.assign(globalDiscounts, m.globalDiscounts);
+            if (m.globalBatches) globalBatches = m.globalBatches;
+            if (Array.isArray(m.globalDeliveryZones) && m.globalDeliveryZones.length > 0) globalDeliveryZones = m.globalDeliveryZones;
+            if (m.globalWeightHolds) globalWeightHolds = m.globalWeightHolds;
+
+            isStoreDataLoaded = true;
+            applySettingsToUI();
+            renderDeliveryZones();
+            renderBatchesSelection();
+            renderProducts();
+            updateUI();
+            initReturningCustomerWelcome();
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
     function initFirebase() {
+        // 1. فتح فوري للمنيو والأسعار والدفعات في 0ms من المرآة المحلية قبل انتظار الشبكة
+        const hydratedInstant = hydrateStorefrontFastMirror();
+
         try {
             if (!firebase.apps.length) {
                 firebase.initializeApp(FIREBASE_CONFIG);
@@ -268,27 +320,59 @@
             hasCloud = true;
             listenToDatabase();
 
-            setTimeout(() => {
-                if (!isStoreDataLoaded) {
-                    isStoreDataLoaded = true;
-                    Object.keys(productsInfo).forEach((id) => {
-                        if (globalStock[id] === undefined) globalStock[id] = 0;
-                        if (globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice || 0;
-                    });
-                    applySettingsToUI();
-                    renderDeliveryZones();
-                    renderBatchesSelection();
-                    renderProducts();
-                    updateUI();
-                }
-            }, 2500);
+            if (!hydratedInstant) {
+                setTimeout(() => {
+                    if (!isStoreDataLoaded) {
+                        isStoreDataLoaded = true;
+                        Object.keys(productsInfo).forEach((id) => {
+                            if (globalStock[id] === undefined) globalStock[id] = 0;
+                            if (globalPrices[id] === undefined) globalPrices[id] = productsInfo[id].basePrice || 0;
+                        });
+                        applySettingsToUI();
+                        renderDeliveryZones();
+                        renderBatchesSelection();
+                        renderProducts();
+                        updateUI();
+                    }
+                }, 1500);
+            }
+
+            window.addEventListener('offline', () => {
+                showStoreToast('وضع التصفح بدون إنترنت — يمكنك تجهيز سلتك الآن', 'fa-bolt text-amber-400');
+            });
+            window.addEventListener('online', () => {
+                listenToDatabase();
+            });
         } catch (e) {
             console.error('Firebase Init Error:', e);
         }
     }
 
+    // قراءة ذكية: فورية من الكاش عند انقطاع النت، ومحمية بمهلة 2.2 ثانية عند بطء الشبكة
     function getDocServerFirst(docRef) {
-        return docRef.get({ source: 'server' }).catch(() => docRef.get().catch(() => ({ exists: false })));
+        if (!navigator.onLine) {
+            return docRef.get({ source: 'cache' }).catch(() => ({ exists: false }));
+        }
+        return new Promise((resolve) => {
+            let settled = false;
+            const timer = setTimeout(() => {
+                docRef.get({ source: 'cache' }).then((cDoc) => {
+                    if (!settled && cDoc && cDoc.exists) { settled = true; resolve(cDoc); }
+                }).catch(() => {});
+            }, 2200);
+
+            docRef.get({ source: 'server' }).then((sDoc) => {
+                clearTimeout(timer);
+                if (!settled) { settled = true; resolve(sDoc); }
+            }).catch(() => {
+                clearTimeout(timer);
+                docRef.get({ source: 'cache' }).then((cDoc) => {
+                    if (!settled) { settled = true; resolve(cDoc); }
+                }).catch(() => {
+                    if (!settled) { settled = true; resolve({ exists: false }); }
+                });
+            });
+        });
     }
 
     async function listenToDatabase() {
@@ -305,14 +389,12 @@
                 getDocServerFirst(invCol.doc('weight_holds'))
             ]);
 
-
             if (weightHoldsDoc && weightHoldsDoc.exists) {
                 globalWeightHolds = weightHoldsDoc.data() || {};
             }
-            startWeightHoldsLiveListener();
+            if (navigator.onLine) startWeightHoldsLiveListener();
 
-
-            if (settingsDoc.exists) {
+            if (settingsDoc && settingsDoc.exists) {
                 const data = settingsDoc.data() || {};
                 if (data.productsData && typeof data.productsData === 'object') {
                     productsInfo = data.productsData;
@@ -330,11 +412,11 @@
                 }
             }
 
-            if (stockDoc.exists) Object.assign(globalStock, stockDoc.data() || {});
-            if (pricesDoc.exists) Object.assign(globalPrices, pricesDoc.data() || {});
+            if (stockDoc && stockDoc.exists) Object.assign(globalStock, stockDoc.data() || {});
+            if (pricesDoc && pricesDoc.exists) Object.assign(globalPrices, pricesDoc.data() || {});
             if (oldPricesDoc && oldPricesDoc.exists) Object.assign(globalOldPrices, oldPricesDoc.data() || {});
             if (discountsDoc && discountsDoc.exists) Object.assign(globalDiscounts, discountsDoc.data() || {});
-            if (batchesDoc.exists) globalBatches = batchesDoc.data() || {};
+            if (batchesDoc && batchesDoc.exists) globalBatches = batchesDoc.data() || {};
 
             isStoreDataLoaded = true;
             Object.keys(productsInfo).forEach((id) => {
@@ -344,6 +426,7 @@
                 if (globalPrices[id] === undefined) globalPrices[id] = Number(p.basePrice) || 0;
             });
 
+            saveStorefrontFastMirror();
             applySettingsToUI();
             renderDeliveryZones();
             renderBatchesSelection();
@@ -353,12 +436,13 @@
             initReturningCustomerWelcome();
 
             const phoneVal = document.getElementById('customer-phone')?.value || '';
-          const norm = U.normalizePhone(phoneVal);
-            if (norm.length >= 10) checkCustomerWalletSafe(norm, phoneVal);
+            const norm = U.normalizePhone(phoneVal);
+            if (norm.length >= 10 && navigator.onLine) checkCustomerWalletSafe(norm, phoneVal);
         } catch (e) {
             console.error('Firebase Fetch Error:', e);
         }
     }
+
 
     // =========================================================================
     // 3. حسابات المخزون وسقف الدفعة ونصائح الطهي لكل حجم
