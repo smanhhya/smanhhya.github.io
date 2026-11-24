@@ -899,7 +899,7 @@
         if (!container) return;
         if (allActiveOrders.length > 1) {
           container.classList.remove('hidden');
-          const stEmoji = { new: '🆕', processing: '🔥', dispatched: '🛵', deferred: '📅', no_answer: '📵', completed: '✅' };
+          const stEmoji = { new: '🆕', processing: '🔥', for_driver: '📦', dispatched: '🛵', deferred: '📅', no_answer: '📵', completed: '✅' };
           container.innerHTML = allActiveOrders.map((o, idx) => {
             const isActive = currentOrder && currentOrder.id === o.id;
             const cls = isActive
@@ -1545,7 +1545,7 @@
 
         const dispMs = order?.dispatchedAt
           ? (typeof order.dispatchedAt.toMillis === 'function' ? order.dispatchedAt.toMillis() : Number(order.dispatchedAt))
-          : 0;
+          : (Number(order?.dispatchedAtMs) || 0);
         if (dispMs && !isNaN(dispMs) && (Date.now() - dispMs) < 6 * 3600000) {
           const fmt = (dt) => {
             let h = dt.getHours();
@@ -1627,41 +1627,44 @@
           sub = 'تواصل معنا لإعادة إرسال المندوب';
           document.getElementById('tracking-card')?.classList.add('hidden');
           showStatusAlertBanner('تعذر الوصول لحضرتك', 'حاولنا التواصل لتسليم الطلب ولم يتم الرد؛ طلبك محفوظ لدينا، برجاء مراسلتنا لإعادة التنسيق.', 'bg-rose-50', 'border-rose-200', 'text-rose-700', 'fa-solid fa-phone-slash', `مرحباً، بخصوص طلبي باسم (${currentOrder.customerName || ''}) الذي تعذر التواصل فيه.`);
-        } else if (s === 'processing' || s === 'dispatched') {
-          if (s === 'dispatched' || currentOrder.driverName) {
-            title = 'طلبك في الطريق إليك الآن 🛵';
-            sub = 'المندوب في طريقه إليك — حضّر تليفونك';
-            pWidth = '68%';
-            activeSteps = 3;
-            document.getElementById('driver-info')?.classList.remove('hidden');
+        } else if (s === 'processing') {
+          title = 'جاري تجهيز طلبك طازج 🔥';
+          sub = 'يُذبح ويُنظف ويُغلف طازج باسمك الآن';
+          pWidth = '38%';
+          activeSteps = 2;
+        } else if (s === 'for_driver') {
+          title = 'طلبك جاهز وبانتظار استلام المندوب 📦';
+          sub = 'تم التجهيز والتغليف بالكامل — أول ما المندوب يستلم ويتحرك هيظهرلك هنا فوراً';
+          pWidth = '50%';
+          activeSteps = 2;
+        } else if (s === 'dispatched') {
+          title = 'المندوب استلم طلبك وفي الطريق إليك الآن 🛵';
+          sub = 'المندوب اتحرك بالطلب وفي طريقه إليك — حضّر تليفونك';
+          pWidth = '68%';
+          activeSteps = 3;
+          document.getElementById('driver-info')?.classList.remove('hidden');
 
-            const rawDrvName = String(currentOrder.driverName || 'مندوب سمان ههيا');
-            const directPhone = U.normalizePhone(currentOrder.driverPhone || '');
-            const fallbackPhone = rawDrvName.replace(/[^\d+]/g, '');
-            const drvPhone = directPhone.length >= 10 ? directPhone : (fallbackPhone.length >= 10 ? fallbackPhone : '');
-            const cleanName = rawDrvName.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').trim() || 'مندوب سمان ههيا';
+          const rawDrvName = String(currentOrder.driverName || 'مندوب سمان ههيا');
+          const directPhone = U.normalizePhone(currentOrder.driverPhone || '');
+          const fallbackPhone = rawDrvName.replace(/[^\d+]/g, '');
+          const drvPhone = directPhone.length >= 10 ? directPhone : (fallbackPhone.length >= 10 ? fallbackPhone : '');
+          const cleanName = rawDrvName.replace(/\+?[\d\s]{9,}/g, '').replace(/[()]/g, '').trim() || 'مندوب سمان ههيا';
 
-            document.getElementById('driver-name').textContent = cleanName;
-            const callBtn = document.getElementById('driver-call-btn');
-            if (callBtn) {
-              if (drvPhone) {
-                callBtn.href = `tel:${drvPhone}`;
-                callBtn.classList.remove('hidden');
-              } else {
-                callBtn.classList.add('hidden');
-              }
+          document.getElementById('driver-name').textContent = cleanName;
+          const callBtn = document.getElementById('driver-call-btn');
+          if (callBtn) {
+            if (drvPhone) {
+              callBtn.href = `tel:${drvPhone}`;
+              callBtn.classList.remove('hidden');
+            } else {
+              callBtn.classList.add('hidden');
             }
-            document.getElementById('driver-eta').textContent = getHonestDriverETA(currentOrder);
-            const rcBtn = document.getElementById('btn-confirm-receipt');
-            if (rcBtn) {
-              rcBtn.disabled = false;
-              rcBtn.innerHTML = '<i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح';
-            }
-          } else {
-            title = 'جاري تجهيز طلبك طازج 🔥';
-            sub = 'يُذبح ويُنظف ويُغلف طازج باسمك الآن';
-            pWidth = '38%';
-            activeSteps = 2;
+          }
+          document.getElementById('driver-eta').textContent = getHonestDriverETA(currentOrder);
+          const rcBtn = document.getElementById('btn-confirm-receipt');
+          if (rcBtn) {
+            rcBtn.disabled = false;
+            rcBtn.innerHTML = '<i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح';
           }
         } else if (s === 'completed') {
           title = 'تم تسليم الطلب بنجاح 🎉';
