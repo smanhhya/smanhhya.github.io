@@ -171,22 +171,26 @@
         </div>
 
         <!-- شريط التبويبات والفلترة السريعة -->
-        <div class="grid grid-cols-4 gap-1.5 bg-slate-200/70 p-1.5 rounded-2xl border border-slate-200">
-            <button onclick="setOrderFilter('active')" id="tab-active" class="filter-tab bg-white text-brand-primary shadow-sm font-black text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1">
+        <div class="grid grid-cols-5 gap-1 bg-slate-200/70 p-1.5 rounded-2xl border border-slate-200">
+            <button onclick="setOrderFilter('for_driver')" id="tab-for_driver" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5">
+                <span>للاستلام</span>
+                <span id="badge-for_driver" class="bg-cyan-100 text-cyan-800 px-1 py-0.2 rounded-md text-[9px]">0</span>
+            </button>
+            <button onclick="setOrderFilter('active')" id="tab-active" class="filter-tab bg-white text-brand-primary shadow-sm font-black text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5">
                 <span>جاري</span>
-                <span id="badge-active" class="bg-emerald-100 text-brand-primary px-1.5 py-0.2 rounded-md text-[10px]">0</span>
+                <span id="badge-active" class="bg-emerald-100 text-brand-primary px-1 py-0.2 rounded-md text-[9px]">0</span>
             </button>
-            <button onclick="setOrderFilter('no_answer')" id="tab-no_answer" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1">
+            <button onclick="setOrderFilter('no_answer')" id="tab-no_answer" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5">
                 <span>لم يرد</span>
-                <span id="badge-no_answer" class="bg-slate-300/70 text-slate-700 px-1.5 py-0.2 rounded-md text-[10px]">0</span>
+                <span id="badge-no_answer" class="bg-slate-300/70 text-slate-700 px-1 py-0.2 rounded-md text-[9px]">0</span>
             </button>
-            <button onclick="setOrderFilter('completed')" id="tab-completed" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1">
+            <button onclick="setOrderFilter('completed')" id="tab-completed" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5">
                 <span>تم</span>
-                <span id="badge-completed" class="bg-slate-300/70 text-slate-700 px-1.5 py-0.2 rounded-md text-[10px]">0</span>
+                <span id="badge-completed" class="bg-slate-300/70 text-slate-700 px-1 py-0.2 rounded-md text-[9px]">0</span>
             </button>
-            <button onclick="setOrderFilter('all')" id="tab-all" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1">
+            <button onclick="setOrderFilter('all')" id="tab-all" class="filter-tab text-slate-600 hover:text-slate-900 font-bold text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5">
                 <span>الكل</span>
-                <span id="badge-all" class="bg-slate-300/70 text-slate-700 px-1.5 py-0.2 rounded-md text-[10px]">0</span>
+                <span id="badge-all" class="bg-slate-300/70 text-slate-700 px-1 py-0.2 rounded-md text-[9px]">0</span>
             </button>
         </div>
 
@@ -572,16 +576,18 @@
         // ==========================================
         window.setOrderFilter = (filterName) => {
             currentFilter = filterName;
-            const tabs = ['active', 'no_answer', 'completed', 'all'];
+            const tabs = ['for_driver', 'active', 'no_answer', 'completed', 'all'];
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 const badge = document.getElementById(`badge-${t}`);
                 if (t === filterName) {
-                    btn.className = 'filter-tab bg-white text-brand-primary shadow-sm font-black text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1';
-                    badge.className = 'bg-emerald-100 text-brand-primary px-1.5 py-0.2 rounded-md text-[10px]';
+                    btn.className = 'filter-tab bg-white text-brand-primary shadow-sm font-black text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5';
+                    badge.className = 'bg-emerald-100 text-brand-primary px-1 py-0.2 rounded-md text-[9px]';
                 } else {
-                    btn.className = 'filter-tab text-slate-600 hover:text-slate-900 font-bold text-[11px] py-2 rounded-xl transition-all flex items-center justify-center gap-1';
-                    badge.className = 'bg-slate-300/70 text-slate-700 px-1.5 py-0.2 rounded-md text-[10px]';
+                    btn.className = 'filter-tab text-slate-600 hover:text-slate-900 font-bold text-[10px] py-2 rounded-xl transition-all flex items-center justify-center gap-0.5';
+                    badge.className = t === 'for_driver'
+                        ? 'bg-cyan-100 text-cyan-800 px-1 py-0.2 rounded-md text-[9px]'
+                        : 'bg-slate-300/70 text-slate-700 px-1 py-0.2 rounded-md text-[9px]';
                 }
             });
             renderDriverOrdersUI();
@@ -607,11 +613,12 @@
             }
 
             unsubscribeOrders = db.collection('orders')
-                .where('status', 'in', ['dispatched', 'no_answer', 'completed'])
+                .where('status', 'in', ['for_driver', 'dispatched', 'no_answer', 'completed'])
                 .onSnapshot(snap => {
                     currentOrdersList = [];
                     let collectedCash = 0; 
                     let driverEarnings = 0; 
+                    let countForDriver = 0;
                     let countDispatched = 0;
                     let countNoAnswer = 0;
                     let countCompleted = 0;
@@ -628,7 +635,9 @@
                             let orderTotal = Number(data.total) || 0;
                             let fee = Number(data.deliveryFee) || 0;
 
-                            if (data.status === 'dispatched') {
+                            if (data.status === 'for_driver') {
+                                countForDriver++;
+                            } else if (data.status === 'dispatched') {
                                 countDispatched++;
                             } else if (data.status === 'no_answer') {
                                 countNoAnswer++;
@@ -644,11 +653,11 @@
                         }
                     });
 
-                    // ترتيب ذكي: الجاري أولاً -> لم يرد -> المكتمل في الأسفل، مع الحفاظ على أقدمية الطلب
-                    const statusWeight = { 'dispatched': 1, 'no_answer': 2, 'completed': 3 };
+                    // ترتيب ذكي: للاستلام أولاً -> الجاري -> لم يرد -> المكتمل في الأسفل، مع الحفاظ على أقدمية الطلب
+                    const statusWeight = { 'for_driver': 0, 'dispatched': 1, 'no_answer': 2, 'completed': 3 };
                     currentOrdersList.sort((a, b) => {
-                        let wA = statusWeight[a.status] || 9;
-                        let wB = statusWeight[b.status] || 9;
+                        let wA = statusWeight[a.status] !== undefined ? statusWeight[a.status] : 9;
+                        let wB = statusWeight[b.status] !== undefined ? statusWeight[b.status] : 9;
                         if (wA !== wB) return wA - wB;
                         return (a.createdAt?.toMillis?.() || 0) - (b.createdAt?.toMillis?.() || 0);
                     });
@@ -657,12 +666,13 @@
                     let netRemit = Math.max(0, collectedCash - driverEarnings);
 
                     // تحديث المحفظة
-                    document.getElementById('stat-active-count').innerText = `${activeCount} طلب جاري`;
+                    document.getElementById('stat-active-count').innerText = countForDriver > 0 ? `${countForDriver} للاستلام • ${activeCount} جاري` : `${activeCount} طلب جاري`;
                     document.getElementById('stat-collected-cash').innerHTML = `${collectedCash.toLocaleString()} <span class="text-xs">ج</span>`;
                     document.getElementById('stat-driver-earnings').innerHTML = `${driverEarnings.toLocaleString()} <span class="text-xs">ج</span>`;
                     document.getElementById('stat-net-remit').innerHTML = `${netRemit.toLocaleString()} <span class="text-sm">ج</span>`;
 
                     // تحديث عدادات التبويبات
+                    document.getElementById('badge-for_driver').innerText = countForDriver;
                     document.getElementById('badge-active').innerText = countDispatched;
                     document.getElementById('badge-no_answer').innerText = countNoAnswer;
                     document.getElementById('badge-completed').innerText = countCompleted;
@@ -707,6 +717,7 @@
             const container = document.getElementById('orders-container');
             
             let filteredOrders = currentOrdersList.filter(o => {
+                if (currentFilter === 'for_driver') return o.status === 'for_driver';
                 if (currentFilter === 'active') return o.status === 'dispatched';
                 if (currentFilter === 'no_answer') return o.status === 'no_answer';
                 if (currentFilter === 'completed') return o.status === 'completed';
@@ -732,8 +743,21 @@
             }
 
             let htmlStr = '';
+            let pendingPickupCount = currentOrdersList.filter(o => o.status === 'for_driver').length;
+            if (pendingPickupCount > 0 && (currentFilter === 'for_driver' || currentFilter === 'all')) {
+                htmlStr += `
+                <div class="bg-gradient-to-l from-slate-900 via-cyan-950 to-slate-900 text-white p-4 rounded-3xl shadow-md border border-cyan-400/40 space-y-2.5">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-xs font-black text-cyan-200"><i class="fa-solid fa-box-open text-amber-400 ml-1"></i> طلبات جاهزة بانتظار استلامك (${pendingPickupCount})</span>
+                    </div>
+                    <button type="button" onclick="acceptAllForDriverOrders()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3 rounded-2xl text-xs shadow-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-motorcycle"></i> استلمت كل الطلبات واتحركت الآن (${pendingPickupCount})
+                    </button>
+                </div>`;
+            }
             filteredOrders.forEach((o, idx) => {
                 let isCompleted = (o.status === 'completed');
+                let isForDriver = (o.status === 'for_driver');
                 let isOnline = (o.paymentMethod === 'online');
                 let isNoAnswer = (o.status === 'no_answer');
                 let orderFee = Number(o.deliveryFee) || 0;
@@ -777,7 +801,8 @@
                     let lastDriverNote = o.driverNote ? window.escapeHtml(o.driverNote.split('\n---\n').pop()) : '';
 
                     htmlStr += `
-                    <div class="bg-white rounded-3xl p-5 border-2 ${isNoAnswer ? 'border-purple-300 bg-purple-50/20' : 'border-slate-200/80'} shadow-sm relative transition-all">
+                    <div class="bg-white rounded-3xl p-5 border-2 ${isForDriver ? 'border-cyan-400 bg-cyan-50/20' : (isNoAnswer ? 'border-purple-300 bg-purple-50/20' : 'border-slate-200/80')} shadow-sm relative transition-all">
+                        ${isForDriver ? `<div class="mb-3 bg-cyan-100 text-cyan-900 px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center justify-between border border-cyan-200"><span><i class="fa-solid fa-box-open mr-1"></i> جاهز للاستلام — اضغط «استلمت واتحركت» عند التحرك</span></div>` : ''}
                         ${isNoAnswer ? `<div class="mb-3 bg-purple-100 text-purple-800 px-3 py-1.5 rounded-xl text-[11px] font-black flex items-center justify-between border border-purple-200"><span><i class="fa-solid fa-phone-slash mr-1"></i> مسجل كـ (لم يرد) - حاول التواصل مرة أخرى</span></div>` : ''}
                         
                         <div class="flex justify-between items-start mb-3 pb-3 border-b border-slate-100">
@@ -834,6 +859,12 @@
                             <i class="fa-solid fa-comment-dots text-blue-600 ml-1"></i> ${lastDriverNote}
                         </div>` : ''}
 
+                        ${isForDriver ? `
+                        <div class="pt-3 border-t border-slate-100">
+                            <button type="button" onclick="markOrderPickedUp('${o.id}')" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3.5 rounded-xl text-xs shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                <i class="fa-solid fa-motorcycle text-base"></i> استلمت الطلب واتحركت الآن (بالطريق)
+                            </button>
+                        </div>` : `
                         <div class="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100">
                             <button type="button" onclick="markOrderCompleted('${o.id}')" class="bg-brand-primary hover:bg-emerald-800 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-brand-primary/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
                                 <i class="fa-solid fa-circle-check text-base"></i> تم التسليم
@@ -844,7 +875,7 @@
                             <button type="button" onclick="openProblemModal('${o.id}')" class="bg-amber-500 hover:bg-amber-600 text-white font-black py-3 rounded-xl text-xs shadow-md shadow-amber-500/20 flex flex-col items-center justify-center gap-1 active:scale-95 transition-all">
                                 <i class="fa-solid fa-microphone-lines text-base"></i> ملاحظة
                             </button>
-                        </div>
+                        </div>`}
                     </div>`;
                 }
             });
@@ -854,6 +885,60 @@
         // ==========================================
         // 4. العمليات على الطلبات وتوريد النقدية
         // ==========================================
+        window.markOrderPickedUp = (orderId) => {
+            askConfirm({
+                title: 'تأكيد استلام الطلب والتحرك',
+                message: 'هل استلمت هذا الطلب فعلياً وتحركت به للعميل؟ سيظهر للعميل في التتبع أنك في الطريق إليه الآن.',
+                iconClass: 'fa-motorcycle',
+                color: 'emerald',
+                confirmText: 'نعم، استلمت واتحركت 🛵',
+                onConfirm: async () => {
+                    try {
+                        await db.collection('orders').doc(orderId).update({
+                            status: 'dispatched',
+                            dispatchedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            dispatchedAtMs: Date.now()
+                        });
+                        showToast('تم تحويل الطلب إلى (في الطريق) 🛵 توكل على الله!');
+                    } catch(e) {
+                        showToast('حدث خطأ أثناء التحديث، حاول مجدداً', 'error');
+                    }
+                }
+            });
+        };
+
+        window.acceptAllForDriverOrders = () => {
+            let pendingList = currentOrdersList.filter(o => o.status === 'for_driver');
+            if (pendingList.length === 0) return;
+
+            askConfirm({
+                title: 'استلام جميع الطلبات والتحرك',
+                message: `هل استلمت جميع الطلبات وعددها (${pendingList.length}) وتحركت بها؟ ستتحول كلها إلى (في الطريق) وتظهر للعملاء الآن.`,
+                iconClass: 'fa-motorcycle',
+                color: 'emerald',
+                confirmText: `استلام الكل (${pendingList.length}) 🛵`,
+                onConfirm: async () => {
+                    try {
+                        const batch = db.batch();
+                        const ts = firebase.firestore.FieldValue.serverTimestamp();
+                        const nowMs = Date.now();
+                        pendingList.forEach(o => {
+                            batch.update(db.collection('orders').doc(o.id), {
+                                status: 'dispatched',
+                                dispatchedAt: ts,
+                                dispatchedAtMs: nowMs
+                            });
+                        });
+                        await batch.commit();
+                        setOrderFilter('active');
+                        showToast(`تم استلام (${pendingList.length}) طلب وتحويلهم إلى (في الطريق) 🛵`);
+                    } catch(e) {
+                        showToast('تعذر تحديث الطلبات، تأكد من الاتصال بالإنترنت', 'error');
+                    }
+                }
+            });
+        };
+
         window.markOrderCompleted = (orderId) => {
             const order = currentOrdersList.find(o => o.id === orderId);
             const cashNote = (order && order.paymentMethod !== 'online') ? `وتحصيل مبلغ (${order.total || 0} ج.م)` : '(مدفوع أونلاين)';
