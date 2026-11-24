@@ -1,6 +1,6 @@
-// sw.js - محرك السرعة والعمل بدون إنترنت لموقع عملاء سمان ههيا (v12)
-const CACHE_NAME = 'sman-hhya-store-v12';
-const CDN_CACHE_NAME = 'sman-hhya-cdn-v12';
+// sw.js - محرك السرعة والعمل بدون إنترنت لموقع عملاء سمان ههيا (v13)
+const CACHE_NAME = 'sman-hhya-store-v13';
+const CDN_CACHE_NAME = 'sman-hhya-cdn-v13';
 
 const ASSETS_TO_CACHE = [
   './',
