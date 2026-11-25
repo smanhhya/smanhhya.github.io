@@ -41,8 +41,8 @@
   </script>
   <style>
     .vip-card-bg {
-      background: radial-gradient(circle at 12% 18%, rgba(251, 191, 36, 0.25), transparent 45%),
-                  radial-gradient(circle at 90% 85%, rgba(16, 185, 129, 0.2), transparent 50%),
+      background: radial-gradient(circle at 12% 18%, rgba(251, 191, 36, 0.28), transparent 45%),
+                  radial-gradient(circle at 90% 85%, rgba(16, 185, 129, 0.22), transparent 50%),
                   linear-gradient(135deg, #102a20 0%, #173f30 55%, #0c231a 100%);
     }
     .review-tag-btn {
@@ -63,6 +63,8 @@
       70% { box-shadow: 0 0 0 9px rgba(245, 158, 11, 0); }
       100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
     }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
   </style>
 </head>
 <body class="text-slate-800 flex flex-col min-h-screen bg-[#faf8f3] selection:bg-brand-navy selection:text-white">
@@ -76,11 +78,11 @@
   </div>
 
   <!-- زر واتساب خدمة العملاء العائم -->
-  <a id="floating-wa" href="https://wa.me/201208027294" target="_blank" rel="noopener" class="fixed bottom-5 left-4 w-[52px] h-[52px] bg-[#25D366] text-white rounded-full flex items-center justify-center text-2xl shadow-xl hover:scale-105 active:scale-95 transition-transform z-[90] border-2 border-white" title="تواصل مع خدمة العملاء">
+  <a id="floating-wa" href="https://wa.me/201208027294" target="_blank" rel="noopener" class="fixed bottom-5 left-4 w-[50px] h-[50px] bg-[#25D366] text-white rounded-full flex items-center justify-center text-2xl shadow-xl hover:scale-105 active:scale-95 transition-transform z-[90] border-2 border-white" title="تواصل مع خدمة العملاء">
     <i class="fa-brands fa-whatsapp"></i>
   </a>
 
-  <!-- شريط التنقل الزجاجي الملكي المطابق للمتجر -->
+  <!-- شريط التنقل الزجاجي الملكي -->
   <nav class="bg-[#0b261c]/95 backdrop-blur-md shadow-md sticky top-0 z-50 border-b border-white/10">
     <div class="max-w-lg mx-auto px-3.5 h-14 flex items-center justify-between gap-2">
       <a href="index.html" class="flex items-center gap-2.5 min-w-0">
@@ -91,7 +93,7 @@
           <span class="font-black text-base text-white leading-none block truncate">سمان <span class="text-amber-400">ههيا</span></span>
           <span class="text-[10px] font-bold text-emerald-300 flex items-center gap-1 mt-0.5">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>مركز التتبع والولاء</span>
+            <span>بوابة العميل والتتبع</span>
           </span>
         </div>
       </a>
@@ -109,7 +111,7 @@
     </div>
   </nav>
 
-  <main class="flex-1 max-w-lg w-full mx-auto px-3.5 sm:px-4 pt-4 pb-10 flex flex-col">
+  <main class="flex-1 max-w-lg w-full mx-auto px-3.5 sm:px-4 pt-4 pb-20 flex flex-col">
 
     <!-- ==================== 1. شاشة إدخال رقم الهاتف ==================== -->
     <div id="login-section" class="space-y-4 mt-2 animate-slide">
@@ -117,9 +119,9 @@
         <div class="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-500 text-[#0b261c] rounded-2xl flex items-center justify-center mx-auto mb-3.5 text-3xl shadow-lg">
           <i class="fa-solid fa-route"></i>
         </div>
-        <h1 class="text-xl sm:text-2xl font-black text-white leading-snug">تتبع طلبك ورصيد نقاطك لحظياً</h1>
+        <h1 class="text-xl sm:text-2xl font-black text-white leading-snug">تتبع طلباتك وخزنة هداياك</h1>
         <p class="text-xs text-emerald-100/85 font-bold mt-1.5 leading-relaxed max-w-xs mx-auto">
-          اكتب رقم موبايلك المسجل في الطلب عشان تتابع التجهيز، وميعاد دفعة الذبح، وهدايا محفظة الولاء.
+          اكتب رقم موبايلك المسجل عشان تتابع كل طلباتك لحظياً، وميعاد دفعة الذبح، ورصيد نقاطك مدى الحياة.
         </p>
 
         <div class="mt-5 space-y-3">
@@ -130,330 +132,407 @@
 
           <button type="button" onclick="trackOrder()" id="btn-track" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3.5 rounded-2xl shadow-lg transition-all flex justify-center items-center gap-2 text-sm sm:text-base active:scale-95">
             <i class="fa-solid fa-magnifying-glass"></i>
-            <span>عرض حالة طلبي الآن</span>
+            <span>دخول لبوابة طلباتي</span>
           </button>
         </div>
 
         <p id="error-msg" class="hidden text-rose-100 text-xs font-black text-center mt-4 bg-rose-500/30 p-3 rounded-xl border border-rose-300/40"></p>
       </div>
 
-      <!-- شريط مميزات سريعة أسفل شاشة الدخول -->
       <div class="grid grid-cols-3 gap-2 text-center">
         <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
           <i class="fa-solid fa-satellite-dish text-emerald-600 text-base mb-1"></i>
-          <span class="block text-[10px] font-black text-brand-navy">تحديث مباشر</span>
+          <span class="block text-[10px] font-black text-brand-navy">تتبع حي</span>
         </div>
         <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
-          <i class="fa-solid fa-pen-to-square text-amber-500 text-base mb-1"></i>
-          <span class="block text-[10px] font-black text-brand-navy">تعديل مرن للطلب</span>
+          <i class="fa-solid fa-gift text-amber-500 text-base mb-1"></i>
+          <span class="block text-[10px] font-black text-brand-navy">خزنة هدايا دائمة</span>
         </div>
         <div class="bg-white rounded-2xl p-3 border border-emerald-900/10 shadow-sm">
-          <i class="fa-solid fa-crown text-amber-500 text-base mb-1"></i>
-          <span class="block text-[10px] font-black text-brand-navy">نقاط وهدايا VIP</span>
+          <i class="fa-solid fa-rotate-right text-emerald-700 text-base mb-1"></i>
+          <span class="block text-[10px] font-black text-brand-navy">تكرار بضغطة</span>
         </div>
       </div>
     </div>
 
-    <!-- ==================== 2. شاشة نتيجة التتبع الملكية ==================== -->
-    <div id="result-section" class="hidden space-y-4">
+    <!-- ==================== 2. بوابة العميل الموحدة (3 تبويبات أنيقة) ==================== -->
+    <div id="result-section" class="hidden space-y-3.5">
 
-      <!-- صندوق عرض كل طلبات العميل والتبديل بينها بوضوح -->
-      <div id="orders-selector" class="hidden bg-white rounded-3xl p-3.5 shadow-sm border-2 border-amber-300/80 space-y-2.5 animate-slide"></div>
-
-      <!-- 2-أ: الكارت الملكي للترحيب وحالة الطلب والفاتورة -->
-      <div class="bg-white rounded-3xl shadow-md border border-emerald-900/10 overflow-hidden animate-slide">
-        <div class="luxury-hero-bg text-white p-4 sm:p-5 space-y-3">
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <p class="text-[11px] font-bold text-emerald-200/85">أهلاً بحضرتك في سمان ههيا 🌿</p>
-              <h2 class="font-black text-base sm:text-lg text-white truncate mt-0.5">أ. <span id="res-name" class="text-amber-300"></span></h2>
-            </div>
-            <span class="bg-white/10 text-emerald-200 border border-white/15 px-2.5 py-1 rounded-full text-[10px] font-black flex items-center gap-1.5 shrink-0">
-              <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> مباشر
-            </span>
+      <!-- شريط الترحيب المدمج أعلى البوابة -->
+      <div class="bg-white rounded-2xl px-3.5 py-2.5 border border-emerald-900/10 shadow-sm flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 text-brand-navy flex items-center justify-center text-sm shrink-0">
+            <i class="fa-solid fa-user-check"></i>
           </div>
-
-          <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 pt-2 border-t border-white/10">
-            <div class="min-w-0">
-              <span class="text-[10px] text-emerald-200/80 font-bold block">حالة طلبك الآن</span>
-              <h3 id="res-status-title" class="font-black text-white text-lg sm:text-xl leading-snug mt-0.5">جاري التحميل...</h3>
-              <p id="res-status-sub" class="text-[11px] font-bold text-amber-200/90 mt-0.5"></p>
-            </div>
-            <div class="text-center bg-white/10 backdrop-blur-sm px-4 py-2.5 rounded-2xl border border-white/15 shrink-0 sm:min-w-[148px]">
-              <p class="text-[10px] text-emerald-200/90 font-bold mb-0.5">الإجمالي المطلوب</p>
-              <p class="font-black text-2xl text-amber-300 leading-none">
-                <span id="res-total">0</span> <span class="text-xs text-white/80">ج.م</span>
-              </p>
-              <div id="res-payment-badge" class="mt-1.5"></div>
-            </div>
+          <div class="min-w-0">
+            <h2 class="font-black text-xs sm:text-sm text-brand-navy truncate leading-tight">أهلاً أ. <span id="res-name"></span> 🌿</h2>
+            <p id="top-customer-sub" class="text-[10px] font-bold text-slate-400 truncate mt-0.5"></p>
           </div>
         </div>
-
-        <div id="res-total-details" class="p-4 text-[11px] text-slate-600 font-bold flex flex-wrap gap-1.5 bg-white"></div>
-      </div>
-
-      <!-- 2-ب: شريط خطوات التتبع التفاعلي (4 مراحل) -->
-      <div id="tracking-card" class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-900/10 animate-slide">
-        <div class="relative flex justify-between items-start px-1">
-          <div class="absolute top-4 left-7 right-7 h-1.5 bg-slate-100 rounded-full"></div>
-          <div id="progress-line" class="absolute top-4 right-7 h-1.5 bg-gradient-to-l from-brand-navy to-emerald-500 rounded-full transition-all duration-700" style="width: 0%;"></div>
-
-          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
-            <div id="step-1-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-clipboard-check"></i></div>
-            <span class="text-[10px] font-black text-slate-600 text-center">تم الحجز</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
-            <div id="step-2-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-fire-burner"></i></div>
-            <span class="text-[10px] font-black text-slate-600 text-center">تجهيز طازج</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
-            <div id="step-3-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-motorcycle"></i></div>
-            <span class="text-[10px] font-black text-slate-600 text-center">مع المندوب</span>
-          </div>
-          <div class="flex flex-col items-center gap-1.5 relative z-10 w-1/4">
-            <div id="step-4-icon" class="w-9 h-9 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-house-circle-check"></i></div>
-            <span class="text-[10px] font-black text-slate-600 text-center">تم التسليم</span>
-          </div>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button type="button" onclick="switchTrackMainTab('wallet')" id="top-points-pill" class="hidden bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-1.5 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all active:scale-95">
+            <span>🪙</span>
+            <span id="top-points-val">0</span>
+          </button>
+          <button type="button" onclick="logoutTracker()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-rose-50 text-slate-500 hover:text-rose-600 flex items-center justify-center text-xs transition-colors" title="تغيير الرقم">
+            <i class="fa-solid fa-right-left"></i>
+          </button>
         </div>
       </div>
 
-      <!-- 2-ج: صندوق متابعة الدفعة الذكي + شريط نمو السمان (38–45 يوم) -->
-      <div id="batch-info-box" class="hidden bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-200/80 space-y-3 animate-slide">
-        <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+      <!-- شريط التبويبات الـ 3 الرئيسي (التتبع | المحفظة والهدايا | السابقة) -->
+      <div class="grid grid-cols-3 gap-1.5 bg-emerald-950/5 p-1.5 rounded-2xl border border-emerald-900/10">
+        <button type="button" id="main-tab-orders" onclick="switchTrackMainTab('orders')" class="py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 bg-brand-navy text-amber-300 shadow-sm">
+          <i class="fa-solid fa-box text-[11px]"></i>
+          <span>تتبع طلبي</span>
+          <span id="tab-badge-orders" class="bg-white/20 text-white px-1.5 py-0.2 rounded-md text-[9px]">0</span>
+        </button>
+        <button type="button" id="main-tab-wallet" onclick="switchTrackMainTab('wallet')" class="py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 text-slate-600 hover:text-brand-navy">
+          <i class="fa-solid fa-crown text-[11px] text-amber-500"></i>
+          <span>الهدايا</span>
+          <span id="tab-badge-wallet" class="bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-md text-[9px]">0</span>
+        </button>
+        <button type="button" id="main-tab-history" onclick="switchTrackMainTab('history')" class="py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 text-slate-600 hover:text-brand-navy">
+          <i class="fa-solid fa-clock-rotate-left text-[11px]"></i>
+          <span>السابقة</span>
+          <span id="tab-badge-history" class="bg-slate-200 text-slate-700 px-1.5 py-0.2 rounded-md text-[9px]">0</span>
+        </button>
+      </div>
+
+      <!-- ==================== التبويب 1: تتبع الطلب ==================== -->
+      <div id="panel-orders" class="space-y-3.5">
+
+        <!-- شريط تبديل أفقي أنيق عند وجود أكثر من طلب جاري -->
+        <div id="orders-selector" class="hidden space-y-1.5 animate-slide"></div>
+
+        <!-- شريط رجوع يظهر فقط عند فتح طلب سابق للمعاينة من تبويب السجل -->
+        <div id="inspecting-past-bar" class="hidden bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2 flex items-center justify-between gap-2 text-xs font-black text-emerald-900">
+          <span><i class="fa-solid fa-circle-check text-emerald-600 ml-1"></i> عرض تفاصيل طلب مكتمل سابق</span>
+          <button type="button" onclick="switchTrackMainTab('history')" class="bg-white hover:bg-emerald-600 text-emerald-800 hover:text-white border border-emerald-300 px-2.5 py-1 rounded-xl text-[10px] font-black transition-colors">
+            ← كل السابقة
+          </button>
+        </div>
+
+        <!-- الكارت الموحد: الحالة + الفاتورة + شريط الـ 4 خطوات + العنوان -->
+        <div class="bg-white rounded-3xl shadow-md border border-emerald-900/10 overflow-hidden animate-slide">
+          <!-- الجزء العلوي الزمردي -->
+          <div class="luxury-hero-bg text-white p-4 sm:p-5 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-[10px] font-black text-emerald-200/90 flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span>تحديث مباشر للحالة</span>
+              </span>
+              <span id="res-order-date-pill" class="text-[10px] font-bold text-emerald-100/80 bg-white/10 px-2.5 py-0.5 rounded-full"></span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              <div class="min-w-0 flex-1">
+                <h3 id="res-status-title" class="font-black text-white text-lg sm:text-xl leading-snug">جاري التحميل...</h3>
+                <p id="res-status-sub" class="text-[11px] font-bold text-amber-200/90 mt-0.5 leading-relaxed"></p>
+                <div id="res-offer-badges" class="hidden flex flex-wrap gap-1.5 mt-2"></div>
+              </div>
+              <div class="text-center bg-white/10 backdrop-blur-sm px-4 py-2.5 rounded-2xl border border-white/15 shrink-0 sm:min-w-[142px]">
+                <p class="text-[10px] text-emerald-200/90 font-bold mb-0.5">الإجمالي</p>
+                <p class="font-black text-2xl text-amber-300 leading-none">
+                  <span id="res-total">0</span> <span class="text-xs text-white/80">ج.م</span>
+                </p>
+                <div id="res-payment-badge" class="mt-1.5"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- شريط خطوات التتبع المدمج بدقة متناهية -->
+          <div id="tracking-card" class="px-4 pt-4 pb-3 bg-white border-b border-slate-100">
+            <div class="relative">
+              <!-- المسار الداخلي بالضبط بين مركز الدائرة 1 ومركز الدائرة 4 -->
+              <div class="absolute top-4 left-[12.5%] right-[12.5%] h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                <div id="progress-line" class="h-full bg-gradient-to-l from-brand-navy to-emerald-500 rounded-full transition-all duration-700" style="width: 0%;"></div>
+              </div>
+
+              <div class="grid grid-cols-4 relative z-10">
+                <div class="flex flex-col items-center gap-1.5">
+                  <div id="step-1-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-clipboard-check"></i></div>
+                  <span class="text-[10px] font-black text-slate-600 text-center">تم الحجز</span>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div id="step-2-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-fire-burner"></i></div>
+                  <span class="text-[10px] font-black text-slate-600 text-center">تجهيز طازج</span>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div id="step-3-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-motorcycle"></i></div>
+                  <span class="text-[10px] font-black text-slate-600 text-center">مع المندوب</span>
+                </div>
+                <div class="flex flex-col items-center gap-1.5">
+                  <div id="step-4-icon" class="w-8 h-8 rounded-full flex items-center justify-center text-xs shadow-sm bg-slate-100 text-slate-400 border-2 border-slate-200 transition-all"><i class="fa-solid fa-house-circle-check"></i></div>
+                  <span class="text-[10px] font-black text-slate-600 text-center">تم التسليم</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ملخص الفاتورة والعنوان -->
+          <div id="res-total-details" class="p-3.5 text-[11px] text-slate-600 font-bold flex flex-wrap gap-1.5 bg-[#faf8f3]/70"></div>
+        </div>
+
+        <!-- شريط دعوة ذكي لاستخدام النقاط على الطلب الجديد (يظهر فقط لو العميل معاه رصيد يكفي هدية) -->
+        <div id="order-gift-nudge-bar" class="hidden bg-gradient-to-l from-amber-50 via-white to-amber-50 border-2 border-amber-300 rounded-2xl p-3 flex items-center justify-between gap-2.5 shadow-sm animate-slide">
           <div class="flex items-center gap-2 min-w-0">
-            <span class="w-8 h-8 rounded-xl bg-emerald-50 text-brand-navy border border-emerald-200 flex items-center justify-center text-sm shrink-0">
-              <i class="fa-solid fa-calendar-check text-amber-500"></i>
-            </span>
+            <span class="w-9 h-9 rounded-xl bg-amber-400 text-[#0b261c] flex items-center justify-center text-base shrink-0 shadow-xs">🎁</span>
             <div class="min-w-0">
-              <span class="block text-[10px] font-bold text-slate-400">متابعة دفعة الحجز</span>
-              <h4 id="batch-display-name" class="font-black text-brand-navy text-xs sm:text-sm truncate">--</h4>
+              <p id="nudge-gift-title" class="text-xs font-black text-amber-950 truncate">لديك نقاط جاهزة لهدية مجانية!</p>
+              <p id="nudge-gift-sub" class="text-[10px] font-bold text-amber-800 truncate">اضغط لاختيار هديتك وإضافتها لهذا الطلب</p>
             </div>
           </div>
-          <span id="batch-stage-pill" class="hidden text-[10px] font-black px-2.5 py-1 rounded-xl border shrink-0"></span>
+          <button type="button" onclick="switchTrackMainTab('wallet')" class="bg-brand-navy hover:bg-emerald-800 text-amber-300 px-3 py-2 rounded-xl text-[11px] font-black shrink-0 shadow-sm active:scale-95 transition-all">
+            اختر هديتك
+          </button>
         </div>
 
-        <div class="grid grid-cols-2 gap-2.5" id="batch-dates-grid">
-          <div id="box-delivery-dates" class="hidden bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 text-center">
-            <span class="block text-[10px] font-bold text-slate-500 mb-0.5">التسليم المتوقع</span>
-            <span class="block text-xs sm:text-sm font-black text-brand-navy" id="batch-date-range">--</span>
-          </div>
-          <div id="box-delivery-left" class="hidden bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 text-center">
-            <span class="block text-[10px] font-bold text-slate-500 mb-0.5" id="batch-days-text">المتبقي تقريباً</span>
-            <span class="block text-xs sm:text-sm font-black text-emerald-700" id="batch-days-left">--</span>
-          </div>
-        </div>
-
-        <!-- شريط مراحل نمو الدفعة -->
-        <div id="batch-growth-bar-wrap" class="hidden bg-emerald-50/50 border border-emerald-100 rounded-2xl p-3 space-y-2">
-          <div class="flex items-center justify-between text-[10px] font-black text-brand-navy">
-            <span><i class="fa-solid fa-seedling text-emerald-600 ml-1"></i> رحلة تجهيز دفعتك الطازجة</span>
-            <span id="batch-growth-label" class="text-emerald-700"></span>
-          </div>
-          <div class="w-full h-2 bg-white rounded-full overflow-hidden border border-emerald-100">
-            <div id="batch-growth-fill" class="h-full bg-gradient-to-l from-amber-400 to-emerald-600 rounded-full transition-all duration-700" style="width: 10%;"></div>
-          </div>
-          <div class="flex justify-between text-[9px] font-bold text-slate-400">
-            <span>رعاية بالمزرعة 🌿</span>
-            <span>استكمال الوزن ✨</span>
-            <span>ذبح طازج 🔪</span>
-            <span>توصيل 🛵</span>
-          </div>
-        </div>
-
-        <div id="batch-msg-container" class="hidden bg-gradient-to-l from-emerald-50/80 to-amber-50/40 p-3 rounded-2xl border border-emerald-200/70 text-xs font-bold text-emerald-950 leading-relaxed space-y-1.5">
-          <div id="batch-customer-msg"></div>
-          <p class="text-[11px] font-black text-brand-navy pt-1 border-t border-emerald-200/50">
-            <i class="fa-solid fa-phone-volume text-amber-500 ml-1"></i> وهنتواصل معاك قبلها للتأكيد وتحديد الوقت المناسب ليك قبل الذبح وتحرك المندوب 🌿
-          </p>
-        </div>
-      </div>
-
-      <!-- 2-د: تنبيهات التأجيل وعدم الرد -->
-      <div id="alert-banner" class="hidden rounded-3xl p-4 animate-slide shadow-sm border">
-        <div class="flex items-start gap-3">
-          <div id="alert-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"></div>
-          <div class="min-w-0 flex-1">
-            <h4 id="alert-title" class="font-black text-sm sm:text-base mb-1"></h4>
-            <p id="alert-desc" class="text-xs sm:text-sm text-slate-600 font-bold leading-relaxed mb-3"></p>
-          </div>
-        </div>
-        <a id="btn-alert-wa" href="#" target="_blank" rel="noopener" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-2.5 rounded-xl flex justify-center items-center gap-2 text-xs sm:text-sm shadow-md transition-colors">
-          <i class="fa-brands fa-whatsapp text-lg"></i> تواصل مع الإدارة عبر واتساب
-        </a>
-      </div>
-
-      <!-- 2-هـ: معلومات المندوب والوصول وتأكيد الاستلام -->
-      <div id="driver-info" class="hidden bg-white border-2 border-indigo-200 rounded-3xl p-4 sm:p-5 shadow-sm animate-slide space-y-3">
-        <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-11 h-11 bg-indigo-50 rounded-2xl border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shrink-0">
-              <i class="fa-solid fa-motorcycle"></i>
-            </div>
-            <div class="min-w-0">
-              <p class="text-[10px] text-slate-400 font-bold">مندوب سمان ههيا في الطريق</p>
-              <h4 id="driver-name" class="font-black text-slate-900 text-sm sm:text-base truncate"></h4>
+        <!-- تنبيهات التأجيل وعدم الرد -->
+        <div id="alert-banner" class="hidden rounded-3xl p-4 animate-slide shadow-sm border">
+          <div class="flex items-start gap-3">
+            <div id="alert-icon" class="w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0"></div>
+            <div class="min-w-0 flex-1">
+              <h4 id="alert-title" class="font-black text-sm sm:text-base mb-1"></h4>
+              <p id="alert-desc" class="text-xs sm:text-sm text-slate-600 font-bold leading-relaxed mb-3"></p>
             </div>
           </div>
-          <a id="driver-call-btn" href="#" class="hidden bg-brand-navy hover:opacity-90 text-white px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm shrink-0">
-            <i class="fa-solid fa-phone text-amber-400"></i> اتصال
+          <a id="btn-alert-wa" href="#" target="_blank" rel="noopener" class="w-full bg-[#25D366] hover:bg-[#1ebd57] text-white font-black py-2.5 rounded-xl flex justify-center items-center gap-2 text-xs sm:text-sm shadow-md transition-colors">
+            <i class="fa-brands fa-whatsapp text-lg"></i> تواصل مع الإدارة عبر واتساب
           </a>
         </div>
-        <div class="text-center bg-indigo-50/60 py-2.5 px-3 rounded-2xl border border-indigo-100">
-          <p class="text-[11px] text-slate-600 font-bold"><i class="fa-regular fa-clock text-indigo-600 ml-1"></i> تقدير التوصيل:</p>
-          <p class="text-sm sm:text-base font-black text-brand-navy mt-0.5" id="driver-eta"></p>
-        </div>
 
-        <div id="confirm-receipt-box" class="pt-2 border-t border-slate-100">
-          <p class="text-[11px] text-slate-500 font-bold text-center mb-2">استلمت طلبك طازج من المندوب؟ أكّد الاستلام عشان تقيّم تجربتك:</p>
-          <button type="button" onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-emerald-50 hover:bg-emerald-600 border-2 border-emerald-500 text-emerald-800 hover:text-white font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all shadow-sm flex justify-center items-center gap-2 active:scale-95">
-            <i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح
-          </button>
-        </div>
-      </div>
-
-      <!-- 2-و: بطاقة عضوية الولاء والهدايا الذهبية (VIP Loyalty Card) -->
-      <div id="main-wallet-banner" class="hidden vip-card-bg text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-amber-400/35 animate-slide space-y-3">
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-11 h-11 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center text-[#0b261c] text-lg shadow-md shrink-0">
-              <i class="fa-solid fa-crown"></i>
-            </div>
-            <div class="min-w-0">
-              <div class="flex items-center gap-1.5 flex-wrap">
-                <p class="text-xs font-black text-white">محفظة الهدايا والنقاط</p>
-                <span id="vip-tier-badge" class="text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full">عضو مميز</span>
+        <!-- معلومات المندوب وتأكيد الاستلام (تظهر في حالة dispatched) -->
+        <div id="driver-info" class="hidden bg-white border-2 border-indigo-200 rounded-3xl p-4 shadow-sm animate-slide space-y-3">
+          <div class="flex items-center justify-between gap-2 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-11 h-11 bg-indigo-50 rounded-2xl border border-indigo-200 flex items-center justify-center text-indigo-600 text-lg shrink-0">
+                <i class="fa-solid fa-motorcycle"></i>
               </div>
-              <p class="text-[11px] font-bold text-emerald-200 mt-0.5">معاك <span id="main-wallet-points" class="font-black text-amber-300">0</span> نقطة محفوظة</p>
+              <div class="min-w-0">
+                <p class="text-[10px] text-slate-400 font-bold">مندوب سمان ههيا في الطريق</p>
+                <h4 id="driver-name" class="font-black text-slate-900 text-sm sm:text-base truncate"></h4>
+              </div>
             </div>
+            <a id="driver-call-btn" href="#" class="hidden bg-brand-navy hover:opacity-90 text-white px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-sm shrink-0">
+              <i class="fa-solid fa-phone text-amber-400"></i> اتصال
+            </a>
           </div>
-          <div class="text-left bg-white/10 backdrop-blur-sm px-3 py-2 rounded-2xl border border-white/15 shrink-0">
-            <p id="main-wallet-val-label" class="text-[9px] font-bold text-emerald-200/90">تساوي خصم</p>
-            <p class="text-lg font-black text-amber-300 leading-none mt-0.5"><span id="main-wallet-val">0</span> <span id="main-wallet-val-unit" class="text-[10px] text-white/80">ج.م</span></p>
+          <div class="text-center bg-indigo-50/60 py-2.5 px-3 rounded-2xl border border-indigo-100">
+            <p class="text-[11px] text-slate-600 font-bold"><i class="fa-regular fa-clock text-indigo-600 ml-1"></i> تقدير التوصيل:</p>
+            <p class="text-sm sm:text-base font-black text-brand-navy mt-0.5" id="driver-eta"></p>
           </div>
-        </div>
-
-        <div id="progress-bar-container" class="hidden"></div>
-
-        <div id="quick-apply-wallet-container" class="hidden pt-2.5 border-t border-white/15">
-          <button type="button" onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95">
-            <i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب
-          </button>
-        </div>
-      </div>
-
-      <!-- 2-و2: سلم هدايا السمان (قراءة فقط من استوديو العروض) -->
-      <div id="ladder-track-card" class="hidden bg-white rounded-3xl p-4 sm:p-5 shadow-sm border-2 border-amber-300/70 space-y-2.5 animate-slide"></div>
-
-      <!-- 2-ز: محتويات الطلب والتعديل المباشر للطلبات الجديدة -->
-      <div id="view-items-section" class="bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-emerald-900/10 animate-slide">
-        <div class="flex items-center justify-between gap-2 mb-3">
-          <h4 class="font-black text-brand-navy text-sm flex items-center gap-1.5">
-            <i class="fa-solid fa-box-open text-amber-500"></i> محتويات طلبك
-          </h4>
-          <span id="items-count-pill" class="text-[10px] font-black bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg"></span>
-        </div>
-        <div id="res-items" class="flex flex-col gap-2 mb-3"></div>
-
-        <div id="edit-request-box" class="hidden border-t border-slate-100 pt-3 mt-2">
-          <button type="button" onclick="toggleVisualEditMenu()" id="btn-open-edit-menu" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border-2 border-amber-300 font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
-            <i class="fa-solid fa-pen-to-square text-amber-600"></i> تعديل أصناف الطلب / زيادة الكمية
-          </button>
-
-          <div id="visual-edit-container" class="hidden mt-3 bg-[#faf8f3] p-3.5 rounded-2xl border border-slate-200 space-y-3">
-            <div class="text-xs font-black text-brand-navy border-b border-slate-200 pb-2 flex justify-between items-center">
-              <span><i class="fa-solid fa-cart-shopping text-emerald-600 ml-1"></i> عدّل الكميات براحتك:</span>
-              <span id="live-edit-total" class="text-emerald-700 font-black text-sm">0 ج.م</span>
-            </div>
-            <div id="interactive-edit-items" class="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto cart-scroll pr-0.5 pb-1"></div>
-            <button type="button" onclick="submitDirectOrderEdit()" id="btn-confirm-direct-edit" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
-              <i class="fa-solid fa-check-circle text-amber-400"></i> حفظ التعديل وتحديث الفاتورة
+          <div id="confirm-receipt-box" class="pt-1">
+            <button type="button" onclick="confirmReceipt()" id="btn-confirm-receipt" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black py-3 rounded-2xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95">
+              <i class="fa-solid fa-hand-holding-heart text-amber-300"></i> أكّد استلام الطلب بنجاح
             </button>
           </div>
         </div>
-      </div>
 
-      <!-- 2-ح: جسر مطبخ سمان ههيا التفاعلي -->
-      <a id="kitchen-bridge-card" href="./kitchen/" class="hidden block bg-gradient-to-l from-amber-50 via-white to-emerald-50/60 hover:shadow-md border border-amber-300/80 rounded-3xl p-4 transition-all animate-slide">
-        <div class="flex items-center justify-between gap-3">
-          <div class="flex items-center gap-3 min-w-0">
-            <span class="w-11 h-11 rounded-2xl bg-brand-navy text-amber-400 flex items-center justify-center text-lg shrink-0 shadow-sm">
-              <i class="fa-solid fa-fire-burner"></i>
+        <!-- قسم التقييم الغني (يظهر أولوية أولى للطلب المكتمل) -->
+        <div id="feedback-section" class="hidden bg-white border-2 border-emerald-500/35 rounded-3xl p-4 sm:p-5 text-center shadow-sm animate-slide space-y-3">
+          <div class="flex items-center justify-center gap-2">
+            <span class="w-9 h-9 bg-amber-50 border border-amber-200 rounded-xl flex items-center justify-center text-amber-500 text-base">
+              <i class="fa-solid fa-star"></i>
             </span>
-            <div class="min-w-0">
-              <span class="block text-xs sm:text-sm font-black text-brand-navy leading-snug">جهّز تتبيلة أوردرك قبل ما يوصل! 🍳</span>
-              <span class="block text-[11px] font-bold text-slate-500 mt-0.5 truncate">افتح وصفات سمان ههيا المخصصة لأصناف طلبك</span>
-            </div>
-          </div>
-          <span class="bg-amber-400 text-[#0b261c] px-3 py-1.5 rounded-xl text-[11px] font-black shrink-0 shadow-sm">الوصفات</span>
-        </div>
-      </a>
-
-      <!-- 2-ط: قسم التقييم الغني بالنجوم والوسوم السريعة (بعد التسليم) -->
-      <div id="feedback-section" class="hidden bg-white border-2 border-emerald-500/35 rounded-3xl p-5 text-center shadow-md animate-slide space-y-3">
-        <div class="w-14 h-14 bg-gradient-to-br from-emerald-50 to-amber-50 border border-emerald-200 rounded-2xl flex items-center justify-center mx-auto text-brand-navy text-2xl shadow-sm">
-          <i class="fa-solid fa-star text-amber-500"></i>
-        </div>
-        <div>
-          <h4 class="font-black text-brand-navy text-base">بالهناء والشفاء! 🌿</h4>
-          <p class="text-xs text-slate-500 font-bold mt-0.5">رأيك يهمنا جداً — قيّم تجربتك في ثوانٍ</p>
-        </div>
-
-        <div class="star-rating text-3xl text-slate-300 flex justify-center gap-3 flex-row-reverse py-1" id="stars-container">
-          <i class="fa-solid fa-star" onclick="rateOrder(5)"></i>
-          <i class="fa-solid fa-star" onclick="rateOrder(4)"></i>
-          <i class="fa-solid fa-star" onclick="rateOrder(3)"></i>
-          <i class="fa-solid fa-star" onclick="rateOrder(2)"></i>
-          <i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
-        </div>
-
-        <div id="complaint-box" class="hidden text-right space-y-3 pt-2 border-t border-slate-100">
-          <div>
-            <span class="text-[11px] font-black text-slate-600 block mb-2">أكثر حاجة عجبتك (اختياري):</span>
-            <div id="review-quick-tags" class="flex flex-wrap gap-1.5">
-              <button type="button" data-tag="الأوزان ممتازة ⚖️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">الأوزان ممتازة ⚖️</button>
-              <button type="button" data-tag="تنظيف وتغليف رائع ✨" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">تنظيف وتغليف رائع ✨</button>
-              <button type="button" data-tag="طعم طازج جداً 🌿" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">طعم طازج جداً 🌿</button>
-              <button type="button" data-tag="مندوب محترم وسريع 🛵" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">مندوب محترم وسريع 🛵</button>
-              <button type="button" data-tag="التوصيل في الميعاد ⏱️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">التوصيل في الميعاد ⏱️</button>
+            <div class="text-right">
+              <h4 class="font-black text-brand-navy text-sm sm:text-base leading-tight">بالهناء والشفاء! 🌿</h4>
+              <p class="text-[11px] text-slate-500 font-bold">رأيك يهمنا — قيّم تجربتك في ثوانٍ</p>
             </div>
           </div>
 
-          <div>
-            <label class="text-[11px] font-black text-slate-600 block mb-1.5">كلمة أو ملاحظة للإدارة (اختياري):</label>
-            <textarea id="complaint-text" rows="2" class="w-full rounded-2xl border-2 border-slate-200 p-2.5 text-xs font-bold outline-none focus:border-brand-navy bg-slate-50 focus:bg-white resize-none" placeholder="شاركنا رأيك أو أي ملاحظة تساعدنا نخدمك أحسن..."></textarea>
+          <div class="star-rating text-3xl text-slate-300 flex justify-center gap-3 flex-row-reverse py-1" id="stars-container">
+            <i class="fa-solid fa-star" onclick="rateOrder(5)"></i>
+            <i class="fa-solid fa-star" onclick="rateOrder(4)"></i>
+            <i class="fa-solid fa-star" onclick="rateOrder(3)"></i>
+            <i class="fa-solid fa-star" onclick="rateOrder(2)"></i>
+            <i class="fa-solid fa-star" onclick="rateOrder(1)"></i>
           </div>
 
-          <button type="button" id="btn-submit-rating" onclick="submitComplaint()" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
-            <i class="fa-solid fa-paper-plane text-amber-400"></i> إرسال التقييم
-          </button>
+          <div id="complaint-box" class="hidden text-right space-y-3 pt-2 border-t border-slate-100">
+            <div>
+              <span class="text-[11px] font-black text-slate-600 block mb-2">أكثر حاجة عجبتك (اختياري):</span>
+              <div id="review-quick-tags" class="flex flex-wrap gap-1.5">
+                <button type="button" data-tag="الأوزان ممتازة ⚖️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">الأوزان ممتازة ⚖️</button>
+                <button type="button" data-tag="تنظيف وتغليف رائع ✨" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">تنظيف وتغليف رائع ✨</button>
+                <button type="button" data-tag="طعم طازج جداً 🌿" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">طعم طازج جداً 🌿</button>
+                <button type="button" data-tag="مندوب محترم وسريع 🛵" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">مندوب محترم وسريع 🛵</button>
+                <button type="button" data-tag="التوصيل في الميعاد ⏱️" onclick="toggleReviewQuickTag(this)" class="review-tag-btn text-[11px] font-black bg-slate-50 text-slate-700 border border-slate-200 px-2.5 py-1.5 rounded-xl">التوصيل في الميعاد ⏱️</button>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[11px] font-black text-slate-600 block mb-1.5">كلمة أو ملاحظة للإدارة (اختياري):</label>
+              <textarea id="complaint-text" rows="2" class="w-full rounded-2xl border-2 border-slate-200 p-2.5 text-xs font-bold outline-none focus:border-brand-navy bg-slate-50 focus:bg-white resize-none" placeholder="شاركنا رأيك أو أي ملاحظة تساعدنا نخدمك أحسن..."></textarea>
+            </div>
+
+            <button type="button" id="btn-submit-rating" onclick="submitComplaint()" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
+              <i class="fa-solid fa-paper-plane text-amber-400"></i> إرسال التقييم
+            </button>
+          </div>
+
+          <div id="feedback-thanks" class="hidden bg-emerald-50 border border-emerald-200 p-3 rounded-2xl text-center space-y-1">
+            <p class="text-emerald-900 font-black text-xs">شكراً من القلب لتقييمك! نسعد دائماً بخدمتك في سمان ههيا 🤍</p>
+            <div id="feedback-saved-summary" class="text-[11px] font-bold text-emerald-700"></div>
+          </div>
         </div>
 
-        <div id="feedback-thanks" class="hidden bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl text-center space-y-1.5">
-          <p class="text-emerald-900 font-black text-xs">شكراً من القلب لتقييمك! نسعد دائماً بخدمتك في سمان ههيا 🤍</p>
-          <div id="feedback-saved-summary" class="text-[11px] font-bold text-emerald-700"></div>
+        <!-- صندوق متابعة الدفعة الذكي -->
+        <div id="batch-info-box" class="hidden bg-white rounded-3xl p-4 shadow-sm border border-emerald-200/80 space-y-3 animate-slide">
+          <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-slate-100">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="w-8 h-8 rounded-xl bg-emerald-50 text-brand-navy border border-emerald-200 flex items-center justify-center text-sm shrink-0">
+                <i class="fa-solid fa-calendar-check text-amber-500"></i>
+              </span>
+              <div class="min-w-0">
+                <span class="block text-[10px] font-bold text-slate-400">دفعة الحجز</span>
+                <h4 id="batch-display-name" class="font-black text-brand-navy text-xs sm:text-sm truncate">--</h4>
+              </div>
+            </div>
+            <span id="batch-stage-pill" class="hidden text-[10px] font-black px-2.5 py-1 rounded-xl border shrink-0"></span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2" id="batch-dates-grid">
+            <div id="box-delivery-dates" class="hidden bg-[#faf8f3] p-2.5 rounded-2xl border border-slate-200/80 text-center">
+              <span class="block text-[10px] font-bold text-slate-500 mb-0.5">التسليم المتوقع</span>
+              <span class="block text-xs sm:text-sm font-black text-brand-navy" id="batch-date-range">--</span>
+            </div>
+            <div id="box-delivery-left" class="hidden bg-[#faf8f3] p-2.5 rounded-2xl border border-slate-200/80 text-center">
+              <span class="block text-[10px] font-bold text-slate-500 mb-0.5" id="batch-days-text">المتبقي تقريباً</span>
+              <span class="block text-xs sm:text-sm font-black text-emerald-700" id="batch-days-left">--</span>
+            </div>
+          </div>
+
+          <div id="batch-growth-bar-wrap" class="hidden bg-emerald-50/50 border border-emerald-100 rounded-2xl p-2.5 space-y-1.5">
+            <div class="flex items-center justify-between text-[10px] font-black text-brand-navy">
+              <span><i class="fa-solid fa-seedling text-emerald-600 ml-1"></i> تجهيز الدفعة الطازجة</span>
+              <span id="batch-growth-label" class="text-emerald-700"></span>
+            </div>
+            <div class="w-full h-2 bg-white rounded-full overflow-hidden border border-emerald-100">
+              <div id="batch-growth-fill" class="h-full bg-gradient-to-l from-amber-400 to-emerald-600 rounded-full transition-all duration-700" style="width: 10%;"></div>
+            </div>
+            <div class="flex justify-between text-[9px] font-bold text-slate-400">
+              <span>رعاية 🌿</span>
+              <span>وزن مثالي ✨</span>
+              <span>ذبح طازج 🔪</span>
+              <span>توصيل 🛵</span>
+            </div>
+          </div>
+
+          <div id="batch-msg-container" class="hidden bg-gradient-to-l from-emerald-50/80 to-amber-50/40 p-3 rounded-2xl border border-emerald-200/70 text-[11px] font-bold text-emerald-950 leading-relaxed space-y-1.5">
+            <div id="batch-customer-msg"></div>
+            <p class="text-[10px] font-black text-brand-navy pt-1 border-t border-emerald-200/50">
+              <i class="fa-solid fa-phone-volume text-amber-500 ml-1"></i> هنتواصل معاك قبلها للتأكيد وتحديد الوقت المناسب ليك قبل الذبح وتحرك المندوب 🌿
+            </p>
+          </div>
+        </div>
+
+        <!-- كارت محتويات الطلب والتعديل -->
+        <div id="view-items-section" class="bg-white rounded-3xl p-4 shadow-sm border border-emerald-900/10 animate-slide">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <h4 class="font-black text-brand-navy text-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-box-open text-amber-500"></i> محتويات طلبك
+            </h4>
+            <span id="items-count-pill" class="text-[10px] font-black bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-lg"></span>
+          </div>
+          <div id="res-items" class="flex flex-col gap-2"></div>
+
+          <div id="edit-request-box" class="hidden border-t border-slate-100 pt-3 mt-3">
+            <button type="button" onclick="toggleVisualEditMenu()" id="btn-open-edit-menu" class="w-full bg-amber-50 hover:bg-amber-100 text-amber-950 border-2 border-amber-300 font-black py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center justify-center gap-2 active:scale-95">
+              <i class="fa-solid fa-pen-to-square text-amber-600"></i> تعديل أصناف الطلب / زيادة الكمية
+            </button>
+
+            <div id="visual-edit-container" class="hidden mt-3 bg-[#faf8f3] p-3.5 rounded-2xl border border-slate-200 space-y-3">
+              <div class="text-xs font-black text-brand-navy border-b border-slate-200 pb-2 flex justify-between items-center">
+                <span><i class="fa-solid fa-cart-shopping text-emerald-600 ml-1"></i> عدّل الكميات براحتك:</span>
+                <span id="live-edit-total" class="text-emerald-700 font-black text-sm">0 ج.م</span>
+              </div>
+              <div id="interactive-edit-items" class="grid grid-cols-2 gap-2.5 max-h-64 overflow-y-auto cart-scroll pr-0.5 pb-1"></div>
+              <button type="button" onclick="submitDirectOrderEdit()" id="btn-confirm-direct-edit" class="w-full bg-brand-navy hover:opacity-95 text-white font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex items-center justify-center gap-2 active:scale-95">
+                <i class="fa-solid fa-check-circle text-amber-400"></i> حفظ التعديل وتحديث الفاتورة
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- جسر مطبخ سمان ههيا المدمج -->
+        <a id="kitchen-bridge-card" href="./kitchen/" class="hidden block bg-gradient-to-l from-amber-50 via-white to-emerald-50/60 hover:shadow-md border border-amber-300/80 rounded-2xl p-3.5 transition-all animate-slide">
+          <div class="flex items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-10 h-10 rounded-xl bg-brand-navy text-amber-400 flex items-center justify-center text-base shrink-0 shadow-xs">
+                <i class="fa-solid fa-fire-burner"></i>
+              </span>
+              <div class="min-w-0">
+                <span class="block text-xs font-black text-brand-navy leading-snug">جهّز تتبيلة أوردرك قبل ما يوصل! 🍳</span>
+                <span class="block text-[10px] font-bold text-slate-500 mt-0.5 truncate">وصفات سمان ههيا المخصصة لأصناف طلبك</span>
+              </div>
+            </div>
+            <span class="bg-amber-400 text-[#0b261c] px-3 py-1.5 rounded-xl text-[10px] font-black shrink-0 shadow-xs">الوصفات</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- ==================== التبويب 2: محفظة الهدايا والولاء ==================== -->
+      <div id="panel-wallet" class="hidden space-y-3.5 animate-slide">
+        <!-- بطاقة عضوية الولاء والهدايا الذهبية -->
+        <div id="main-wallet-banner" class="vip-card-bg text-white rounded-3xl p-4 sm:p-5 shadow-lg border border-amber-400/35 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
+              <div class="w-11 h-11 bg-gradient-to-br from-amber-400 to-amber-500 rounded-2xl flex items-center justify-center text-[#0b261c] text-lg shadow-md shrink-0">
+                <i class="fa-solid fa-crown"></i>
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <p class="text-xs font-black text-white">خزنة الهدايا والنقاط</p>
+                  <span id="vip-tier-badge" class="text-[9px] font-black bg-amber-400/20 text-amber-300 border border-amber-400/40 px-2 py-0.5 rounded-full">عضو مميز</span>
+                </div>
+                <p class="text-[11px] font-bold text-emerald-200 mt-0.5">معاك <span id="main-wallet-points" class="font-black text-amber-300">0</span> نقطة محفوظة</p>
+              </div>
+            </div>
+            <div class="text-left bg-white/10 backdrop-blur-sm px-3 py-2 rounded-2xl border border-white/15 shrink-0">
+              <p id="main-wallet-val-label" class="text-[9px] font-bold text-emerald-200/90">رصيدك الدائم</p>
+              <p class="text-lg font-black text-amber-300 leading-none mt-0.5"><span id="main-wallet-val">0</span> <span id="main-wallet-val-unit" class="text-[10px] text-white/80">نقطة</span></p>
+            </div>
+          </div>
+
+          <div class="text-[10px] font-bold text-emerald-200/90 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-infinity text-amber-400"></i>
+            <span>نقاطك محفوظة على رقم موبايلك مدى الحياة ولا تنتهي صلاحيتها ✨</span>
+          </div>
+
+          <div id="progress-bar-container" class="hidden"></div>
+          <div id="quick-apply-wallet-container" class="hidden pt-2.5 border-t border-white/15"></div>
+        </div>
+
+        <!-- سلم هدايا أطباق السمان -->
+        <div id="ladder-track-card" class="hidden bg-white rounded-3xl p-4 sm:p-5 shadow-sm border border-amber-300/80 space-y-3"></div>
+      </div>
+
+      <!-- ==================== التبويب 3: سجل الطلبات السابقة ==================== -->
+      <div id="panel-history" class="hidden space-y-3.5 animate-slide">
+        <!-- ملخص نشاط العميل -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="bg-white rounded-2xl p-3.5 border border-emerald-900/10 shadow-sm text-center">
+            <span class="block text-[10px] font-bold text-slate-400 mb-0.5">طلبات مكتملة</span>
+            <span id="hist-stat-count" class="text-xl font-black text-brand-navy">0</span>
+          </div>
+          <div class="bg-white rounded-2xl p-3.5 border border-emerald-900/10 shadow-sm text-center">
+            <span class="block text-[10px] font-bold text-slate-400 mb-0.5">إجمالي طلباتك السابقة</span>
+            <span id="hist-stat-spent" class="text-xl font-black text-emerald-700">0 <span class="text-xs">ج</span></span>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-3xl p-4 border border-emerald-900/10 shadow-sm space-y-3">
+          <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+            <h4 class="font-black text-brand-navy text-xs sm:text-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-receipt text-amber-500"></i> أرشيف طلباتك المكتملة
+            </h4>
+            <span id="history-count-pill" class="text-[10px] font-black bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg">0 طلب</span>
+          </div>
+          <div id="history-list" class="space-y-2.5"></div>
         </div>
       </div>
 
-      <!-- 2-ي: أرشيف الطلبات السابقة + إعادة الطلب بضغطة واحدة داخل المتجر -->
-      <div id="history-section" class="hidden bg-white rounded-3xl p-4 border border-slate-200 shadow-sm space-y-3">
-        <div class="flex items-center justify-between">
-          <h4 class="font-black text-brand-navy text-xs sm:text-sm flex items-center gap-1.5">
-            <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> سجل طلباتك السابقة المكتملة
-          </h4>
-          <span id="history-count-pill" class="text-[10px] font-black bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded-lg"></span>
-        </div>
-        <div id="history-list" class="space-y-2.5 max-h-72 overflow-y-auto cart-scroll"></div>
-      </div>
-
-      <!-- روابط سفلية -->
-      <div class="flex items-center justify-center gap-4 pt-3 border-t border-slate-200/80">
-        <button type="button" id="btn-toggle-history" onclick="toggleHistory()" class="text-brand-navy hover:text-emerald-700 text-xs font-black bg-white border border-slate-200 px-3.5 py-2 rounded-xl shadow-sm transition-colors flex items-center gap-1.5">
-          <i class="fa-solid fa-clock-rotate-left text-amber-500"></i> طلباتك السابقة
-        </button>
-        <button type="button" onclick="logoutTracker()" class="text-slate-500 hover:text-rose-600 text-xs font-bold bg-white border border-slate-200 px-3.5 py-2 rounded-xl transition-colors flex items-center gap-1.5">
-          <i class="fa-solid fa-right-left"></i> رقم آخر
-        </button>
-      </div>
     </div>
   </main>
 
@@ -470,7 +549,7 @@
     </div>
   </footer>
 
-  <!-- نافذة التنبيه والتأكيد التنفيذية الداخلية -->
+  <!-- نافذة التنبيه والتأكيد الداخلية -->
   <div id="track-dialog-modal" class="fixed inset-0 bg-[#0b261c]/80 backdrop-blur-sm z-[130] hidden flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden border border-slate-200">
       <div class="luxury-hero-bg text-white px-5 py-3.5 flex items-center justify-between">
@@ -506,7 +585,7 @@
       let allActiveOrders = [];
       let pastOrders = [];
       let allTrackedOrders = [];
-      let ordersSelectorMode = 'active'; // 'active' | 'all'
+      let currentMainTab = 'orders'; // 'orders' | 'wallet' | 'history'
       let storeWhatsapp = '201208027294';
       let orderListener = null;
       let liveProductsCatalog = {};
@@ -525,6 +604,7 @@
       let selectedReviewTags = new Set();
       let toastTimer = null;
       let dialogResolver = null;
+      let isRedeemingReward = false;
 
       function getDocServerFirst(docRef) {
         if (!navigator.onLine) {
@@ -647,7 +727,46 @@
       }
 
       // =================================================================
-      // دوال المسارات الـ 3 المستقلة ومواعيد الدفعة الذكية (+يومين أمان و38–45 يوم)
+      // التبديل بين التبويبات الـ 3 (التتبع | المحفظة والهدايا | السابقة)
+      // =================================================================
+      window.switchTrackMainTab = function (tabKey) {
+        currentMainTab = ['orders', 'wallet', 'history'].includes(tabKey) ? tabKey : 'orders';
+        const tabs = ['orders', 'wallet', 'history'];
+        tabs.forEach((t) => {
+          const btn = document.getElementById(`main-tab-${t}`);
+          const panel = document.getElementById(`panel-${t}`);
+          const isAct = t === currentMainTab;
+          if (panel) panel.classList.toggle('hidden', !isAct);
+          if (btn) {
+            btn.className = isAct
+              ? 'py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 bg-brand-navy text-amber-300 shadow-sm'
+              : 'py-2 px-2 rounded-xl text-[11px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 text-slate-600 hover:text-brand-navy';
+          }
+        });
+        if (currentMainTab === 'history') renderHistoryTab();
+        if (currentMainTab === 'wallet') {
+          refreshWalletBanner();
+          renderTrackLadderCard();
+        }
+      };
+
+      function updateMainTabBadges() {
+        const bOrd = document.getElementById('tab-badge-orders');
+        const bHist = document.getElementById('tab-badge-history');
+        if (bOrd) bOrd.textContent = allActiveOrders.length > 0 ? allActiveOrders.length : (pastOrders.length > 0 ? 1 : 0);
+        if (bHist) bHist.textContent = pastOrders.length;
+
+        const subEl = document.getElementById('top-customer-sub');
+        if (subEl) {
+          const parts = [];
+          if (allActiveOrders.length > 0) parts.push(`${allActiveOrders.length} جاري`);
+          if (pastOrders.length > 0) parts.push(`${pastOrders.length} مكتمل`);
+          subEl.textContent = parts.length > 0 ? parts.join(' • ') : 'عميل سمان ههيا';
+        }
+      }
+
+      // =================================================================
+      // دوال المسارات ومواعيد الدفعة الذكية
       // =================================================================
       function getBatchTrackType(batch) {
         if (!batch) return 'quail';
@@ -856,27 +975,25 @@
           return;
         }
 
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري البحث عن طلباتك...';
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري فتح بوابة طلباتك...';
         btn.disabled = true;
         document.getElementById('error-msg')?.classList.add('hidden');
 
-        // عرض فوري من المرآة المحلية في 0ms لو العميل سبق وتتبع نفس الرقم
+        // عرض فوري من المرآة المحلية في 0ms
         const cachedTrack = readTrackedOrdersMirror(phone);
         if (cachedTrack) {
           allActiveOrders = Array.isArray(cachedTrack.active) ? cachedTrack.active : [];
           pastOrders = Array.isArray(cachedTrack.past) ? cachedTrack.past : [];
           allTrackedOrders = [...allActiveOrders, ...pastOrders];
-          ordersSelectorMode = allActiveOrders.length > 0 ? 'active' : 'all';
           currentOrder = allTrackedOrders[0] || null;
-          const histPillFast = document.getElementById('history-count-pill');
-          if (histPillFast) histPillFast.textContent = `${pastOrders.length} طلب`;
+          updateMainTabBadges();
           if (currentOrder) {
             renderOrderTabs();
             displayResult();
           }
           if (!navigator.onLine) {
             showTrackToast('تم عرض آخر حالة محفوظة لطلباتك بدون إنترنت ⚡', 'fa-bolt text-amber-400');
-            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>عرض حالة طلبي الآن</span>';
+            btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>دخول لبوابة طلباتي</span>';
             btn.disabled = false;
             return;
           }
@@ -920,34 +1037,34 @@
             return;
           }
 
-          ordersSelectorMode = allActiveOrders.length > 0 ? 'active' : 'all';
           saveTrackedOrdersMirror(phone, allActiveOrders, pastOrders);
-          document.getElementById('history-section')?.classList.add('hidden');
-          const histPill = document.getElementById('history-count-pill');
-          if (histPill) histPill.textContent = `${pastOrders.length} طلب`;
+          updateMainTabBadges();
 
           const keepExisting = currentOrder && allTrackedOrders.some((o) => o.id === currentOrder.id);
           const initialOrderId = keepExisting ? currentOrder.id : allTrackedOrders[0].id;
           window.selectOrderById(initialOrderId);
+          window.switchTrackMainTab('orders');
         } catch (error) {
           console.error('Track Order Error:', error);
           showError('تعذر الاتصال بالنظام، يرجى المحاولة مرة أخرى.');
         } finally {
-          btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>عرض حالة طلبي الآن</span>';
+          btn.innerHTML = '<i class="fa-solid fa-magnifying-glass"></i><span>دخول لبوابة طلباتي</span>';
           btn.disabled = false;
         }
       };
 
-      window.setOrdersSelectorMode = function (mode) {
-        ordersSelectorMode = mode === 'all' ? 'all' : 'active';
-        renderOrderTabs();
-      };
-
+      // شريط التبديل الأفقي المدمج للطلبات الجارية المتعددة (بلا زحمة ولا تكرار)
       function renderOrderTabs() {
         const container = document.getElementById('orders-selector');
+        const pastBar = document.getElementById('inspecting-past-bar');
         if (!container) return;
 
-        if (allTrackedOrders.length <= 1) {
+        const isViewingPast = Boolean(currentOrder && currentOrder.status === 'completed');
+        if (pastBar) {
+          pastBar.classList.toggle('hidden', !isViewingPast || pastOrders.length <= 1);
+        }
+
+        if (allActiveOrders.length <= 1) {
           container.classList.add('hidden');
           container.innerHTML = '';
           return;
@@ -955,71 +1072,46 @@
 
         container.classList.remove('hidden');
 
-        if (ordersSelectorMode === 'active' && allActiveOrders.length === 0) {
-          ordersSelectorMode = 'all';
-        }
-
-        const listToShow = (ordersSelectorMode === 'active' && allActiveOrders.length > 0)
-          ? allActiveOrders
-          : allTrackedOrders;
-
         const stMeta = {
           new: { icon: '🆕', label: 'جديد', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
           processing: { icon: '🔥', label: 'تجهيز', cls: 'bg-amber-50 text-amber-800 border-amber-200' },
           for_driver: { icon: '📦', label: 'للمندوب', cls: 'bg-cyan-50 text-cyan-800 border-cyan-200' },
           dispatched: { icon: '🛵', label: 'بالطريق', cls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
           deferred: { icon: '📅', label: 'مؤجل', cls: 'bg-orange-50 text-orange-800 border-orange-200' },
-          no_answer: { icon: '📵', label: 'لم يرد', cls: 'bg-rose-50 text-rose-700 border-rose-200' },
-          completed: { icon: '✅', label: 'مكتمل', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' }
+          no_answer: { icon: '📵', label: 'لم يرد', cls: 'bg-rose-50 text-rose-700 border-rose-200' }
         };
 
-        const showModeToggle = allActiveOrders.length > 0 && pastOrders.length > 0;
-        const headerHtml = `
-          <div class="flex items-center justify-between gap-2 pb-2 border-b border-slate-100">
-            <div class="min-w-0">
-              <span class="text-xs font-black text-brand-navy flex items-center gap-1.5">
-                <i class="fa-solid fa-layer-group text-amber-500"></i>
-                <span>لديك (${allTrackedOrders.length}) طلبات مسجلة</span>
-              </span>
-              <span class="block text-[10px] font-bold text-slate-400 mt-0.5">اضغط على أي طلب لعرض تفاصيله وتتبعه بالأسفل</span>
-            </div>
-            ${showModeToggle ? `
-              <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0">
-                <button type="button" onclick="setOrdersSelectorMode('active')" class="px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${ordersSelectorMode === 'active' ? 'bg-brand-navy text-amber-300 shadow-sm' : 'text-slate-600'}">جارية (${allActiveOrders.length})</button>
-                <button type="button" onclick="setOrdersSelectorMode('all')" class="px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${ordersSelectorMode === 'all' ? 'bg-brand-navy text-amber-300 shadow-sm' : 'text-slate-600'}">الكل (${allTrackedOrders.length})</button>
-              </div>` : ''}
-          </div>`;
-
-        const cardsHtml = listToShow.map((o, idx) => {
+        const cardsHtml = allActiveOrders.map((o, idx) => {
           const isSelected = currentOrder && currentOrder.id === o.id;
-          const m = stMeta[o.status] || { icon: '📦', label: 'طلب', cls: 'bg-slate-50 text-slate-700 border-slate-200' };
+          const m = stMeta[o.status] || { icon: '📦', label: 'جاري', cls: 'bg-slate-50 text-slate-700 border-slate-200' };
           const itemsSummary = Array.isArray(o.items) && o.items.length > 0
             ? o.items.map((it) => `${it.pendingWeight ? (it.birdsCount || 1) : it.quantity}× ${it.name}`).join(' + ')
             : 'تفاصيل الطلب';
-          const subLabel = [o.batchName || '', o.orderDate || ''].filter(Boolean).join(' • ');
 
           return `
-            <button type="button" onclick="selectOrderById('${escAttr(o.id)}')" class="w-full text-right p-2.5 rounded-2xl border-2 transition-all flex items-center justify-between gap-2.5 ${
+            <button type="button" onclick="selectOrderById('${escAttr(o.id)}')" class="snap-start shrink-0 w-[182px] text-right p-2.5 rounded-2xl border-2 transition-all space-y-1 ${
               isSelected
-                ? 'bg-emerald-50/90 border-brand-navy shadow-sm ring-1 ring-amber-400/50'
-                : 'bg-[#faf8f3] border-slate-200/80 hover:border-brand-navy/40'
+                ? 'bg-brand-navy text-white border-amber-400 shadow-md'
+                : 'bg-white text-slate-800 border-slate-200 hover:border-brand-navy/40'
             }">
-              <div class="min-w-0 flex-1 space-y-0.5">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="text-[11px] font-black text-brand-navy">طلب #${idx + 1}</span>
-                  <span class="text-[10px] font-black px-2 py-0.5 rounded-lg border ${m.cls}">${m.icon} ${m.label}</span>
-                  ${subLabel ? `<span class="text-[10px] font-bold text-slate-400 truncate">${esc(subLabel)}</span>` : ''}
-                </div>
-                <p class="text-[11px] font-bold text-slate-600 truncate">${esc(itemsSummary)}</p>
+              <div class="flex items-center justify-between gap-1">
+                <span class="text-[10px] font-black px-2 py-0.5 rounded-lg border ${isSelected ? 'bg-white/15 text-amber-300 border-white/20' : m.cls}">${m.icon} ${m.label}</span>
+                <span class="text-xs font-black ${isSelected ? 'text-amber-300' : 'text-emerald-700'}">${Math.round(Number(o.total) || 0)} ج</span>
               </div>
-              <div class="text-left shrink-0 flex items-center gap-1.5">
-                <span class="text-xs sm:text-sm font-black ${isSelected ? 'text-brand-navy' : 'text-emerald-700'}">${Math.round(Number(o.total) || 0)} ج</span>
-                <i class="fa-solid ${isSelected ? 'fa-circle-check text-brand-navy' : 'fa-chevron-left text-slate-300'} text-xs"></i>
-              </div>
+              <p class="text-[11px] font-bold truncate ${isSelected ? 'text-emerald-100' : 'text-slate-600'}">${esc(itemsSummary)}</p>
+              <span class="block text-[9px] font-bold truncate ${isSelected ? 'text-white/65' : 'text-slate-400'}">طلب #${idx + 1}${o.batchName ? ' • ' + esc(o.batchName) : ''}</span>
             </button>`;
         }).join('');
 
-        container.innerHTML = `${headerHtml}<div class="space-y-1.5 max-h-56 overflow-y-auto cart-scroll pr-0.5">${cardsHtml}</div>`;
+        container.innerHTML = `
+          <div class="flex items-center justify-between px-1">
+            <span class="text-[11px] font-black text-brand-navy flex items-center gap-1.5">
+              <i class="fa-solid fa-layer-group text-amber-500"></i>
+              <span>طلباتك الجارية (${allActiveOrders.length})</span>
+            </span>
+            <span class="text-[10px] font-bold text-slate-400">اسحب للتبديل ⇄</span>
+          </div>
+          <div class="flex gap-2 overflow-x-auto no-scrollbar snap-x pb-1">${cardsHtml}</div>`;
       }
 
       window.selectOrderById = function (orderId) {
@@ -1039,15 +1131,23 @@
             if (doc.exists) {
               const fresh = { id: doc.id, ...doc.data() };
               currentOrder = fresh;
-              const syncInArr = (arr) => {
-                const pos = arr.findIndex((x) => x.id === fresh.id);
-                if (pos !== -1) arr[pos] = fresh;
-              };
-              syncInArr(allTrackedOrders);
-              syncInArr(allActiveOrders);
-              syncInArr(pastOrders);
+
+              // مزامنة الحالة لايف بين القوائم لو تحول الطلب من جاري لمكتمل
+              const idxAll = allTrackedOrders.findIndex((x) => x.id === fresh.id);
+              if (idxAll !== -1) allTrackedOrders[idxAll] = fresh;
+              else allTrackedOrders.unshift(fresh);
+
+              allActiveOrders = allTrackedOrders
+                .filter((o) => !['trash', 'canceled', 'completed'].includes(o.status))
+                .sort((a, b) => getOrderSortMs(b) - getOrderSortMs(a));
+              pastOrders = allTrackedOrders
+                .filter((o) => o.status === 'completed')
+                .sort((a, b) => getOrderSortMs(b) - getOrderSortMs(a));
+
+              updateMainTabBadges();
               renderOrderTabs();
               displayResult();
+              if (currentMainTab === 'history') renderHistoryTab();
             }
           },
           (err) => console.error('Live order snapshot error:', err)
@@ -1060,6 +1160,12 @@
         window.selectOrderById(list[index].id);
       };
 
+      window.inspectPastOrder = function (orderId) {
+        window.selectOrderById(orderId);
+        window.switchTrackMainTab('orders');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      };
+
       function displayResult() {
         document.getElementById('login-section')?.classList.add('hidden');
         document.getElementById('result-section')?.classList.remove('hidden');
@@ -1067,12 +1173,39 @@
         document.getElementById('res-name').textContent = currentOrder.customerName || 'عميلنا العزيز';
         document.getElementById('res-total').textContent = Math.round(Number(currentOrder.total) || 0);
 
+        const datePill = document.getElementById('res-order-date-pill');
+        if (datePill) {
+          const dTxt = [currentOrder.orderDate || '', currentOrder.orderTime || ''].filter(Boolean).join(' • ');
+          datePill.textContent = dTxt || '';
+          datePill.classList.toggle('hidden', !dTxt);
+        }
+
+        // شارات العروض والمكافآت المطبقة على الطلب داخل الهيدر
+        const offerBadgesEl = document.getElementById('res-offer-badges');
+        if (offerBadgesEl) {
+          const badges = [];
+          if (Array.isArray(currentOrder.appliedBundles) && currentOrder.appliedBundles.length > 0) {
+            badges.push(`<span class="bg-amber-400/20 text-amber-200 border border-amber-400/35 px-2 py-0.5 rounded-lg text-[10px] font-black">📦 عرض الباكج</span>`);
+          }
+          if (Number(currentOrder.pointsMultiplier) > 1) {
+            badges.push(`<span class="bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 px-2 py-0.5 rounded-lg text-[10px] font-black">⚡ نقاط ${currentOrder.pointsMultiplier}x</span>`);
+          }
+          if (Number(currentOrder.bonusPoints) > 0) {
+            badges.push(`<span class="bg-indigo-400/25 text-indigo-100 border border-indigo-300/35 px-2 py-0.5 rounded-lg text-[10px] font-black">🪙 +${currentOrder.bonusPoints} نقطة بونص</span>`);
+          }
+          if (Array.isArray(currentOrder.items) && currentOrder.items.some((i) => i && (i.isGift || Number(i.price) === 0))) {
+            badges.push(`<span class="bg-amber-400 text-[#0b261c] px-2 py-0.5 rounded-lg text-[10px] font-black">🎁 يشمل هدية مجانية</span>`);
+          }
+          offerBadgesEl.innerHTML = badges.join('');
+          offerBadgesEl.classList.toggle('hidden', badges.length === 0);
+        }
+
         const payBadgeEl = document.getElementById('res-payment-badge');
         if (payBadgeEl) {
           if (currentOrder.paymentMethod === 'online') {
             payBadgeEl.innerHTML = '<span class="inline-block bg-emerald-400/25 text-emerald-200 border border-emerald-400/35 px-2.5 py-0.5 rounded-full text-[10px] font-black">✅ خالص أونلاين</span>';
           } else if (currentOrder.paymentMethod === 'split') {
-            payBadgeEl.innerHTML = `<span class="inline-block bg-indigo-400/25 text-indigo-100 border border-indigo-300/35 px-2.5 py-0.5 rounded-full text-[10px] font-black">كاش ${Number(currentOrder.paidCash) || 0}ج • محفظة ${Number(currentOrder.paidOnline) || 0}ج</span>`;
+            payBadgeEl.innerHTML = `<span class="inline-block bg-indigo-400/25 text-indigo-100 border border-indigo-300/35 px-2.5 py-0.5 rounded-full text-[10px] font-black">كاش ${Number(currentOrder.paidCash) || 0}ج • تحويل ${Number(currentOrder.paidOnline) || 0}ج</span>`;
           } else {
             payBadgeEl.innerHTML = '<span class="inline-block bg-white/15 text-white border border-white/20 px-2.5 py-0.5 rounded-full text-[10px] font-black">💵 عند الاستلام</span>';
           }
@@ -1083,29 +1216,23 @@
         const discountVal = Number(currentOrder.discount) || 0;
 
         let detailsHtml = `
-          <span class="bg-[#faf8f3] text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">المنتجات: <strong class="text-brand-navy">${itemsCost} ج</strong></span>
-          <span class="bg-[#faf8f3] text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">التوصيل: <strong class="text-brand-navy">${deliveryFee === 0 ? 'مجاني 🎉' : `${deliveryFee} ج`}</strong></span>
+          <span class="bg-white text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">المنتجات: <strong class="text-brand-navy">${itemsCost} ج</strong></span>
+          <span class="bg-white text-slate-700 px-2.5 py-1 rounded-xl border border-slate-200/80">التوصيل: <strong class="text-brand-navy">${deliveryFee === 0 ? 'مجاني 🎉' : `${deliveryFee} ج`}</strong></span>
         `;
         if (discountVal > 0) {
           detailsHtml += `<span class="bg-emerald-50 text-emerald-800 px-2.5 py-1 rounded-xl border border-emerald-200">🎉 خصم: -${discountVal} ج</span>`;
         }
 
-        const orderDateVal = esc(currentOrder.orderDate || '');
-        const orderTimeVal = esc(currentOrder.orderTime || '');
         const addressVal = esc(currentOrder.customerAddress || 'لم يتم تسجيل عنوان تفصيلي');
         const zoneVal = esc(currentOrder.zone || 'غير محدد');
 
         detailsHtml += `
-          <div class="w-full text-right mt-2 pt-3 border-t border-slate-100 space-y-2 text-slate-600">
-            <div class="flex items-center justify-between gap-2 text-[11px]">
-              <span class="text-slate-400"><i class="fa-regular fa-clock ml-1"></i> وقت التسجيل:</span>
-              <strong class="text-slate-800">${orderDateVal}${orderTimeVal ? ' — ' + orderTimeVal : ''}</strong>
-            </div>
-            <div class="flex items-start gap-2 text-[11px] bg-[#faf8f3] p-2.5 rounded-2xl border border-slate-200/70">
+          <div class="w-full text-right mt-1.5 pt-2.5 border-t border-slate-200/70">
+            <div class="flex items-start gap-2 text-[11px]">
               <i class="fa-solid fa-location-dot text-emerald-600 mt-0.5 shrink-0"></i>
-              <div class="flex-1 min-w-0">
+              <div class="flex-1 min-w-0 leading-snug">
                 <span class="text-slate-500 font-bold">التوصيل إلى (${zoneVal}):</span>
-                <span class="text-brand-navy font-black block mt-0.5 leading-snug">${addressVal}</span>
+                <span class="text-brand-navy font-black mr-1">${addressVal}</span>
               </div>
             </div>
           </div>
@@ -1134,7 +1261,7 @@
         }
       }
 
-      // قراءة موحّدة لإعدادات استوديو العروض (مطابقة لـ app.js) — قراءة فقط، ولو المستند مش موجود بنرجع null ونكمل بالوضع القديم
+      // قراءة موحّدة لإعدادات استوديو العروض (مطابقة لـ app.js)
       function getTrackOffersCfg() {
         if (!liveOffersConfig || typeof liveOffersConfig !== 'object') return null;
         if (liveOffersConfig.enabled === false) return null;
@@ -1146,6 +1273,7 @@
             allowCashRedemption: Boolean(w.allowCashRedemption),
             minOrderForRedeemEGP: Number(w.minOrderForRedeemEGP) || 0,
             eggPlateRealCost: Number(w.eggPlateRealCost) || 40,
+            pointsPer100: Number(w.pointsPer100) || 5,
             rewards: Array.isArray(w.rewards) ? w.rewards.filter((r) => r && r.id) : []
           },
           ladder: {
@@ -1167,30 +1295,19 @@
         return plates;
       }
 
+      // عرض سُلّم هدايا السمان بشكل متكامل داخل تبويب "الهدايا"
       function renderTrackLadderCard() {
         const card = document.getElementById('ladder-track-card');
         if (!card) return;
         const hide = () => { card.classList.add('hidden'); card.innerHTML = ''; };
         const cfg = getTrackOffersCfg();
         const ladder = cfg ? cfg.ladder : null;
-        if (!ladder || ladder.enabled === false || ladder.showTemptationBar === false || !currentOrder || ['trash', 'canceled'].includes(currentOrder.status)) return hide();
+        if (!ladder || ladder.enabled === false) return hide();
         const tiers = (ladder.tiers || []).slice().sort((a, b) => (Number(a.minPlates) || 0) - (Number(b.minPlates) || 0));
         if (tiers.length === 0) return hide();
-        const plates = getQuailPlatesInOrder(currentOrder);
-        if (plates <= 0) return hide();
 
-        const blockedByPromo = Boolean(ladder.blockWithPromoCode && currentOrder.usedPromo);
-        let current = null;
-        let next = null;
-        tiers.forEach((t) => {
-          const mp = Math.max(1, Number(t.minPlates) || 1);
-          if (plates >= mp) current = { t, mp };
-          else if (!next) next = { t, mp };
-        });
-
-        const isOrderNew = currentOrder.status === 'new';
-        if (blockedByPromo) return hide();
-        if (!isOrderNew && !current) return hide();
+        const plates = currentOrder && !['trash', 'canceled'].includes(currentOrder.status) ? getQuailPlatesInOrder(currentOrder) : 0;
+        const blockedByPromo = Boolean(currentOrder && ladder.blockWithPromoCode && currentOrder.usedPromo);
 
         const rewardLabel = (t) => {
           if (!t) return '';
@@ -1202,41 +1319,52 @@
           const mult = Number(t.multiplier) || 1;
           return mult > 1 ? `نقاط مضاعفة ${mult}x` : '';
         };
-        const nextMp = next ? next.mp : Math.max(1, Number(tiers[tiers.length - 1].minPlates) || 1);
-        const pct = Math.min(100, Math.floor((plates / nextMp) * 100));
 
-        const footerHtml = isOrderNew
-          ? (next
-              ? `<div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden flex justify-end" dir="ltr">
-                   <div class="bg-gradient-to-r from-amber-400 to-emerald-400 h-2 rounded-full transition-all duration-700" style="width: ${pct}%"></div>
-                 </div>
-                 <p class="text-[10px] font-black text-amber-700 text-center">في طلبك الجاي لو وصلت ${next.mp} أطباق هتاخد: ${esc(rewardLabel(next.t))} ✨</p>`
-              : `<p class="text-[10px] font-black text-emerald-700 text-center">وصلت لأعلى مستوى في السلم 🎉</p>`)
-          : `<p class="text-[10px] font-black text-emerald-700 text-center">تم احتساب مكافأة السلم على هذا الطلب ✅</p>`;
+        const tiersListHtml = tiers.map((t) => {
+          const mp = Math.max(1, Number(t.minPlates) || 1);
+          const reached = plates >= mp && !blockedByPromo;
+          return `
+            <div class="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl border ${reached ? 'bg-emerald-50 border-emerald-300' : 'bg-[#faf8f3] border-slate-200/80'}">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] font-black shrink-0 ${reached ? 'bg-emerald-600 text-white' : 'bg-brand-navy text-amber-300'}">${reached ? '✓' : mp}</span>
+                <span class="text-xs font-black ${reached ? 'text-emerald-900' : 'text-brand-navy'} truncate">من ${mp} أطباق سمان</span>
+              </div>
+              <span class="text-[11px] font-black shrink-0 ${reached ? 'text-emerald-700' : 'text-amber-700'}">${esc(rewardLabel(t))}</span>
+            </div>`;
+        }).join('');
+
+        const statusNote = plates > 0
+          ? (blockedByPromo
+              ? `<p class="text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5 text-center">مفعّل على طلبك كود خصم — مكافآت السُلّم متاحة في الطلبات بدون كود خصم.</p>`
+              : `<p class="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-1.5 text-center">طلبك المعروض فيه ${plates} طبق سمان ✨</p>`)
+          : `<p class="text-[10px] font-bold text-slate-500 text-center">كل ما تزوّد عدد أطباق السمان المذبوح في طلبك، بتفتح مكافآت أكبر تلقائياً!</p>`;
 
         card.innerHTML = `
-          <div class="flex items-center gap-2.5">
-            <span class="text-2xl shrink-0">🥚</span>
-            <div class="flex-1 min-w-0">
-              <p class="text-xs font-black text-brand-navy">سلم هدايا السمان</p>
-              <p class="text-[11px] font-bold text-slate-500 mt-0.5">طلبك فيه <strong class="text-brand-navy">${plates} طبق سمان</strong>${current ? ` — مكسبك: <strong class="text-emerald-700">${esc(rewardLabel(current.t))}</strong> 🎁` : ''}</p>
+          <div class="flex items-center gap-2.5 pb-2 border-b border-slate-100">
+            <span class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 text-lg flex items-center justify-center shrink-0">🥚</span>
+            <div class="min-w-0">
+              <h4 class="text-xs sm:text-sm font-black text-brand-navy">سُلّم مكافآت أطباق السمان</h4>
+              <p class="text-[10px] font-bold text-slate-400">نقاط مضاعفة وهدايا بيض سمان فورية مع زيادة الأطباق</p>
             </div>
           </div>
-          ${footerHtml}
+          ${statusNote}
+          <div class="space-y-1.5">${tiersListHtml}</div>
         `;
         card.classList.remove('hidden');
       }
 
-
       async function refreshWalletBanner() {
         const banner = document.getElementById('main-wallet-banner');
         const quickBtnWrap = document.getElementById('quick-apply-wallet-container');
-        const quickBtn = document.getElementById('btn-quick-apply-wallet');
+        const nudgeBar = document.getElementById('order-gift-nudge-bar');
+        const topPill = document.getElementById('top-points-pill');
+        const topVal = document.getElementById('top-points-val');
+        const tabBadgeW = document.getElementById('tab-badge-wallet');
         if (!banner || !currentOrder) return;
 
         try {
           const cleanPhone = U.normalizePhone(currentOrder.customerPhone);
-          if (!cleanPhone) return banner.classList.add('hidden');
+          if (!cleanPhone) return;
 
           const candidates = buildPhoneCandidates(cleanPhone, currentOrder.customerPhone);
           const snaps = await Promise.all(
@@ -1262,57 +1390,78 @@
           const discVal = Math.floor(pts * livePointValue);
           const offersCfg = getTrackOffersCfg();
           const wCfg = offersCfg ? offersCfg.wallet : null;
-          if (wCfg && wCfg.enabled === false) return banner.classList.add('hidden');
+          const isWalletDisabled = Boolean(wCfg && wCfg.enabled === false);
           const isGiftOnlyMode = Boolean(wCfg && !wCfg.allowCashRedemption);
 
-          if (pts > 0 && (isGiftOnlyMode || discVal > 0)) {
-            banner.classList.remove('hidden');
-            document.getElementById('main-wallet-points').textContent = pts;
-            window.currentWalletPoints = pts;
-            window.currentWalletDiscount = isGiftOnlyMode ? 0 : discVal;
+          window.currentWalletPoints = pts;
+          window.currentWalletDiscount = isGiftOnlyMode ? 0 : discVal;
 
-            const valLabelEl = document.getElementById('main-wallet-val-label');
-            const valNumEl = document.getElementById('main-wallet-val');
-            const valUnitEl = document.getElementById('main-wallet-val-unit');
-            if (isGiftOnlyMode) {
-              if (valLabelEl) valLabelEl.textContent = 'خزنة الهدايا';
-              if (valNumEl) valNumEl.textContent = pts;
-              if (valUnitEl) valUnitEl.textContent = 'نقطة';
-            } else {
-              if (valLabelEl) valLabelEl.textContent = 'تساوي خصم';
-              if (valNumEl) valNumEl.textContent = discVal;
-              if (valUnitEl) valUnitEl.textContent = 'ج.م';
-            }
+          if (tabBadgeW) tabBadgeW.textContent = pts;
+          if (topPill && topVal) {
+            topVal.textContent = pts;
+            topPill.classList.toggle('hidden', isWalletDisabled || pts <= 0);
+          }
 
-            const tierEl = document.getElementById('vip-tier-badge');
-            if (tierEl) {
-              if (activeCustomerStats.ordersCount >= 6 || activeCustomerStats.totalSpent >= 2500) {
-                tierEl.textContent = '👑 عميل ذهبي VIP';
-              } else if (activeCustomerStats.ordersCount >= 3 || activeCustomerStats.totalSpent >= 1000) {
-                tierEl.textContent = '🥈 عميل فضي مميز';
-              } else {
-                tierEl.textContent = '🌿 عضو عيلة سمان ههيا';
-              }
-            }
-
-            if (isGiftOnlyMode) {
-              renderGiftOnlyWalletUI(pts, wCfg, quickBtnWrap);
-            } else {
-              updateProgressTarget(discVal);
-              if (quickBtnWrap) {
-                quickBtnWrap.innerHTML = `<button type="button" onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95"><i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب</button>`;
-                quickBtnWrap.classList.toggle('hidden', currentOrder.status !== 'new');
-              }
-            }
+          if (isWalletDisabled) {
+            banner.classList.add('hidden');
+            nudgeBar?.classList.add('hidden');
             return;
           }
-          banner.classList.add('hidden');
-        } catch (e) {
-          banner.classList.add('hidden');
-        }
+
+          banner.classList.remove('hidden');
+          document.getElementById('main-wallet-points').textContent = pts;
+
+          const valLabelEl = document.getElementById('main-wallet-val-label');
+          const valNumEl = document.getElementById('main-wallet-val');
+          const valUnitEl = document.getElementById('main-wallet-val-unit');
+          if (isGiftOnlyMode || pts === 0) {
+            if (valLabelEl) valLabelEl.textContent = 'خزنة الهدايا';
+            if (valNumEl) valNumEl.textContent = pts;
+            if (valUnitEl) valUnitEl.textContent = 'نقطة';
+          } else {
+            if (valLabelEl) valLabelEl.textContent = 'تساوي خصم';
+            if (valNumEl) valNumEl.textContent = discVal;
+            if (valUnitEl) valUnitEl.textContent = 'ج.م';
+          }
+
+          const tierEl = document.getElementById('vip-tier-badge');
+          if (tierEl) {
+            if (activeCustomerStats.ordersCount >= 6 || activeCustomerStats.totalSpent >= 2500) {
+              tierEl.textContent = '👑 عميل ذهبي VIP';
+            } else if (activeCustomerStats.ordersCount >= 3 || activeCustomerStats.totalSpent >= 1000) {
+              tierEl.textContent = '🥈 عميل فضي مميز';
+            } else {
+              tierEl.textContent = '🌿 عضو عيلة سمان ههيا';
+            }
+          }
+
+          if (isGiftOnlyMode) {
+            renderGiftOnlyWalletUI(pts, wCfg, quickBtnWrap);
+          } else {
+            updateProgressTarget(discVal);
+            if (quickBtnWrap) {
+              if (pts > 0 && discVal > 0 && currentOrder.status === 'new') {
+                quickBtnWrap.innerHTML = `<button type="button" onclick="applyWalletToCurrentOrder()" id="btn-quick-apply-wallet" class="w-full bg-amber-400 hover:bg-amber-300 text-[#0b261c] font-black py-3 rounded-xl text-xs sm:text-sm transition-all shadow-md flex justify-center items-center gap-2 active:scale-95"><i class="fa-solid fa-wand-magic-sparkles"></i> تفعيل رصيد النقاط على هذا الطلب</button>`;
+                quickBtnWrap.classList.remove('hidden');
+              } else {
+                quickBtnWrap.classList.add('hidden');
+              }
+            }
+            if (nudgeBar) {
+              const showNudge = pts > 0 && discVal > 0 && currentOrder.status === 'new';
+              nudgeBar.classList.toggle('hidden', !showNudge);
+              if (showNudge) {
+                document.getElementById('nudge-gift-title').textContent = `معاك ${pts} نقطة (${discVal} ج.م) جاهزة للاستخدام!`;
+                document.getElementById('nudge-gift-sub').textContent = 'اضغط لتفعيل رصيدك على هذا الطلب قبل التجهيز';
+              }
+            }
+          }
+        } catch (e) {}
       }
+
       function renderGiftOnlyWalletUI(pts, wCfg, quickBtnWrap) {
         const progCont = document.getElementById('progress-bar-container');
+        const nudgeBar = document.getElementById('order-gift-nudge-bar');
         const rewards = (Array.isArray(wCfg.rewards) ? wCfg.rewards : [])
           .filter((r) => r && r.id && r.enabled !== false)
           .sort((a, b) => (Number(a.pointsCost) || 0) - (Number(b.pointsCost) || 0));
@@ -1340,7 +1489,7 @@
             progCont.innerHTML = `
               <div class="pt-2.5 border-t border-white/15 text-center bg-white/10 rounded-2xl p-2.5 border border-amber-400/30">
                 <p class="text-xs font-black text-amber-300"><i class="fa-solid fa-gift ml-1"></i> رصيدك جاهز لاستلام هديتك من خزنة الهدايا!</p>
-                <p class="text-[10px] text-emerald-100 font-bold mt-0.5">يمكنك اختيار هديتك مع هذا الطلب أو في طلبك القادم من المتجر</p>
+                <p class="text-[10px] text-emerald-100 font-bold mt-0.5">استلم هديتك مع طلبك الحالي أو من السلة في طلبك القادم</p>
               </div>`;
           } else {
             progCont.innerHTML = '';
@@ -1348,48 +1497,77 @@
           progCont.classList.toggle('hidden', rewards.length === 0);
         }
 
-        if (!quickBtnWrap) return;
-        if (currentOrder.status !== 'new' || rewards.length === 0) {
-          quickBtnWrap.classList.add('hidden');
-          return;
-        }
-
         const alreadyRedeemed = Boolean(
           currentOrder.walletRewardRedeemed ||
           (Array.isArray(currentOrder.items) && currentOrder.items.some((i) => i && String(i.name || '').includes('هدية النقاط')))
         );
-        if (alreadyRedeemed) {
+        const minOrder = Number(wCfg.minOrderForRedeemEGP) || 0;
+        const isOrderNew = currentOrder.status === 'new';
+        const orderOk = (Number(currentOrder.subtotal) || 0) >= minOrder;
+
+        // شريط الدعوة الذكي داخل تبويب التتبع إذا كان العميل يستطيع إضافة هدية الآن
+        if (nudgeBar) {
+          const canRedeemNow = isOrderNew && !alreadyRedeemed && orderOk && rewards.some((r) => {
+            const cost = Math.max(1, Number(r.pointsCost) || 125);
+            const qty = Math.max(1, Number(r.qty) || 1);
+            return pts >= cost && (Number(liveStockMap[r.productId]) || 0) >= qty;
+          });
+          nudgeBar.classList.toggle('hidden', !canRedeemNow);
+          if (canRedeemNow) {
+            document.getElementById('nudge-gift-title').textContent = `معاك ${pts} نقطة تكفي هدية مجانية!`;
+            document.getElementById('nudge-gift-sub').textContent = 'اضغط لإضافة هدية البيض لطلبك الحالي مجاناً';
+          }
+        }
+
+        if (!quickBtnWrap) return;
+        if (rewards.length === 0) {
+          quickBtnWrap.classList.add('hidden');
+          return;
+        }
+
+        if (isOrderNew && alreadyRedeemed) {
           quickBtnWrap.innerHTML = `<div class="bg-emerald-500/20 border border-emerald-300/40 rounded-xl p-2.5 text-center text-[11px] font-black text-emerald-200">✅ تم إضافة هدية النقاط لهذا الطلب بنجاح</div>`;
           quickBtnWrap.classList.remove('hidden');
           return;
         }
 
-        const minOrder = Number(wCfg.minOrderForRedeemEGP) || 0;
-        const orderOk = (Number(currentOrder.subtotal) || 0) >= minOrder;
+        const headerCaption = isOrderNew
+          ? '🎁 استبدل نقاطك بهدية تُضاف لطلبك الحالي (هدية واحدة لكل طلب):'
+          : '🎁 كتالوج الهدايا المتاحة لاستبدال نقاطك في طلبك القادم من المتجر:';
 
         quickBtnWrap.innerHTML = `
           <div class="space-y-2">
-            <p class="text-[10px] font-black text-amber-200/95">🎁 استبدل نقاطك بهدية تُضاف لهذا الطلب (هدية واحدة لكل طلب):</p>
+            <p class="text-[10px] font-black text-amber-200/95">${headerCaption}</p>
             ${rewards.map((r) => {
               const cost = Math.max(1, Number(r.pointsCost) || 125);
               const qty = Math.max(1, Number(r.qty) || 1);
               const inStock = (Number(liveStockMap[r.productId]) || 0) >= qty;
               const affordable = pts >= cost;
-              const usable = affordable && orderOk && inStock;
-              const btnTxt = !inStock
-                ? 'غير متوفر حالياً'
-                : (!affordable ? `محتاج ${cost} نقطة` : (!orderOk ? `تحتاج أوردر ${minOrder} ج+` : `استبدل ${cost} نقطة 🎁`));
+              const usable = isOrderNew && affordable && orderOk && inStock;
+
+              let btnTxt = '';
+              if (!isOrderNew) {
+                btnTxt = affordable ? `جاهز (${cost} نقطة) ✅` : `${cost} نقطة`;
+              } else if (!inStock) {
+                btnTxt = 'غير متوفر حالياً';
+              } else if (!affordable) {
+                btnTxt = `محتاج ${cost} نقطة`;
+              } else if (!orderOk) {
+                btnTxt = `تحتاج أوردر ${minOrder} ج+`;
+              } else {
+                btnTxt = `استبدل ${cost} نقطة 🎁`;
+              }
+
               return `
-                <div class="flex items-center justify-between gap-2 bg-white/10 border border-white/15 rounded-xl p-2">
+                <div class="flex items-center justify-between gap-2 bg-white/10 border border-white/15 rounded-xl p-2.5">
                   <span class="text-[11px] font-black text-white min-w-0 flex-1 truncate">${esc(r.title)}</span>
-                  <button type="button" ${usable ? '' : 'disabled'} onclick="redeemTrackWalletReward('${escAttr(r.id)}')" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black shrink-0 transition-all ${usable ? 'bg-amber-400 hover:bg-amber-300 text-[#0b261c] shadow active:scale-95' : 'bg-white/10 text-white/45 cursor-not-allowed'}">${btnTxt}</button>
+                  <button type="button" ${usable ? '' : 'disabled'} onclick="redeemTrackWalletReward('${escAttr(r.id)}')" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black shrink-0 transition-all ${usable ? 'bg-amber-400 hover:bg-amber-300 text-[#0b261c] shadow active:scale-95' : (affordable && !isOrderNew ? 'bg-emerald-400/20 text-emerald-200 border border-emerald-400/35' : 'bg-white/10 text-white/55 cursor-not-allowed')}">${btnTxt}</button>
                 </div>`;
             }).join('')}
           </div>`;
         quickBtnWrap.classList.remove('hidden');
       }
 
-      let isRedeemingReward = false;
       window.redeemTrackWalletReward = async function (rewardId) {
         if (isRedeemingReward) return;
         if (!currentOrder || currentOrder.status !== 'new') {
@@ -1442,6 +1620,7 @@
           liveStockMap[rw.productId] = Math.max(0, (Number(liveStockMap[rw.productId]) || 0) - qty);
           if (typeof confetti === 'function') confetti({ particleCount: 130, spread: 80, origin: { y: 0.6 } });
           showTrackToast(`🎉 تم إضافة (${rw.title}) لطلبك مجاناً!`);
+          window.switchTrackMainTab('orders');
         } catch (e) {
           console.error(e);
           await openTrackDialog('تعذر إضافة الهدية حالياً، حاول مرة أخرى.', { title: 'تنبيه' });
@@ -1462,7 +1641,7 @@
             ? items.map((i) => {
                 const isPendingW = Boolean(i.pendingWeight);
                 const lineVal = isPendingW ? 0 : Math.round((Number(i.quantity) || 0) * (Number(i.price) || 0));
-                const isGift = !isPendingW && Number(i.price) === 0;
+                const isGift = !isPendingW && (Boolean(i.isGift) || Number(i.price) === 0);
                 return `
                 <div class="flex justify-between items-center gap-2 ${isPendingW ? 'bg-indigo-50/60 border-indigo-200' : (isGift ? 'bg-amber-50/70 border-amber-200' : 'bg-[#faf8f3] border-slate-200/70')} border px-3 py-2.5 rounded-2xl">
                   <div class="min-w-0 flex-1">
@@ -1492,7 +1671,7 @@
       }
 
       // =================================================================
-      // تعديل أصناف الطلب (للطلبات الجديدة فقط — متوافق 100% مع المسارات الـ 3)
+      // تعديل أصناف الطلب (للطلبات الجديدة بدون عرض مقفول)
       // =================================================================
       window.toggleVisualEditMenu = function () {
         const container = document.getElementById('visual-edit-container');
@@ -1744,7 +1923,7 @@
       };
 
       // =================================================================
-      // تفعيل محفظة النقاط الذكي (خوارزمية المقايضة 0%–7% + مزامنة الإحصائيات)
+      // وضع المحفظة البديل (لو تم فتح الخصم المالي من الإدارة)
       // =================================================================
       window.applyWalletToCurrentOrder = async function () {
         if (!currentOrder || currentOrder.status !== 'new') {
@@ -1752,7 +1931,7 @@
         }
 
         const btn = document.getElementById('btn-quick-apply-wallet');
-        const origHtml = btn.innerHTML;
+        const origHtml = btn ? btn.innerHTML : '';
         const walletCash = Number(window.currentWalletDiscount) || 0;
         const ptsUsed = Number(window.currentWalletPoints) || 0;
         const custDocKey = matchedCustomerDocId || U.normalizePhone(currentOrder.customerPhone);
@@ -1761,86 +1940,13 @@
           return openTrackDialog('رصيد المحفظة غير كافٍ حالياً.', { title: 'تنبيه' });
         }
 
-        const productsPool = getLiveBarterProducts();
-        const minOfferPrice = walletCash / 0.98;
-        const maxOfferPrice = walletCash / 0.93;
-        let bestCombo = null;
-        let bestComboPrice = Infinity;
-
-        function findBestMix(idx, combo, sum) {
-          if (sum >= minOfferPrice && sum <= maxOfferPrice) {
-            if (sum < bestComboPrice) {
-              bestComboPrice = sum;
-              bestCombo = [...combo];
-            }
-          }
-          if (sum > maxOfferPrice || idx >= productsPool.length) return;
-          for (let qty = 0; qty <= 6; qty++) {
-            const add = qty * productsPool[idx].price;
-            if (sum + add > maxOfferPrice) break;
-            const next = qty > 0 ? [...combo, { ...productsPool[idx], qty }] : combo;
-            findBestMix(idx + 1, next, sum + add);
-          }
-        }
-        findBestMix(0, [], 0);
-
         const dateStr = new Date().toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
         const oldNotes = currentOrder.adminNote || '';
 
-        if (bestCombo && bestCombo.length > 0) {
-          const comboText = bestCombo.map((item) => `${item.qty} ${item.name}`).join(' + ');
-          const acceptOffer = await openTrackDialog(
-            `🎁 عرض حصري لك!\n\nبدلاً من خصم ${walletCash} ج.م من فاتورتك، يمكنك استبدال رصيدك بـ:\n( ${comboText} )\nبقيمة إجمالية ${bestComboPrice} ج.م مجاناً!\n\nهل تفضل استلام العرض المجاني أم تطبيق الخصم المالي؟`,
-            { title: 'عرض هدية النقاط 🎁', isConfirm: true, confirmText: 'استلام العرض المجاني 🎁', cancelText: 'تطبيق الخصم المالي' }
-          );
-
-          if (acceptOffer) {
-            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري إضافة الهدية...';
-            btn.disabled = true;
-            try {
-              const updatedItems = [...(currentOrder.items || [])];
-              const giftSummary = [];
-              bestCombo.forEach((item) => {
-                updatedItems.push({
-                  id: item.id,
-                  name: `${item.name} (هدية النقاط 🎁)`,
-                  price: 0,
-                  quantity: item.qty
-                });
-                giftSummary.push(`${item.qty}x ${item.name}`);
-              });
-
-              const noteLine = `[${dateStr}] 🎁 العميل استبدل (${ptsUsed} نقطة) بهدية: (${giftSummary.join(' + ')}).`;
-              const finalNotes = oldNotes ? `${oldNotes}\n---\n${noteLine}` : noteLine;
-
-              const wb = db.batch();
-              wb.update(db.collection('orders').doc(currentOrder.id), {
-                items: updatedItems,
-                adminNote: finalNotes
-              });
-              wb.set(db.collection('customers').doc(custDocKey), {
-                walletPoints: firebase.firestore.FieldValue.increment(-ptsUsed)
-              }, { merge: true });
-              await wb.commit();
-
-              window.currentWalletDiscount = 0;
-              window.currentWalletPoints = 0;
-              if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
-              await openTrackDialog(`🎉 مبروك! تم إضافة (${comboText}) لطلبك مجاناً.`, { title: 'تمت إضافة الهدية' });
-              return;
-            } catch (e) {
-              console.error(e);
-              await openTrackDialog('حدث خطأ أثناء إضافة الهدية، حاول مرة أخرى.', { title: 'تنبيه' });
-              return;
-            } finally {
-              btn.innerHTML = origHtml;
-              btn.disabled = false;
-            }
-          }
+        if (btn) {
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تطبيق الخصم...';
+          btn.disabled = true;
         }
-
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري تطبيق الخصم...';
-        btn.disabled = true;
         try {
           const currentTotal = Number(currentOrder.total) || 0;
           const currentDiscount = Number(currentOrder.discount) || 0;
@@ -1871,13 +1977,16 @@
           window.currentWalletDiscount = 0;
           window.currentWalletPoints = 0;
           if (typeof confetti === 'function') confetti({ particleCount: 140, spread: 80, origin: { y: 0.6 } });
-          await openTrackDialog(`تم تفعيل خصم ${appliedCash} ج.م وتحديث فاتورتك بنجاح! 🎉`, { title: 'تم تطبيق الخصم' });
+          showTrackToast(`تم تفعيل خصم ${appliedCash} ج.م بنجاح! 🎉`);
+          window.switchTrackMainTab('orders');
         } catch (e) {
           console.error(e);
           await openTrackDialog('حدث خطأ أثناء تفعيل الخصم، حاول مرة أخرى.', { title: 'تنبيه' });
         } finally {
-          btn.innerHTML = origHtml;
-          btn.disabled = false;
+          if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+          }
         }
       };
 
@@ -1907,7 +2016,6 @@
           container.innerHTML = `
             <div class="pt-2.5 border-t border-white/15 text-center bg-white/10 rounded-2xl p-2.5 border border-amber-400/30">
               <p class="text-xs font-black text-amber-300"><i class="fa-solid fa-crown ml-1"></i> رصيدك جاهز لهدايا الـ VIP!</p>
-              <p class="text-[10px] text-emerald-100 font-bold mt-0.5">اضغط «تفعيل رصيد النقاط» لاختيار هديتك أو الخصم المالي</p>
             </div>`;
         }
         container.classList.remove('hidden');
@@ -1985,7 +2093,7 @@
             sub = 'طلبك محفوظ باسمك وهنتواصل معاك قبل الذبح والتوصيل';
           } else {
             title = 'استلمنا طلبك وجاري المراجعة...';
-            sub = 'تقدر تعدل أصنافك أو تفعّل نقاطك في أي وقت قبل التجهيز';
+            sub = 'طلبك وصلنا وهنتواصل معاك قبل التجهيز';
             setTimeout(() => {
               const el = document.getElementById('res-status-title');
               if (el && currentOrder && currentOrder.status === 'new') {
@@ -1993,7 +2101,7 @@
               }
             }, Math.max(1000, (45 - secs) * 1000));
           }
-          pWidth = '12%';
+          pWidth = '0%';
           activeSteps = 1;
         } else if (s === 'deferred') {
           title = 'الطلب مؤجل لموعد محدد 📅';
@@ -2011,17 +2119,17 @@
         } else if (s === 'processing') {
           title = 'جاري تجهيز طلبك طازج 🔥';
           sub = 'يُذبح ويُنظف ويُغلف طازج باسمك الآن';
-          pWidth = '38%';
+          pWidth = '33.3%';
           activeSteps = 2;
         } else if (s === 'for_driver') {
-          title = 'طلبك جاهز وبانتظار استلام المندوب 📦';
+          title = 'جاهز وبانتظار استلام المندوب 📦';
           sub = 'تم التجهيز والتغليف بالكامل — أول ما المندوب يستلم ويتحرك هيظهرلك هنا فوراً';
           pWidth = '50%';
           activeSteps = 2;
         } else if (s === 'dispatched') {
-          title = 'المندوب استلم طلبك وفي الطريق إليك الآن 🛵';
-          sub = 'المندوب اتحرك بالطلب وفي طريقه إليك — حضّر تليفونك';
-          pWidth = '68%';
+          title = 'المندوب في الطريق إليك الآن 🛵';
+          sub = 'المندوب استلم طلبك وفي طريقه إليك — حضّر تليفونك';
+          pWidth = '66.6%';
           activeSteps = 3;
           document.getElementById('driver-info')?.classList.remove('hidden');
 
@@ -2045,7 +2153,7 @@
           const rcBtn = document.getElementById('btn-confirm-receipt');
           if (rcBtn) {
             rcBtn.disabled = false;
-            rcBtn.innerHTML = '<i class="fa-solid fa-hand-holding-heart"></i> تم استلام الطلب بنجاح';
+            rcBtn.innerHTML = '<i class="fa-solid fa-hand-holding-heart text-amber-300"></i> أكّد استلام الطلب بنجاح';
           }
         } else if (s === 'completed') {
           title = 'تم تسليم الطلب بنجاح 🎉';
@@ -2088,14 +2196,14 @@
             const icon = document.getElementById(`step-${i}-icon`);
             if (!icon) continue;
             if (i < activeSteps || (i === activeSteps && s === 'completed')) {
-              icon.className = 'w-9 h-9 rounded-full shadow-sm flex items-center justify-center text-xs bg-brand-navy text-amber-300 transition-all duration-500 border-2 border-white';
+              icon.className = 'w-8 h-8 rounded-full shadow-sm flex items-center justify-center text-xs bg-brand-navy text-amber-300 transition-all duration-500 border-2 border-white';
             } else if (i === activeSteps) {
-              icon.className = 'w-9 h-9 rounded-full shadow-md flex items-center justify-center text-xs bg-amber-400 text-[#0b261c] transition-all duration-500 border-2 border-white step-dot-pulse';
+              icon.className = 'w-8 h-8 rounded-full shadow-md flex items-center justify-center text-xs bg-amber-400 text-[#0b261c] transition-all duration-500 border-2 border-white step-dot-pulse';
             } else {
-              icon.className = 'w-9 h-9 rounded-full shadow-sm flex items-center justify-center text-xs bg-slate-100 text-slate-400 transition-all duration-500 border-2 border-slate-200';
+              icon.className = 'w-8 h-8 rounded-full shadow-sm flex items-center justify-center text-xs bg-slate-100 text-slate-400 transition-all duration-500 border-2 border-slate-200';
             }
           }
-        }, 80);
+        }, 60);
 
         updateBatchTrackingBox();
       }
@@ -2206,7 +2314,6 @@
             stagePill?.classList.add('hidden');
           }
 
-
           const msgBox = document.getElementById('batch-msg-container');
           const msgText = document.getElementById('batch-customer-msg');
           if (msgBox && msgText) {
@@ -2273,7 +2380,7 @@
       };
 
       // =================================================================
-      // التقييم الغني (نجوم + وسوم سريعة + نص منظم بدون تدمير DOM)
+      // التقييم الغني
       // =================================================================
       window.toggleReviewQuickTag = function (btnEl) {
         if (!btnEl) return;
@@ -2351,7 +2458,7 @@
       };
 
       // =================================================================
-      // أرشيف الطلبات السابقة + تكرار الطلب في سلة المتجر بضغطة واحدة
+      // تبويب الطلبات السابقة + إعادة الطلب بضغطة واحدة
       // =================================================================
       window.reorderPastOrderToStore = function (pastIdx) {
         const ord = pastOrders[pastIdx];
@@ -2360,7 +2467,7 @@
         const newCart = {};
         const snapshot = [];
         ord.items.forEach((it) => {
-          if (!it || !it.id || it.isWeightBased || Number(it.price) === 0) return;
+          if (!it || !it.id || it.isWeightBased || it.isGift || Number(it.price) === 0) return;
           const qty = Math.max(1, Math.floor(Number(it.quantity) || 1));
           const prodDef = liveProductsCatalog[it.id];
           const livePrice = Number(livePricesMap[it.id] !== undefined ? livePricesMap[it.id] : (prodDef?.basePrice || it.price)) || 0;
@@ -2382,49 +2489,58 @@
         setTimeout(() => { window.location.href = 'index.html'; }, 500);
       };
 
-      window.toggleHistory = function () {
-        const sec = document.getElementById('history-section');
+      function renderHistoryTab() {
         const list = document.getElementById('history-list');
-        if (!sec || !list) return;
+        const pill = document.getElementById('history-count-pill');
+        const statCnt = document.getElementById('hist-stat-count');
+        const statSpent = document.getElementById('hist-stat-spent');
+        if (!list) return;
 
-        if (sec.classList.contains('hidden')) {
-          sec.classList.remove('hidden');
-          if (pastOrders.length === 0) {
-            list.innerHTML = '<p class="text-xs text-slate-500 font-bold text-center py-4">لا توجد طلبات سابقة مكتملة حتى الآن.</p>';
-            return;
-          }
-          list.innerHTML = pastOrders.map((o, idx) => {
-            const itemsTxt = Array.isArray(o.items) ? o.items.map((i) => `${i.quantity}× ${i.name}`).join(' ، ') : 'بدون تفاصيل';
-            const waMsg = encodeURIComponent(`مرحباً سمان ههيا، أود تكرار هذا الطلب مرة أخرى:\n(${itemsTxt})`);
-            const starsBadge = Number(o.rating) > 0
-              ? `<span class="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">⭐️ ${o.rating}/5</span>`
-              : '';
-            return `
-            <div class="bg-[#faf8f3] p-3 rounded-2xl border border-slate-200/80 space-y-2">
-              <div class="flex justify-between items-start gap-2">
-                <div class="min-w-0 flex-1">
-                  <div class="flex items-center gap-1.5 flex-wrap mb-0.5">
-                    <span class="text-[10px] text-slate-400 font-bold">${esc(o.orderDate || '')}</span>
-                    ${starsBadge}
-                  </div>
-                  <p class="text-xs font-black text-brand-navy leading-relaxed">${esc(itemsTxt)}</p>
-                </div>
-                <span class="text-emerald-800 font-black text-xs bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 whitespace-nowrap shrink-0">${Math.round(Number(o.total) || 0)} ج.م</span>
-              </div>
-              <div class="grid grid-cols-2 gap-1.5">
-                <button type="button" onclick="reorderPastOrderToStore(${idx})" class="bg-brand-navy hover:bg-emerald-800 text-white font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors active:scale-95">
-                  <i class="fa-solid fa-cart-plus text-amber-400"></i> اطلبها في السلة
-                </button>
-                <a href="https://wa.me/${storeWhatsapp}?text=${waMsg}" target="_blank" rel="noopener" class="bg-white hover:bg-emerald-50 border border-slate-200 text-slate-700 font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors">
-                  <i class="fa-brands fa-whatsapp text-[#25D366] text-sm"></i> عبر واتساب
-                </a>
-              </div>
+        const totalSpentSum = pastOrders.reduce((s, o) => s + Math.round(Number(o.total) || 0), 0);
+        if (pill) pill.textContent = `${pastOrders.length} طلب`;
+        if (statCnt) statCnt.textContent = pastOrders.length;
+        if (statSpent) statSpent.innerHTML = `${totalSpentSum.toLocaleString()} <span class="text-xs">ج</span>`;
+
+        if (pastOrders.length === 0) {
+          list.innerHTML = `
+            <div class="text-center py-8 space-y-2">
+              <i class="fa-solid fa-box-open text-3xl text-slate-300"></i>
+              <p class="text-xs text-slate-500 font-bold">لا توجد طلبات مكتملة سابقة حتى الآن.</p>
             </div>`;
-          }).join('');
-        } else {
-          sec.classList.add('hidden');
+          return;
         }
-      };
+
+        list.innerHTML = pastOrders.map((o, idx) => {
+          const itemsTxt = Array.isArray(o.items) ? o.items.map((i) => `${i.pendingWeight ? (i.birdsCount || 1) : i.quantity}× ${i.name}`).join(' ، ') : 'بدون تفاصيل';
+          const isRated = Number(o.rating) > 0;
+          const starsBadge = isRated
+            ? `<span class="text-[10px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">⭐️ ${o.rating}/5</span>`
+            : `<span class="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">قيّم الآن ✨</span>`;
+
+          return `
+          <div class="bg-[#faf8f3] p-3.5 rounded-2xl border border-slate-200/80 space-y-2.5">
+            <div class="flex justify-between items-start gap-2">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                  <span class="text-[10px] text-slate-500 font-black">${esc(o.orderDate || '')}</span>
+                  ${o.batchName ? `<span class="text-[10px] text-slate-400 font-bold">• ${esc(o.batchName)}</span>` : ''}
+                  ${starsBadge}
+                </div>
+                <p class="text-xs font-black text-brand-navy leading-relaxed">${esc(itemsTxt)}</p>
+              </div>
+              <span class="text-emerald-800 font-black text-xs bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200 whitespace-nowrap shrink-0">${Math.round(Number(o.total) || 0)} ج.م</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button type="button" onclick="inspectPastOrder('${escAttr(o.id)}')" class="bg-white hover:bg-slate-50 border border-slate-200 text-brand-navy font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors">
+                <i class="fa-solid ${isRated ? 'fa-eye text-emerald-600' : 'fa-star text-amber-500'}"></i> ${isRated ? 'التفاصيل' : 'تفاصيل وتقييم'}
+              </button>
+              <button type="button" onclick="reorderPastOrderToStore(${idx})" class="bg-brand-navy hover:bg-emerald-800 text-white font-black py-2 px-2 rounded-xl flex justify-center items-center gap-1 text-[11px] transition-colors active:scale-95">
+                <i class="fa-solid fa-cart-plus text-amber-400"></i> اطلبها تاني
+              </button>
+            </div>
+          </div>`;
+        }).join('');
+      }
 
       window.logoutTracker = function () {
         if (orderListener) {
