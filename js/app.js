@@ -3660,7 +3660,7 @@
 
         const giftOrderItems = [];
         if (ladderReward && ladderReward.type === 'free_product') {
-            giftOrderItems.push({ id: ladderReward.productId, name: `${ladderReward.name} (هدية السُلّم 🎁)`, quantity: ladderReward.qty, price: 0, isGift: true });
+            giftOrderItems.push({ id: ladderReward.productId, name: `${ladderReward.name} (هدية من سمان ههيا 🎁)`, quantity: ladderReward.qty, price: 0, isGift: true });
         }
         if (walletRewardUsed) {
             giftOrderItems.push({ id: walletRewardUsed.productId, name: `${walletRewardUsed.title || productsInfo[walletRewardUsed.productId]?.name || 'هدية النقاط'} (هدية النقاط 🎁)`, quantity: Math.max(1, Number(walletRewardUsed.qty) || 1), price: 0, isGift: true });
@@ -4820,10 +4820,10 @@
             const reward = getLadderOrderReward();
             if (st && st.current && !st.blocked && reward) {
                 const txt = reward.type === 'free_product'
-                    ? `🎁 كسبت هدية: ${reward.qty}× ${esc(reward.name)} (مجاناً)`
+                    ? `🎁 هدية خاصة لك: ${reward.qty}× ${esc(reward.name)} (مجاناً)`
                     : (reward.type === 'points_multiplier'
-                        ? `⚡ كسبت نقاط مضاعفة ${reward.multiplier}x على طلبك`
-                        : `🪙 كسبت ${reward.points} نقطة بونص (البيض خلصان فاتحولت نقط)`);
+                        ? `✨ هدية نقاط إضافية لخزنتك مع هذا الطلب`
+                        : `🪙 هدية +${reward.points} نقطة إضافية لخزنتك`);
                 html += `<div class="flex justify-between text-emerald-700 text-xs font-black bg-emerald-50 px-2 py-1 rounded-lg"><span>${txt}</span><span>🎉</span></div>`;
             }
             rows.innerHTML = html;
@@ -4839,41 +4839,19 @@
         const wrap = document.getElementById('ladder-temptation-wrap');
         if (!wrap) return;
         const st = getLadderState();
-        if (!st || !st.cfg.showTemptationBar || Object.keys(cart).length === 0 || st.plates <= 0) {
+        const reward = getLadderOrderReward();
+        // إخفاء النظام تماماً عن العميل — يظهر فقط عند نزول هدية فعلية كمفاجأة بدون كشف المستويات
+        if (!st || !st.cfg.showTemptationBar || !st.current || st.blocked || !reward || Object.keys(cart).length === 0) {
             wrap.classList.add('hidden');
             wrap.innerHTML = '';
             return;
         }
-        const reward = getLadderOrderReward();
-        let statusHtml = '';
-        if (st.current) {
-            if (st.blocked) {
-                statusHtml = `<div class="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5">⚠️ هدية السُلّم متوقفة لأنك مستخدم كود خصم — الهدية أو الكود.</div>`;
-            } else if (reward) {
-                const txt = reward.type === 'free_product'
-                    ? `🎉 مبروك! كسبت ${reward.qty}× ${esc(reward.name)} هدية مع طلبك`
-                    : (reward.type === 'points_multiplier'
-                        ? `🎉 مبروك! نقاط طلبك ده هتتضاعف ${reward.multiplier}x`
-                        : `🎉 كسبت ${reward.points} نقطة بونص (هدية البيض اتحولت نقط لأنها خلصانة)`);
-                statusHtml = `<div class="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1.5">${txt}</div>`;
-            }
-        }
-        let nextHtml = '';
-        if (st.next) {
-            const nextMin = Math.max(1, Number(st.next.minPlates) || 1);
-            const need = nextMin - st.plates;
-            const nextLabel = st.next.label || (st.next.rewardType === 'free_product' ? 'هدية مجانية' : `نقاط مضاعفة ${st.next.multiplier}x`);
-            const pct = Math.min(100, Math.round((st.plates / nextMin) * 100));
-            nextHtml = `
-                <div class="flex justify-between items-center text-[10px] font-black text-slate-600"><span>عندك ${st.plates} طبق سمان في السلة</span><span>باقي ${need} ${need === 1 ? 'طبق' : 'أطباق'} وتاخد: ${esc(nextLabel)} 🎁</span></div>
-                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden"><div class="bg-gradient-to-l from-amber-400 to-emerald-500 h-2 rounded-full progress-bar-animated" style="width: ${pct}%"></div></div>`;
-        } else if (st.current) {
-            nextHtml = `<div class="text-[10px] font-black text-emerald-700 text-center">وصلت لأعلى مستوى في سُلّم الهدايا 👑</div>`;
-        }
-        wrap.innerHTML = `<div class="bg-white border border-amber-200 rounded-2xl p-2.5 space-y-1.5 shadow-sm">
-            <div class="text-[11px] font-black text-brand-navy flex items-center gap-1"><i class="fa-solid fa-stairs text-amber-500"></i> سُلّم هدايا أطباق السمان</div>
-            ${statusHtml}${nextHtml}
-        </div>`;
+        const surpriseText = reward.type === 'free_product'
+            ? `🎉 مفاجأة من سمان ههيا! نزلّك هدية مجانية مع طلبك: ${reward.qty}× ${esc(reward.name)}`
+            : (reward.type === 'points_multiplier'
+                ? `✨ تقديراً لطلبك المميز.. هينزلّك مكافأة نقاط إضافية في خزنة الهدايا بعد الاستلام!`
+                : `🎁 مفاجأة لك! ضفنالك +${reward.points} نقطة هدية إضافية في خزنتك على هذا الطلب`);
+        wrap.innerHTML = `<div class="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl px-3 py-2 text-[11px] font-black text-center shadow-sm">${surpriseText}</div>`;
         wrap.classList.remove('hidden');
     }
 
