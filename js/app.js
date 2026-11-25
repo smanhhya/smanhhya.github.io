@@ -12,6 +12,9 @@
 
     let isSubmittingOrder = false;
     let activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
+    let smanOffers = null;           // إعدادات استوديو العروض (inventory/loyalty_offers) — null = المنظومة غير مفعّلة
+    let activeBundles = {};          // الباكجات المفعّلة في السلة {bundleId: true}
+    let selectedWalletRewardId = ''; // هدية النقاط المختارة للاستبدال في الطلب الحالي
     let globalWeightHolds = {};
     let weightHoldsUnsubscribe = null;
 
@@ -54,6 +57,7 @@
 
     function saveCart() {
         try { localStorage.setItem('sman_cart_v2', JSON.stringify(cart)); } catch (e) {}
+        try { localStorage.setItem('sman_active_bundles_v1', JSON.stringify(activeBundles)); } catch (e) {}
     }
 
     function loadCart() {
@@ -63,6 +67,8 @@
                 const parsed = JSON.parse(saved);
                 if (parsed && typeof parsed === 'object') cart = parsed;
             }
+            const savedBundles = JSON.parse(localStorage.getItem('sman_active_bundles_v1') || '{}');
+            if (savedBundles && typeof savedBundles === 'object') activeBundles = savedBundles;
         } catch (e) {
             cart = {};
             localStorage.removeItem('sman_cart_v2');
@@ -97,7 +103,7 @@
     function saveLastOrderSnapshot(itemsList) {
         try {
             const clean = (Array.isArray(itemsList) ? itemsList : [])
-                .filter((it) => it && it.id && !it.isWeightBased && Number(it.quantity) > 0)
+                .filter((it) => it && it.id && !it.isWeightBased && !it.isGift && Number(it.quantity) > 0)
                 .map((it) => ({
                     id: String(it.id),
                     name: String(it.name || ''),
@@ -272,7 +278,8 @@
                 globalDiscounts,
                 globalBatches,
                 globalDeliveryZones,
-                globalWeightHolds
+                globalWeightHolds,
+                smanOffers
             };
             localStorage.setItem(STOREFRONT_MIRROR_KEY, JSON.stringify(payload));
         } catch (e) {}
@@ -293,12 +300,14 @@
             if (m.globalBatches) globalBatches = m.globalBatches;
             if (Array.isArray(m.globalDeliveryZones) && m.globalDeliveryZones.length > 0) globalDeliveryZones = m.globalDeliveryZones;
             if (m.globalWeightHolds) globalWeightHolds = m.globalWeightHolds;
+            if (m.smanOffers) smanOffers = m.smanOffers;
 
             isStoreDataLoaded = true;
             applySettingsToUI();
             renderDeliveryZones();
             renderBatchesSelection();
             renderProducts();
+            renderBundlesSection();
             updateUI();
             initReturningCustomerWelcome();
             return true;
@@ -379,14 +388,15 @@
         if (!db) return;
         try {
             const invCol = db.collection('inventory');
-            const [settingsDoc, stockDoc, pricesDoc, oldPricesDoc, batchesDoc, discountsDoc, weightHoldsDoc] = await Promise.all([
+            const [settingsDoc, stockDoc, pricesDoc, oldPricesDoc, batchesDoc, discountsDoc, weightHoldsDoc, loyaltyOffersDoc] = await Promise.all([
                 getDocServerFirst(invCol.doc('settings')),
                 getDocServerFirst(invCol.doc('stock')),
                 getDocServerFirst(invCol.doc('prices')),
                 getDocServerFirst(invCol.doc('old_prices')),
                 getDocServerFirst(invCol.doc('batches')),
                 getDocServerFirst(invCol.doc('discounts_status')),
-                getDocServerFirst(invCol.doc('weight_holds'))
+                getDocServerFirst(invCol.doc('weight_holds')),
+                getDocServerFirst(invCol.doc('loyalty_offers'))
             ]);
 
             if (weightHoldsDoc && weightHoldsDoc.exists) {
@@ -418,6 +428,11 @@
             if (discountsDoc && discountsDoc.exists) Object.assign(globalDiscounts, discountsDoc.data() || {});
             if (batchesDoc && batchesDoc.exists) globalBatches = batchesDoc.data() || {};
 
+            // استوديو العروض: قراءة فقط — لو المستند مش موجود المنظومة بتفضل مقفولة والمتجر يشتغل زي ما هو
+            smanOffers = (loyaltyOffersDoc && loyaltyOffersDoc.exists)
+                ? normalizeOffersConfig(loyaltyOffersDoc.data() || {})
+                : null;
+
             isStoreDataLoaded = true;
             Object.keys(productsInfo).forEach((id) => {
                 const p = productsInfo[id];
@@ -431,6 +446,7 @@
             renderDeliveryZones();
             renderBatchesSelection();
             renderProducts();
+            renderBundlesSection();
             startLiveNotifications();
             updateUI();
             initReturningCustomerWelcome();
@@ -3054,6 +3070,8 @@
         }
 
         const totalAfterPromo = Math.max(0, subTotalPrice - promoDiscount);
+        const bundleAgg = computeActiveBundleOffers();
+        if (bundleAgg.freeDelivery) freeDelivery = true;
         let walletDiscount = 0;
         const walletRow = document.getElementById('wallet-discount-row');
         if (activeCustomerWallet.useWallet && activeCustomerWallet.discountEGP > 0 && totalAfterPromo > 0) {
@@ -3068,11 +3086,11 @@
         const selectedZone = globalDeliveryZones.find((z) => z.id === deliverySelect?.value || z.name === deliverySelect?.value);
         const rawDelivery = selectedZone ? Number(selectedZone.price) || 0 : 0;
         const finalDelivery = freeDelivery ? 0 : rawDelivery;
-        const finalTotal = Math.max(0, totalAfterPromo - walletDiscount + finalDelivery);
+        const finalTotal = Math.max(0, totalAfterPromo - bundleAgg.totalDiscount - walletDiscount + finalDelivery);
 
         if (document.getElementById('cart-subtotal')) document.getElementById('cart-subtotal').textContent = subTotalPrice;
         if (document.getElementById('step2-subtotal-val')) document.getElementById('step2-subtotal-val').textContent = subTotalPrice;
-        if (document.getElementById('cart-step1-total')) document.getElementById('cart-step1-total').textContent = totalAfterPromo;
+        if (document.getElementById('cart-step1-total')) document.getElementById('cart-step1-total').textContent = Math.max(0, totalAfterPromo - bundleAgg.totalDiscount);
         if (document.getElementById('cart-delivery-fee')) {
             const feeEl = document.getElementById('cart-delivery-fee');
             if (freeDelivery) feeEl.innerHTML = '<span class="text-emerald-600 font-black">مجاني 🎉</span>';
@@ -3104,6 +3122,8 @@
             const isValid = Object.keys(cart).length > 0 && deliverySelect?.value && nVal.length >= 3 && pVal.length >= 10 && meetsMin;
             checkoutHint2.classList.toggle('hidden', Boolean(isValid || Object.keys(cart).length === 0));
         }
+
+        renderOffersLayerUI(bundleAgg, subTotalPrice);
     };
 
     window.goToCheckoutStep2 = function () {
@@ -3207,6 +3227,7 @@
 
     function resetWalletBanner() {
         activeCustomerWallet = { phone: '', points: 0, discountEGP: 0, useWallet: false };
+        selectedWalletRewardId = '';
         const box = document.getElementById('checkout-wallet-box');
         const cb = document.getElementById('checkout-wallet-toggle');
         const msg = document.getElementById('smart-welcome-msg');
@@ -3349,7 +3370,14 @@
                 const pVal = Number(globalSettings.pointValueInEGP) || 0.40;
                 const disc = Math.floor(pts * pVal);
 
-                if (pts > 0 && disc > 0 && walletBox && walletTxt) {
+                const offersWalletNow = getOffersCfg()?.wallet;
+                const giftModeNow = Boolean(offersWalletNow && offersWalletNow.enabled !== false && offersWalletNow.allowCashRedemption === false);
+                const walletOffNow = Boolean(offersWalletNow && offersWalletNow.enabled === false);
+                if (giftModeNow || walletOffNow) {
+                    // وضع الهدايا العينية: لا خصم كاش — الاستبدال بهدايا فقط عبر صندوق الهدايا
+                    if (walletBox) walletBox.classList.add('hidden');
+                    activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: 0, useWallet: false };
+                } else if (pts > 0 && disc > 0 && walletBox && walletTxt) {
                     activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: disc, useWallet: false };
                     walletTxt.textContent = `لديك ${pts} نقطة = خصم ${disc} ج.م`;
                     const cb = document.getElementById('checkout-wallet-toggle');
@@ -3527,6 +3555,8 @@
         }
 
         const totalAfterPromo = Math.max(0, subTotal - promoDiscount);
+        const bundleAgg = computeActiveBundleOffers();
+        if (bundleAgg.totalDiscount > 0) discountText += `📦 خصم الباكجات: -${bundleAgg.totalDiscount} ج\n`;
         const walletUsed = Boolean(
             activeCustomerWallet.useWallet &&
             activeCustomerWallet.points > 0 &&
@@ -3537,8 +3567,8 @@
         const walletPtsToDeduct = walletUsed ? activeCustomerWallet.points : 0;
         if (walletDiscount > 0) discountText += `🎁 خصم محفظة النقاط: -${walletDiscount} ج\n`;
 
-        const totalDiscount = promoDiscount + walletDiscount;
-        const freeDelivery = Boolean((globalSettings.freeDeliveryActive && totalAfterPromo >= (Number(globalSettings.freeDeliveryThreshold) || 0)) || (appliedPromo && appliedPromo.type === 'free_delivery'));
+        const totalDiscount = promoDiscount + walletDiscount + bundleAgg.totalDiscount;
+        const freeDelivery = Boolean((globalSettings.freeDeliveryActive && totalAfterPromo >= (Number(globalSettings.freeDeliveryThreshold) || 0)) || (appliedPromo && appliedPromo.type === 'free_delivery') || bundleAgg.freeDelivery);
         const finalDelivery = freeDelivery ? 0 : deliveryFee;
         const finalTotal = Math.max(0, subTotal - totalDiscount + finalDelivery);
 
@@ -3607,9 +3637,46 @@
             itemsWaStr += `▪ ${item.name}\n  └ ${item.quantity} × ${item.price} = ${lineTotal} ج.م\n`;
         });
 
+        // هدايا استوديو العروض: سُلّم السمان + استبدال هدايا النقاط (أصناف بسعر صفر تظهر بوضوح في الفاتورة)
+        const ladderReward = getLadderOrderReward();
+        let walletRewardUsed = null;
+        if (selectedWalletRewardId) {
+            const cfgNow = getOffersCfg();
+            const wNow = cfgNow?.wallet;
+            const rw = (wNow?.rewards || []).find((r) => r && r.id === selectedWalletRewardId && r.enabled !== false);
+            const ptsNow = Number(activeCustomerWallet.points) || 0;
+            const minOrderNow = Number(wNow?.minOrderForRedeemEGP) || 0;
+            const phoneMatches = U.normalizePhone(activeCustomerWallet.phone) === customerPhone;
+            const giftQtyNow = rw ? Math.max(1, Number(rw.qty) || 1) : 1;
+            const ladderUsedSameProd = (ladderReward && ladderReward.type === 'free_product' && rw && ladderReward.productId === rw.productId) ? (Number(ladderReward.qty) || 0) : 0;
+            const giftStockOk = Boolean(rw && productsInfo[rw.productId] && (getAvailableStock(rw.productId) - ladderUsedSameProd) >= giftQtyNow);
+            if (rw && wNow && wNow.enabled !== false && wNow.allowCashRedemption === false
+                && ptsNow >= (Number(rw.pointsCost) || 0) && subTotal >= minOrderNow && phoneMatches && giftStockOk) {
+                walletRewardUsed = rw;
+            } else {
+                selectedWalletRewardId = '';
+            }
+        }
+
+        const giftOrderItems = [];
+        if (ladderReward && ladderReward.type === 'free_product') {
+            giftOrderItems.push({ id: ladderReward.productId, name: `${ladderReward.name} (هدية السُلّم 🎁)`, quantity: ladderReward.qty, price: 0, isGift: true });
+        }
+        if (walletRewardUsed) {
+            giftOrderItems.push({ id: walletRewardUsed.productId, name: `${walletRewardUsed.title || productsInfo[walletRewardUsed.productId]?.name || 'هدية النقاط'} (هدية النقاط 🎁)`, quantity: Math.max(1, Number(walletRewardUsed.qty) || 1), price: 0, isGift: true });
+        }
+        giftOrderItems.forEach((g) => {
+            orderItems.push(g);
+            itemsWaStr += `▪ ${g.name}\n  └ ${g.quantity} × مجاناً 🎁\n`;
+        });
+
 
         const notesChunks = [];
         if (walletUsed) notesChunks.push(`🎁 العميل فعّل خصم المحفظة (${walletDiscount} ج.م) بـ ${walletPtsToDeduct} نقطة.`);
+        if (bundleAgg.list.length > 0) notesChunks.push(`📦 باكجات مطبقة: ${bundleAgg.list.map((x) => `${x.bundle.title} ×${x.instances} (خصم ${x.discount} ج)`).join(' + ')}`);
+        if (ladderReward) notesChunks.push(ladderReward.type === 'free_product' ? `🎁 هدية السُلّم: ${ladderReward.qty}× ${ladderReward.name}` : (ladderReward.type === 'points_multiplier' ? `⚡ نقاط مضاعفة ${ladderReward.multiplier}x لهذا الطلب` : `🪙 ${ladderReward.points} نقطة بونص بدلاً من هدية البيض (غير متوفرة حالياً)`));
+        if (walletRewardUsed) notesChunks.push(`🎁 العميل استبدل ${walletRewardUsed.pointsCost} نقطة بهدية: ${walletRewardUsed.title}`);
+        if (bundleAgg.bonusPoints > 0) notesChunks.push(`🪙 نقاط بونص من الباكجات: +${bundleAgg.bonusPoints} نقطة`);
         if (earnedLoyalty) notesChunks.push(`🎟 كود الخصم للطلب القادم: ${newPromoCode}`);
         const nextBatchKeys = Object.keys(window.nextBatchCart);
         if (nextBatchKeys.length > 0) {
@@ -3651,6 +3718,11 @@
                     paidOnline: 0,
                     usedPromo: appliedPromo ? appliedPromo.code : null,
                     generatedPromo: newPromoCode || null,
+                    appliedBundles: bundleAgg.list.length > 0 ? bundleAgg.list.map((x) => ({ id: x.bundle.id, title: x.bundle.title, instances: x.instances, bundlePrice: x.bundlePrice, discount: x.discount })) : null,
+                    ladderReward: ladderReward ? { type: ladderReward.type, productId: ladderReward.productId || null, qty: ladderReward.qty || 0, multiplier: ladderReward.multiplier || 1, bonusPoints: ladderReward.points || 0 } : null,
+                    walletRewardRedeemed: walletRewardUsed ? { id: walletRewardUsed.id, title: walletRewardUsed.title, pointsCost: Number(walletRewardUsed.pointsCost) || 0 } : null,
+                    bonusPoints: bundleAgg.bonusPoints + ((ladderReward && ladderReward.type === 'bonus_points') ? ladderReward.points : 0),
+                    pointsMultiplier: (ladderReward && ladderReward.type === 'points_multiplier') ? ladderReward.multiplier : 1,
                     batch: globalSettings.batchHashtag || '',
                     batchId: batchId,
                     batchName: batchName,
@@ -3732,8 +3804,10 @@
                     lastOrder: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 if (customerAddress) custUpdate.address = customerAddress;
-                if (walletUsed && walletPtsToDeduct > 0) {
-                    custUpdate.walletPoints = firebase.firestore.FieldValue.increment(-walletPtsToDeduct);
+                const rewardPtsToDeduct = walletRewardUsed ? (Number(walletRewardUsed.pointsCost) || 0) : 0;
+                const totalPtsToDeduct = ((walletUsed && walletPtsToDeduct > 0) ? walletPtsToDeduct : 0) + rewardPtsToDeduct;
+                if (totalPtsToDeduct > 0) {
+                    custUpdate.walletPoints = firebase.firestore.FieldValue.increment(-totalPtsToDeduct);
                 }
                 batchOps.set(db.collection('customers').doc(customerPhone), custUpdate, { merge: true });
 
@@ -3741,19 +3815,32 @@
                 const quailBookedUpdates = {};
                 const chicksBookedUpdates = {};
 
+                // تجميع الكميات أولاً: نفس الصنف ممكن يظهر أكثر من مرة (صنف مدفوع + هدية) فلازم الخصم يتراكم ولا يتلغبط
+                const stockQtyAcc = {};
+                const quailBookedAcc = {};
+                const chicksBookedAcc = {};
                 orderItems.forEach((it) => {
                     if (it.pendingWeight) {
-                        stockUpdates[it.id + '_prebook'] = firebase.firestore.FieldValue.increment(-(Number(it.birdsCount) || 1));
+                        stockQtyAcc[it.id + '_prebook'] = (stockQtyAcc[it.id + '_prebook'] || 0) + (Number(it.birdsCount) || 1);
                         return;
                     }
                     if (it.isWeightBased) return;
                     const trk = getProductTrackType(it.id);
-                    stockUpdates[it.id] = firebase.firestore.FieldValue.increment(-it.quantity);
+                    stockQtyAcc[it.id] = (stockQtyAcc[it.id] || 0) + (Number(it.quantity) || 0);
                     if (trk === 'quail' && quailBatchId) {
-                        quailBookedUpdates[it.id] = firebase.firestore.FieldValue.increment(it.quantity);
+                        quailBookedAcc[it.id] = (quailBookedAcc[it.id] || 0) + (Number(it.quantity) || 0);
                     } else if (trk === 'chicks' && chicksBatchId) {
-                        chicksBookedUpdates[it.id] = firebase.firestore.FieldValue.increment(it.quantity);
+                        chicksBookedAcc[it.id] = (chicksBookedAcc[it.id] || 0) + (Number(it.quantity) || 0);
                     }
+                });
+                Object.keys(stockQtyAcc).forEach((k) => {
+                    stockUpdates[k] = firebase.firestore.FieldValue.increment(-stockQtyAcc[k]);
+                });
+                Object.keys(quailBookedAcc).forEach((k) => {
+                    quailBookedUpdates[k] = firebase.firestore.FieldValue.increment(quailBookedAcc[k]);
+                });
+                Object.keys(chicksBookedAcc).forEach((k) => {
+                    chicksBookedUpdates[k] = firebase.firestore.FieldValue.increment(chicksBookedAcc[k]);
                 });
 
                 if (Object.keys(stockUpdates).length > 0) {
@@ -3788,8 +3875,10 @@
             cart = {};
             window.nextBatchCart = {};
             appliedPromo = null;
-            resetWalletBanner();
+            activeBundles = {};
+            selectedWalletRewardId = '';
             saveCart();
+            resetWalletBanner();
             if (document.getElementById('promo-code-input')) document.getElementById('promo-code-input').value = '';
             if (document.getElementById('customer-notes')) document.getElementById('customer-notes').value = '';
 
@@ -4434,4 +4523,416 @@
             });
         }
     }
+
+    // =========================================================================
+    // 14. استوديو العروض والولاء (واجهة العميل): الباكجات + سُلّم السمان + هدايا النقاط
+    //     يقرأ inventory/loyalty_offers قراءة فقط — وأي خصم أو هدية تظهر سطر واضح في الحساب
+    // =========================================================================
+    function normalizeOffersConfig(d) {
+        if (!d || typeof d !== 'object') return null;
+        const w = d.wallet || {};
+        const l = d.ladder || {};
+        return {
+            enabled: d.enabled !== false,
+            wallet: {
+                enabled: w.enabled !== false,
+                allowCashRedemption: Boolean(w.allowCashRedemption),
+                minOrderForRedeemEGP: Number(w.minOrderForRedeemEGP) || 0,
+                eggPlateRealCost: Number(w.eggPlateRealCost) || 40,
+                rewards: Array.isArray(w.rewards) ? w.rewards.filter((r) => r && r.id) : []
+            },
+            ladder: {
+                enabled: l.enabled !== false,
+                showTemptationBar: l.showTemptationBar !== false,
+                blockWithPromoCode: l.blockWithPromoCode !== false,
+                fallbackPointsIfOutOfStock: l.fallbackPointsIfOutOfStock !== false,
+                fallbackPointsPerEggPlate: Number(l.fallbackPointsPerEggPlate) || 125,
+                tiers: Array.isArray(l.tiers) ? l.tiers.filter((t) => t && t.enabled !== false) : []
+            },
+            bundles: Array.isArray(d.bundles) ? d.bundles.filter((b) => b && b.id && b.enabled !== false) : []
+        };
+    }
+
+    function getOffersCfg() {
+        return (smanOffers && smanOffers.enabled !== false) ? smanOffers : null;
+    }
+
+    function getOfferUnitPrice(id) {
+        return Number(globalPrices[id] !== undefined ? globalPrices[id] : productsInfo[id]?.basePrice) || 0;
+    }
+
+    // ------------------------- الباكجات -------------------------
+    function renderBundlesSection() {
+        const productsSec = document.getElementById('quail-section-wrap') || document.getElementById('products');
+        if (!productsSec || !productsSec.parentElement) return;
+        let wrap = document.getElementById('bundles-section-wrap');
+        const cfg = getOffersCfg();
+        const bundles = cfg ? cfg.bundles : [];
+
+        if (!bundles || bundles.length === 0) {
+            if (wrap) wrap.remove();
+            return;
+        }
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.id = 'bundles-section-wrap';
+            wrap.className = 'space-y-3';
+            wrap.style.order = '15';
+            productsSec.parentElement.insertBefore(wrap, productsSec);
+        }
+
+        const cards = bundles.map((b) => {
+            const items = (Array.isArray(b.items) ? b.items : []).filter((it) => it && productsInfo[it.id] && !productsInfo[it.id].isWeightBased);
+            if (items.length === 0) return '';
+            const origTotal = items.reduce((sum, it) => sum + getOfferUnitPrice(it.id) * (Number(it.qty) || 1), 0);
+            const bundlePrice = Math.max(0, Number(b.bundlePrice) || 0);
+            const saveAmt = Math.max(0, origTotal - bundlePrice);
+            const savePct = origTotal > 0 ? Math.round((saveAmt / origTotal) * 100) : 0;
+            const itemsText = items.map((it) => `${Number(it.qty) || 1}× ${productsInfo[it.id].name}`).join(' + ');
+            const inCart = Boolean(activeBundles[b.id]) && items.every((it) => (Number(cart[it.id]?.quantity) || 0) >= (Number(it.qty) || 1));
+            const safeBId = escAttr(b.id);
+            return `
+            <div class="bg-white border-2 ${inCart ? 'border-emerald-300' : 'border-amber-200'} rounded-3xl p-3.5 shadow-sm space-y-2">
+                <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="font-black text-brand-navy text-sm">${esc(b.title || 'باكج')}</span>
+                    ${b.badge ? `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[10px] font-black">${esc(b.badge)}</span>` : ''}
+                    ${b.freeDelivery ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-black">🚚 توصيل مجاني</span>` : ''}
+                    ${Number(b.bonusPoints) > 0 ? `<span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md text-[10px] font-black">+${Number(b.bonusPoints)} نقطة هدية</span>` : ''}
+                </div>
+                ${b.desc ? `<p class="text-[11px] font-bold text-slate-500">${esc(b.desc)}</p>` : ''}
+                <p class="text-xs font-black text-slate-700">${esc(itemsText)}</p>
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <div class="flex flex-wrap items-center gap-2">
+                        <span class="text-lg font-black text-emerald-700">${bundlePrice} ج.م</span>
+                        ${saveAmt > 0 ? `<span class="text-xs font-bold text-slate-400 line-through">${origTotal} ج.م</span>
+                        <span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md text-[10px] font-black">وفّر ${saveAmt} ج (${savePct}%)</span>` : ''}
+                    </div>
+                    <button type="button" onclick="addBundleToCart('${safeBId}')" class="px-3.5 py-2 rounded-xl ${inCart ? 'bg-emerald-600' : 'bg-brand-navy'} text-white text-xs font-black shadow active:scale-95 transition-all shrink-0">${inCart ? '✅ في السلة — أضف نسخة' : '🛒 أضف الباكج'}</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        if (!cards.trim()) {
+            wrap.remove();
+            return;
+        }
+        wrap.innerHTML = `
+            <h2 class="text-base sm:text-lg font-black text-brand-navy flex items-center gap-2">
+                <span class="w-1.5 h-5 rounded-full bg-amber-400 inline-block"></span>
+                <span>📦 الباكجات والعروض المجمعة</span>
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">${cards}</div>`;
+    }
+
+    window.addBundleToCart = function (bId) {
+        if (globalSettings.storeOpen === false) return;
+        const cfg = getOffersCfg();
+        if (!cfg) return;
+        const b = (cfg.bundles || []).find((x) => x.id === bId);
+        if (!b || !Array.isArray(b.items) || b.items.length === 0) return;
+
+        if (b.items.some((it) => getProductTrackType(it.id) === 'quail')) {
+            const hasOpenQuailBatches = getVisibleBatchesByTrack('quail').some((x) => x.isOpen);
+            const batchSelect = document.getElementById('user-batch-select');
+            if (hasOpenQuailBatches && (!batchSelect || !batchSelect.value)) {
+                showAlert('اختر دفعة السمان أولاً', 'الباكج فيه سمان مذبوح — برجاء اختيار ميعاد الذبح والاستلام أولاً.');
+                window.scrollToBatch();
+                return;
+            }
+        }
+        for (const it of b.items) {
+            const pInfo = productsInfo[it.id];
+            if (!pInfo || pInfo.isWeightBased) {
+                showAlert('الباكج غير متاح حالياً', 'أحد أصناف الباكج لم يعد متاحاً في المنيو.');
+                return;
+            }
+            const need = Math.max(1, Number(it.qty) || 1);
+            if (getAvailableStock(it.id) < need) {
+                showAlert('المخزون لا يكفي', `المتاح حالياً من (${pInfo.name}) لا يكفي لإتمام الباكج.`);
+                return;
+            }
+        }
+        b.items.forEach((it) => {
+            const need = Math.max(1, Number(it.qty) || 1);
+            const unitPrice = getOfferUnitPrice(it.id);
+            if (cart[it.id]) cart[it.id].quantity += need;
+            else cart[it.id] = { quantity: need, price: unitPrice, name: productsInfo[it.id].name };
+        });
+        activeBundles[bId] = true;
+        saveCart();
+        renderProducts();
+        updateUI();
+        if (navigator.vibrate) navigator.vibrate(45);
+        showStoreToast(`تمت إضافة ${b.title || 'الباكج'} للسلة 🎁`);
+    };
+
+    // خصم الباكج محسوب لحظياً من محتوى السلة: لو العميل شال صنف الخصم بيتشال، ولو الأسعار نزلت يدفع الأقل
+    function computeActiveBundleOffers() {
+        const res = { list: [], totalDiscount: 0, freeDelivery: false, bonusPoints: 0 };
+        const cfg = getOffersCfg();
+        if (!cfg) { activeBundles = {}; return res; }
+        // مخزون الكميات المتاحة للباكجات: كل باكج يستهلك نصيبه حتى لا ياخد باكجين خصم على نفس الصنف
+        const remainingPool = {};
+        Object.keys(cart).forEach((id) => {
+            if (cart[id] && !cart[id].isWeightBased && !cart[id].pendingWeight) {
+                remainingPool[id] = Number(cart[id].quantity) || 0;
+            }
+        });
+        Object.keys(activeBundles).forEach((bId) => {
+            const b = (cfg.bundles || []).find((x) => x.id === bId);
+            if (!b || !Array.isArray(b.items) || b.items.length === 0) { delete activeBundles[bId]; return; }
+            let instances = Infinity;
+            let origUnit = 0;
+            let valid = true;
+            b.items.forEach((it) => {
+                if (!productsInfo[it.id]) { valid = false; return; }
+                const need = Math.max(1, Number(it.qty) || 1);
+                const have = Number(remainingPool[it.id]) || 0;
+                instances = Math.min(instances, Math.floor(have / need));
+                origUnit += need * getOfferUnitPrice(it.id);
+            });
+            if (!valid) { delete activeBundles[bId]; return; }
+            if (!isFinite(instances) || instances <= 0) return; // الباكج غير مكتمل حالياً — بلا خصم لكنه يرجع تلقائياً لو الأصناف اتكملت
+            b.items.forEach((it) => {
+                const need = Math.max(1, Number(it.qty) || 1);
+                remainingPool[it.id] = Math.max(0, (remainingPool[it.id] || 0) - (need * instances));
+            });
+            const bundlePrice = Math.max(0, Number(b.bundlePrice) || 0);
+            const discPer = Math.max(0, origUnit - bundlePrice);
+            res.list.push({ bundle: b, instances, origUnit, bundlePrice, discount: discPer * instances });
+            res.totalDiscount += discPer * instances;
+            if (b.freeDelivery) res.freeDelivery = true;
+            res.bonusPoints += (Number(b.bonusPoints) || 0) * instances;
+        });
+        return res;
+    }
+
+    // ------------------------- سُلّم أطباق السمان -------------------------
+    function getQuailPlatesInCart() {
+        let plates = 0;
+        Object.keys(cart).forEach((id) => {
+            const it = cart[id];
+            if (!it || it.pendingWeight || it.isWeightBased) return;
+            if (getProductTrackType(id) === 'quail') plates += Number(it.quantity) || 0;
+        });
+        return plates;
+    }
+
+    function getLadderState() {
+        const cfg = getOffersCfg();
+        if (!cfg || !cfg.ladder || cfg.ladder.enabled === false) return null;
+        const tiers = (cfg.ladder.tiers || []).slice().sort((a, b) => (Number(a.minPlates) || 0) - (Number(b.minPlates) || 0));
+        if (tiers.length === 0) return null;
+        const plates = getQuailPlatesInCart();
+        let current = null;
+        let next = null;
+        tiers.forEach((t) => {
+            const mp = Math.max(1, Number(t.minPlates) || 1);
+            if (plates >= mp) current = t;
+            else if (!next) next = t;
+        });
+        const blocked = Boolean(cfg.ladder.blockWithPromoCode && appliedPromo);
+        return { cfg: cfg.ladder, tiers, plates, current, next, blocked };
+    }
+
+    function getLadderOrderReward() {
+        const st = getLadderState();
+        if (!st || !st.current || st.blocked) return null;
+        const t = st.current;
+        if (t.rewardType === 'free_product') {
+            const pId = t.productId || 'eggs';
+            const qty = Math.max(1, Number(t.giftQty) || 1);
+            const pInfo = productsInfo[pId];
+            if (pInfo && getAvailableStock(pId) >= qty) {
+                return { type: 'free_product', productId: pId, qty, name: pInfo.name, label: t.label || '' };
+            }
+            if (st.cfg.fallbackPointsIfOutOfStock) {
+                const ptVal = Number(globalSettings.pointValueInEGP) || 0.40;
+                if (pId === 'eggs') {
+                    // البديل النقدي لطبق البيض يتبع إعداد الاستوديو (افتراضياً 125 نقطة = تكفي لاستبدال طبق كامل في الطلب الجاي)
+                    const eggPts = Math.max(1, qty * (Number(st.cfg.fallbackPointsPerEggPlate) || 125));
+                    return { type: 'bonus_points', points: eggPts, label: t.label || '' };
+                }
+                const realCost = Math.round(qty * getOfferUnitPrice(pId) * 0.72);
+                const pts = Math.max(1, Math.round(realCost / Math.max(0.01, ptVal)));
+                return { type: 'bonus_points', points: pts, label: t.label || '' };
+            }
+            return null;
+        }
+        const mult = Number(t.multiplier) || 1;
+        if (mult > 1) return { type: 'points_multiplier', multiplier: mult, label: t.label || '' };
+        return null;
+    }
+
+    // ------------------------- عناصر الواجهة المحقونة -------------------------
+    function ensureOffersDomNodes() {
+        if (!document.getElementById('offers-summary-rows')) {
+            const promoRow = document.getElementById('promo-discount-row');
+            if (promoRow && promoRow.parentElement) {
+                const div = document.createElement('div');
+                div.id = 'offers-summary-rows';
+                div.className = 'space-y-1.5';
+                promoRow.parentElement.insertBefore(div, promoRow.nextSibling);
+            }
+        }
+        if (!document.getElementById('step2-offers-summary-rows')) {
+            const s2PromoRow = document.getElementById('step2-promo-row');
+            if (s2PromoRow && s2PromoRow.parentElement) {
+                const div2 = document.createElement('div');
+                div2.id = 'step2-offers-summary-rows';
+                div2.className = 'space-y-1';
+                s2PromoRow.parentElement.insertBefore(div2, s2PromoRow.nextSibling);
+            }
+        }
+        if (!document.getElementById('ladder-temptation-wrap')) {
+            const cartItems = document.getElementById('cart-items');
+            if (cartItems && cartItems.parentElement) {
+                const div = document.createElement('div');
+                div.id = 'ladder-temptation-wrap';
+                div.className = 'hidden';
+                cartItems.parentElement.insertBefore(div, cartItems);
+            }
+        }
+        if (!document.getElementById('wallet-rewards-box')) {
+            const walletBox = document.getElementById('checkout-wallet-box');
+            if (walletBox && walletBox.parentElement) {
+                const div = document.createElement('div');
+                div.id = 'wallet-rewards-box';
+                div.className = 'hidden bg-gradient-to-l from-amber-50 to-white border-2 border-amber-300/80 p-3 rounded-2xl space-y-2 shadow-sm';
+                walletBox.parentElement.insertBefore(div, walletBox.nextSibling);
+            }
+        }
+    }
+
+    function renderOffersLayerUI(bundleAgg, subTotalPrice) {
+        ensureOffersDomNodes();
+        renderBundlesSection();
+
+        const rows = document.getElementById('offers-summary-rows');
+        if (rows) {
+            let html = '';
+            (bundleAgg?.list || []).forEach((x) => {
+                if (x.discount > 0) {
+                    html += `<div class="flex justify-between text-rose-600 text-xs font-black bg-rose-50 px-2 py-1 rounded-lg"><span>📦 خصم باكج (${esc(x.bundle.title || 'عرض')}${x.instances > 1 ? ' ×' + x.instances : ''}):</span><span>- ${x.discount} ج.م</span></div>`;
+                }
+            });
+            const st = getLadderState();
+            const reward = getLadderOrderReward();
+            if (st && st.current && !st.blocked && reward) {
+                const txt = reward.type === 'free_product'
+                    ? `🎁 كسبت هدية: ${reward.qty}× ${esc(reward.name)} (مجاناً)`
+                    : (reward.type === 'points_multiplier'
+                        ? `⚡ كسبت نقاط مضاعفة ${reward.multiplier}x على طلبك`
+                        : `🪙 كسبت ${reward.points} نقطة بونص (البيض خلصان فاتحولت نقط)`);
+                html += `<div class="flex justify-between text-emerald-700 text-xs font-black bg-emerald-50 px-2 py-1 rounded-lg"><span>${txt}</span><span>🎉</span></div>`;
+            }
+            rows.innerHTML = html;
+            const rows2 = document.getElementById('step2-offers-summary-rows');
+            if (rows2) rows2.innerHTML = html;
+        }
+
+        renderLadderBar();
+        renderWalletRewardsBox(subTotalPrice);
+    }
+
+    function renderLadderBar() {
+        const wrap = document.getElementById('ladder-temptation-wrap');
+        if (!wrap) return;
+        const st = getLadderState();
+        if (!st || !st.cfg.showTemptationBar || Object.keys(cart).length === 0 || st.plates <= 0) {
+            wrap.classList.add('hidden');
+            wrap.innerHTML = '';
+            return;
+        }
+        const reward = getLadderOrderReward();
+        let statusHtml = '';
+        if (st.current) {
+            if (st.blocked) {
+                statusHtml = `<div class="text-[11px] font-black text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-2.5 py-1.5">⚠️ هدية السُلّم متوقفة لأنك مستخدم كود خصم — الهدية أو الكود.</div>`;
+            } else if (reward) {
+                const txt = reward.type === 'free_product'
+                    ? `🎉 مبروك! كسبت ${reward.qty}× ${esc(reward.name)} هدية مع طلبك`
+                    : (reward.type === 'points_multiplier'
+                        ? `🎉 مبروك! نقاط طلبك ده هتتضاعف ${reward.multiplier}x`
+                        : `🎉 كسبت ${reward.points} نقطة بونص (هدية البيض اتحولت نقط لأنها خلصانة)`);
+                statusHtml = `<div class="text-[11px] font-black text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-xl px-2.5 py-1.5">${txt}</div>`;
+            }
+        }
+        let nextHtml = '';
+        if (st.next) {
+            const nextMin = Math.max(1, Number(st.next.minPlates) || 1);
+            const need = nextMin - st.plates;
+            const nextLabel = st.next.label || (st.next.rewardType === 'free_product' ? 'هدية مجانية' : `نقاط مضاعفة ${st.next.multiplier}x`);
+            const pct = Math.min(100, Math.round((st.plates / nextMin) * 100));
+            nextHtml = `
+                <div class="flex justify-between items-center text-[10px] font-black text-slate-600"><span>عندك ${st.plates} طبق سمان في السلة</span><span>باقي ${need} ${need === 1 ? 'طبق' : 'أطباق'} وتاخد: ${esc(nextLabel)} 🎁</span></div>
+                <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden"><div class="bg-gradient-to-l from-amber-400 to-emerald-500 h-2 rounded-full progress-bar-animated" style="width: ${pct}%"></div></div>`;
+        } else if (st.current) {
+            nextHtml = `<div class="text-[10px] font-black text-emerald-700 text-center">وصلت لأعلى مستوى في سُلّم الهدايا 👑</div>`;
+        }
+        wrap.innerHTML = `<div class="bg-white border border-amber-200 rounded-2xl p-2.5 space-y-1.5 shadow-sm">
+            <div class="text-[11px] font-black text-brand-navy flex items-center gap-1"><i class="fa-solid fa-stairs text-amber-500"></i> سُلّم هدايا أطباق السمان</div>
+            ${statusHtml}${nextHtml}
+        </div>`;
+        wrap.classList.remove('hidden');
+    }
+
+    // ------------------------- استبدال هدايا النقاط -------------------------
+    window.toggleWalletReward = function (rewardId) {
+        selectedWalletRewardId = (selectedWalletRewardId === rewardId) ? '' : rewardId;
+        updateUI();
+    };
+
+    function renderWalletRewardsBox(subTotalPrice) {
+        const box = document.getElementById('wallet-rewards-box');
+        if (!box) return;
+        const cfg = getOffersCfg();
+        const w = cfg?.wallet;
+        const giftMode = Boolean(cfg && w && w.enabled !== false && w.allowCashRedemption === false);
+        const pts = Number(activeCustomerWallet.points) || 0;
+        if (!giftMode || pts <= 0 || !activeCustomerWallet.phone) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            if (!giftMode) selectedWalletRewardId = '';
+            return;
+        }
+        const rewards = (w.rewards || []).filter((r) => r && r.enabled !== false);
+        if (rewards.length === 0) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+        const minOrder = Number(w.minOrderForRedeemEGP) || 0;
+        const orderOk = (Number(subTotalPrice) || 0) >= minOrder;
+        const curLadderRw = getLadderOrderReward();
+        const rowsHtml = rewards.map((r) => {
+            const cost = Math.max(1, Number(r.pointsCost) || 1);
+            const needQty = Math.max(1, Number(r.qty) || 1);
+            const reservedByLadder = (curLadderRw && curLadderRw.type === 'free_product' && curLadderRw.productId === r.productId) ? (Number(curLadderRw.qty) || 0) : 0;
+            const inStock = Boolean(productsInfo[r.productId] && (getAvailableStock(r.productId) - reservedByLadder) >= needQty);
+            const affordable = pts >= cost;
+            const selected = selectedWalletRewardId === r.id && inStock;
+            if (selectedWalletRewardId === r.id && !inStock) selectedWalletRewardId = '';
+            const usable = affordable && orderOk && inStock;
+            const btnCls = selected
+                ? 'bg-emerald-600 text-white border-emerald-600'
+                : (usable ? 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed');
+            const btnTxt = selected
+                ? '✅ هتستلمها مع الطلب — اضغط للإلغاء'
+                : (!inStock ? 'غير متوفر بالمخزون حالياً' : (affordable ? (orderOk ? `استبدل ${cost} نقطة` : `تحتاج أوردر ${minOrder} ج+`) : `محتاج ${cost} نقطة`));
+            return `
+            <div class="flex items-center justify-between gap-2 bg-white/70 border ${selected ? 'border-emerald-400' : 'border-amber-200'} rounded-xl p-2">
+                <span class="text-[11px] font-black text-amber-950 min-w-0 flex-1 truncate">${esc(r.title || 'هدية')}</span>
+                <button type="button" ${usable || selected ? '' : 'disabled'} onclick="toggleWalletReward('${escAttr(r.id)}')" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
+            </div>`;
+        }).join('');
+        box.innerHTML = `
+            <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-xl bg-amber-400 text-[#0b261c] flex items-center justify-center shrink-0"><i class="fa-solid fa-gift"></i></span>
+                <div class="text-xs font-black text-amber-950">لديك ${pts} نقطة — استبدلها بهدية مع طلبك (هدية واحدة لكل طلب)</div>
+            </div>
+            ${rowsHtml}`;
+        box.classList.remove('hidden');
+    }
+
 })();
