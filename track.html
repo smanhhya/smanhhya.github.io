@@ -1188,7 +1188,7 @@
             badges.push(`<span class="bg-amber-400/20 text-amber-200 border border-amber-400/35 px-2 py-0.5 rounded-lg text-[10px] font-black">📦 عرض الباكج</span>`);
           }
           if (Number(currentOrder.pointsMultiplier) > 1) {
-            badges.push(`<span class="bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 px-2 py-0.5 rounded-lg text-[10px] font-black">⚡ نقاط ${currentOrder.pointsMultiplier}x</span>`);
+            badges.push(`<span class="bg-emerald-400/20 text-emerald-200 border border-emerald-400/35 px-2 py-0.5 rounded-lg text-[10px] font-black">✨ مكافأة نقاط هدية</span>`);
           }
           if (Number(currentOrder.bonusPoints) > 0) {
             badges.push(`<span class="bg-indigo-400/25 text-indigo-100 border border-indigo-300/35 px-2 py-0.5 rounded-lg text-[10px] font-black">🪙 +${currentOrder.bonusPoints} نقطة بونص</span>`);
@@ -1295,8 +1295,10 @@
         return plates;
       }
 
-      // عرض سُلّم هدايا السمان بشكل متكامل داخل تبويب "الهدايا"
       function renderTrackLadderCard() {
+        const card = document.getElementById('ladder-track-card');
+        if (card) { card.classList.add('hidden'); card.innerHTML = ''; }
+      }
         const card = document.getElementById('ladder-track-card');
         if (!card) return;
         const hide = () => { card.classList.add('hidden'); card.innerHTML = ''; };
