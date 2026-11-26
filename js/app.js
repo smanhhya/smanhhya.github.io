@@ -2078,13 +2078,13 @@
         const isDiscountActive = Boolean((item.isDisc || globalDiscounts[id]) && oldPrice > currentPrice);
         const savePct = isDiscountActive ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
         const isBestSeller = Boolean(item.isBest || (Array.isArray(globalSettings.bestSellers) && globalSettings.bestSellers.includes(id)));
+        const isEggsCard = (String(id || '').toLowerCase() === 'eggs' || String(item.name || '').includes('بيض'));
 
         const imgSrc = (Array.isArray(item.images) && item.images.length > 0 && item.images[0]) ? item.images[0] : '';
         const safeId = escAttr(id);
         const usageTag = getShortUsageTag(id, item);
         const trackType = getProductTrackType(id);
 
-        // شارة دورة التفريخ (عمر يوم) تظهر على كارت الكتاكيت نفسه فقط ولا تلمس باقي الأصناف
         let chicksHatchBadgeHtml = '';
         if (trackType === 'chicks') {
             const openChicks = getVisibleBatchesByTrack('chicks').filter((b) => b.isOpen).sort((a, b) => a.id.localeCompare(b.id));
@@ -2092,12 +2092,12 @@
             if (openChicks.length === 1) {
                 const cb = openChicks[0];
                 const dTxt = window.getFriendlyBatchDatePhrase(cb.deliveryStart, cb.deliveryEnd);
-                chicksHatchBadgeHtml = `<div class="mt-1 bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 rounded-lg text-[9px] font-black leading-tight">🐣 ${esc(cb.name)} • ${esc(dTxt)}</div>`;
+                chicksHatchBadgeHtml = `<div class="mt-1 bg-amber-50 border border-amber-200 text-amber-900 px-2 py-1 rounded-lg text-[10px] font-black leading-tight">🐣 ${esc(cb.name)} • ${esc(dTxt)}</div>`;
             } else if (openChicks.length > 1) {
                 chicksHatchBadgeHtml = `
                     <div class="mt-1 flex flex-wrap gap-1" onclick="event.stopPropagation()">
                         ${openChicks.map((cb) => `
-                            <button type="button" onclick="selectChicksBatch('${escAttr(cb.id)}')" class="px-2 py-0.5 rounded-md text-[9px] font-black border transition-all ${selectedChicksId === cb.id ? 'bg-amber-500 text-slate-950 border-amber-600' : 'bg-amber-50 text-amber-900 border-amber-200'}">
+                            <button type="button" onclick="selectChicksBatch('${escAttr(cb.id)}')" class="px-2 py-0.5 rounded-md text-[10px] font-black border transition-all ${selectedChicksId === cb.id ? 'bg-amber-500 text-slate-950 border-amber-600' : 'bg-amber-50 text-amber-900 border-amber-200'}">
                                 🐣 ${esc(cb.name)}
                             </button>`).join('')}
                     </div>`;
@@ -2105,35 +2105,39 @@
         }
 
         const stockLine = available === 0
-            ? `<span class="text-[10px] font-black text-rose-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> نفذت الكمية</span>`
+            ? `<span class="text-[11px] font-black text-rose-600 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> نفذت الكمية</span>`
             : (available <= 10
-                ? `<span class="text-[10px] font-black text-amber-700 flex items-center gap-1"><i class="fa-solid fa-fire text-orange-500 animate-pulse text-[9px]"></i> متبقي ${available} فقط!</span>`
-                : `<span class="text-[10px] font-bold text-emerald-700 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متاح (${available})</span>`);
+                ? `<span class="text-[11px] font-black text-amber-700 flex items-center gap-1"><i class="fa-solid fa-fire text-orange-500 animate-pulse text-[10px]"></i> متبقي ${available} فقط</span>`
+                : `<span class="text-[11px] font-bold text-emerald-700 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> متاح الآن (${available})</span>`);
 
-        // إذا كان الصنف وحيداً في قسم الإضافات (مثل بيض سمان فقط) يُعرض ككارت أفقي مميز بلا أي فراغ أبيض جانبي
-        if (isFullWidthSingle) {
+        // كارت بعرض كامل لبيض السمان الطازج (لإبراز فوائده وزيادة مبيعاته) أو الصنف الوحيد
+        if (isEggsCard || isFullWidthSingle) {
+            const benefitLine = isEggsCard
+                ? 'غني بالحديد والمناعة للأطفال • يُسلق في 4 دقائق فقط • بدون أي زفارة'
+                : getCookingTipForProduct(id, item);
             return `
-            <div class="col-span-full product-app-card ${inCart > 0 ? 'in-cart' : ''} rounded-3xl p-2.5 flex items-center gap-3 relative overflow-hidden">
-                <div onclick="openProductQuickView('${safeId}')" class="relative w-28 h-28 sm:w-32 sm:h-32 rounded-2xl overflow-hidden bg-[#f4f1ea] shrink-0 cursor-pointer">
+            <div class="col-span-full product-app-card ${inCart > 0 ? 'in-cart' : ''} ${isEggsCard ? 'border-2 border-amber-300/90 bg-gradient-to-l from-amber-50/40 via-white to-white' : ''} rounded-3xl p-3 flex items-center gap-3.5 relative overflow-hidden shadow-sm">
+                <div onclick="openProductQuickView('${safeId}')" class="relative w-28 h-28 sm:w-36 sm:h-36 rounded-2xl overflow-hidden bg-[#f8f6f1] border border-slate-100 shrink-0 cursor-pointer">
                     ${imgSrc
-                        ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-cover" onerror="this.style.display='none'">`
-                        : `<div class="w-full h-full flex items-center justify-center text-amber-500 bg-amber-50"><i class="fa-solid fa-egg text-3xl"></i></div>`}
-                    ${item.weight ? `<span class="absolute bottom-1.5 right-1.5 bg-black/65 text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+                        ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-contain p-1" onerror="this.style.display='none'">`
+                        : `<div class="w-full h-full flex items-center justify-center text-amber-500 bg-amber-50"><i class="fa-solid fa-egg text-4xl"></i></div>`}
+                    ${isDiscountActive ? `<span class="absolute top-1.5 left-1.5 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow">وفر ${savePct}%</span>` : ''}
                 </div>
-                <div class="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5">
+                <div class="flex-1 min-w-0 flex flex-col justify-between self-stretch py-0.5 space-y-1.5">
                     <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer space-y-1">
+                        ${isEggsCard ? `<span class="inline-flex items-center gap-1 text-[10px] font-black bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-lg">⚡ طازج اليوم — توصيل فوري</span>` : ''}
                         <div class="flex items-center gap-1.5 flex-wrap">
-                            <h3 class="text-sm sm:text-base font-black text-brand-navy">${esc(item.name)}</h3>
-                            <span class="text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded-lg">${usageTag}</span>
+                            <h3 class="text-base sm:text-lg font-black text-brand-navy leading-snug">${esc(item.name)}</h3>
+                            ${item.weight ? `<span class="text-[11px] font-black bg-slate-100 text-slate-700 px-2 py-0.5 rounded-lg">${esc(item.weight)}</span>` : ''}
                         </div>
-                        <p class="text-[11px] font-bold text-slate-500 line-clamp-1">${esc(getCookingTipForProduct(id, item))}</p>
+                        <p class="text-xs font-bold text-slate-600 leading-relaxed">${esc(benefitLine)}</p>
                         <div>${stockLine}</div>
                         ${chicksHatchBadgeHtml}
                     </div>
-                    <div class="flex items-end justify-between gap-2 pt-2 border-t border-slate-100 mt-2">
+                    <div class="flex items-center justify-between gap-2 pt-2 border-t border-slate-100">
                         <div>
-                            ${isDiscountActive ? `<span class="block text-[10px] text-slate-400 line-through font-bold">${oldPrice} ج</span>` : ''}
-                            <span class="font-black text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'}">${currentPrice} <span class="text-[10px] font-bold text-slate-400">ج.م</span></span>
+                            ${isDiscountActive ? `<span class="block text-xs text-slate-400 line-through font-bold">${oldPrice} ج</span>` : ''}
+                            <span class="font-black text-xl ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'}">${currentPrice} <span class="text-xs font-bold text-slate-500">ج.م</span></span>
                         </div>
                         <div id="card-action-${esc(id)}" class="shrink-0">${getCardActionHTML(id)}</div>
                     </div>
@@ -2141,31 +2145,32 @@
             </div>`;
         }
 
-        // الكارت المربع المتوازن لأطباق السمان والمنتجات
+        // الكارت الواضح النظيف لباقي المنتجات (صورة صافية غير مقصوصة + نص كامل بدون قص)
         return `
-        <div class="product-app-card ${inCart > 0 ? 'in-cart' : ''} ${available === 0 && inCart === 0 ? 'opacity-85' : ''} rounded-3xl p-2 flex flex-col justify-between relative overflow-hidden">
-            <div onclick="openProductQuickView('${safeId}')" class="relative aspect-square rounded-2xl overflow-hidden bg-[#f4f1ea] cursor-pointer group">
+        <div class="product-app-card ${inCart > 0 ? 'in-cart' : ''} ${available === 0 && inCart === 0 ? 'opacity-85' : ''} rounded-3xl p-2.5 flex flex-col justify-between relative overflow-hidden">
+            <div onclick="openProductQuickView('${safeId}')" class="relative aspect-[4/3] rounded-2xl overflow-hidden bg-[#f8f6f1] border border-slate-100 cursor-pointer group">
                 ${imgSrc
-                    ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105" onerror="this.style.display='none'">`
+                    ? `<img loading="lazy" src="${esc(imgSrc)}" alt="${esc(item.name)}" class="w-full h-full object-contain p-1 transition-transform duration-500 group-hover:scale-105" onerror="this.style.display='none'">`
                     : `<div class="w-full h-full flex items-center justify-center text-slate-300"><i class="fa-solid fa-kiwi-bird text-3xl"></i></div>`}
-
-                ${isDiscountActive ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md sale-badge">وفر ${savePct}%</span>` : ''}
-                ${isBestSeller ? `<span class="absolute top-2 right-2 bg-[#0b261c]/90 text-amber-300 text-[9px] font-black px-2 py-0.5 rounded-lg shadow-md backdrop-blur-sm border border-amber-400/30">👑 الأكثر طلباً</span>` : ''}
-                ${item.weight ? `<span class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[9px] font-bold px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+                ${isDiscountActive ? `<span class="absolute top-2 left-2 bg-rose-600 text-white text-[10px] font-black px-2 py-0.5 rounded-lg shadow-md sale-badge">وفر ${savePct}%</span>` : ''}
             </div>
 
-            <div class="pt-2 px-1 pb-0.5 flex-1 flex flex-col justify-between gap-1.5">
-                <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer space-y-0.5">
-                    <h3 class="text-xs sm:text-sm font-black text-brand-navy leading-snug line-clamp-1">${esc(item.name)}</h3>
-                    <span class="inline-block text-[10px] font-bold text-slate-500">${usageTag}</span>
+            <div class="pt-2.5 px-1 pb-0.5 flex-1 flex flex-col justify-between gap-2">
+                <div onclick="openProductQuickView('${safeId}')" class="cursor-pointer space-y-1">
+                    <div class="flex items-center gap-1 flex-wrap">
+                        ${isBestSeller ? `<span class="bg-amber-100 text-amber-900 border border-amber-300 text-[9px] font-black px-1.5 py-0.5 rounded-md">👑 الأكثر طلباً</span>` : ''}
+                        ${item.weight ? `<span class="bg-emerald-50 text-emerald-900 border border-emerald-200 text-[10px] font-black px-2 py-0.5 rounded-md">${esc(item.weight)}</span>` : ''}
+                    </div>
+                    <h3 class="text-sm sm:text-base font-black text-brand-navy leading-snug">${esc(item.name)}</h3>
+                    <p class="text-[11px] font-bold text-slate-600 leading-snug">${usageTag}</p>
                     <div>${stockLine}</div>
                     ${chicksHatchBadgeHtml}
                 </div>
 
-                <div class="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100 mt-1">
+                <div class="flex items-center justify-between gap-1.5 pt-2 border-t border-slate-100 mt-1">
                     <div>
-                        ${isDiscountActive ? `<span class="block text-[10px] text-slate-400 line-through font-bold leading-none">${oldPrice} ج</span>` : ''}
-                        <span class="font-black text-base sm:text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'} leading-none">${currentPrice} <span class="text-[10px] font-bold text-slate-400">ج.م</span></span>
+                        ${isDiscountActive ? `<span class="block text-[11px] text-slate-400 line-through font-bold leading-none">${oldPrice} ج</span>` : ''}
+                        <span class="font-black text-lg ${isDiscountActive ? 'text-rose-600' : 'text-brand-navy'} leading-none">${currentPrice} <span class="text-[11px] font-bold text-slate-500">ج.م</span></span>
                     </div>
                     <div id="card-action-${esc(id)}" class="shrink-0">${getCardActionHTML(id)}</div>
                 </div>
@@ -2700,7 +2705,7 @@
             </div>`;
         }
 
-        return `<button type="button" onclick="addToCart('${safeId}')" aria-label="إضافة للسلة" class="w-9 h-9 rounded-xl bg-brand-navy hover:bg-emerald-800 text-amber-400 shadow-md flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-plus text-sm"></i></button>`;
+        return `<button type="button" onclick="addToCart('${safeId}')" aria-label="إضافة للسلة" class="px-3 h-9 rounded-xl bg-brand-navy hover:bg-emerald-800 text-amber-300 shadow-md text-xs font-black flex items-center justify-center gap-1 active:scale-90 transition-transform"><i class="fa-solid fa-plus text-[11px]"></i><span>أضف</span></button>`;
     };
 
     window.updateNextBatch = function (id, delta) {
@@ -3072,10 +3077,22 @@
         const totalAfterPromo = Math.max(0, subTotalPrice - promoDiscount);
         const bundleAgg = computeActiveBundleOffers();
         if (bundleAgg.freeDelivery) freeDelivery = true;
+        const offersWUi = getOffersCfg()?.wallet;
+        const cashPtValUi = Number(offersWUi?.cashPointValueEGP) || Number(globalSettings.pointValueInEGP) || 0.28;
+        if (activeCustomerWallet.points > 0) {
+            activeCustomerWallet.discountEGP = Math.floor(activeCustomerWallet.points * cashPtValUi);
+        }
+        const cashAllowedUi = !offersWUi || (offersWUi.enabled !== false && offersWUi.allowCashRedemption === true);
+        const minPtsCashUi = Math.max(0, Number(offersWUi?.minPointsForCash) || 0);
+        const minOrdCashUi = Math.max(0, Number(offersWUi?.minOrderForRedeemEGP) || 0);
+        if (activeCustomerWallet.useWallet && (!cashAllowedUi || selectedWalletRewardId || activeCustomerWallet.points < minPtsCashUi || subTotalPrice < minOrdCashUi)) {
+            activeCustomerWallet.useWallet = false;
+        }
+        const totalAfterPromoAndBundles = Math.max(0, totalAfterPromo - bundleAgg.totalDiscount);
         let walletDiscount = 0;
         const walletRow = document.getElementById('wallet-discount-row');
-        if (activeCustomerWallet.useWallet && activeCustomerWallet.discountEGP > 0 && totalAfterPromo > 0) {
-            walletDiscount = Math.min(activeCustomerWallet.discountEGP, totalAfterPromo);
+        if (activeCustomerWallet.useWallet && activeCustomerWallet.discountEGP > 0 && totalAfterPromoAndBundles > 0) {
+            walletDiscount = Math.min(activeCustomerWallet.discountEGP, totalAfterPromoAndBundles);
             if (walletRow) walletRow.classList.remove('hidden');
             if (document.getElementById('cart-wallet-discount')) document.getElementById('cart-wallet-discount').textContent = walletDiscount;
         } else if (walletRow) {
@@ -3367,16 +3384,16 @@
                 }
 
                 const pts = Math.max(0, parseInt(custData?.walletPoints) || 0);
-                const pVal = Number(globalSettings.pointValueInEGP) || 0.40;
-                const disc = Math.floor(pts * pVal);
-
                 const offersWalletNow = getOffersCfg()?.wallet;
-                const giftModeNow = Boolean(offersWalletNow && offersWalletNow.enabled !== false && offersWalletNow.allowCashRedemption === false);
-                const walletOffNow = Boolean(offersWalletNow && offersWalletNow.enabled === false);
-                if (giftModeNow || walletOffNow) {
-                    // وضع الهدايا العينية: لا خصم كاش — الاستبدال بهدايا فقط عبر صندوق الهدايا
+                const cashPtVal = Number(offersWalletNow?.cashPointValueEGP) || Number(globalSettings.pointValueInEGP) || 0.28;
+                const disc = Math.floor(pts * cashPtVal);
+
+                if (offersWalletNow) {
+                    // التحكم موحّد داخل صندوق خزنة الهدايا (بيض بقيمة أعلى 🆚 كاش بقيمة أقل)
                     if (walletBox) walletBox.classList.add('hidden');
-                    activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: 0, useWallet: false };
+                    activeCustomerWallet = (offersWalletNow.enabled !== false && pts > 0)
+                        ? { phone: matchedWalletDocId, points: pts, discountEGP: disc, useWallet: false }
+                        : { phone: '', points: 0, discountEGP: 0, useWallet: false };
                 } else if (pts > 0 && disc > 0 && walletBox && walletTxt) {
                     activeCustomerWallet = { phone: matchedWalletDocId, points: pts, discountEGP: disc, useWallet: false };
                     walletTxt.textContent = `لديك ${pts} نقطة = خصم ${disc} ج.م`;
@@ -3557,14 +3574,30 @@
         const totalAfterPromo = Math.max(0, subTotal - promoDiscount);
         const bundleAgg = computeActiveBundleOffers();
         if (bundleAgg.totalDiscount > 0) discountText += `📦 خصم الباكجات: -${bundleAgg.totalDiscount} ج\n`;
+        const offersW = getOffersCfg()?.wallet;
+        const cashPtValFinal = Number(offersW?.cashPointValueEGP) || Number(globalSettings.pointValueInEGP) || 0.28;
+        const cashAllowedByAdmin = !offersW || (offersW.enabled !== false && offersW.allowCashRedemption === true);
+        const minPtsCashNow = Math.max(0, Number(offersW?.minPointsForCash) || 0);
+        const minOrderNowCash = Math.max(0, Number(offersW?.minOrderForRedeemEGP) || 0);
+        const rawWalletCash = Math.floor((Number(activeCustomerWallet.points) || 0) * cashPtValFinal);
         const walletUsed = Boolean(
+            cashAllowedByAdmin &&
+            !selectedWalletRewardId &&
             activeCustomerWallet.useWallet &&
             activeCustomerWallet.points > 0 &&
+            activeCustomerWallet.points >= minPtsCashNow &&
+            subTotal >= minOrderNowCash &&
+            rawWalletCash > 0 &&
             totalAfterPromo > 0 &&
             U.normalizePhone(activeCustomerWallet.phone) === customerPhone
         );
-        const walletDiscount = walletUsed ? Math.min(activeCustomerWallet.discountEGP, totalAfterPromo) : 0;
-        const walletPtsToDeduct = walletUsed ? activeCustomerWallet.points : 0;
+        const totalAfterPromoAndBundles = Math.max(0, totalAfterPromo - bundleAgg.totalDiscount);
+        const walletDiscount = walletUsed ? Math.min(rawWalletCash, totalAfterPromoAndBundles) : 0;
+        const walletPtsToDeduct = walletUsed
+            ? (walletDiscount < rawWalletCash
+                ? Math.min(activeCustomerWallet.points, Math.ceil(walletDiscount / Math.max(0.01, cashPtValFinal)))
+                : activeCustomerWallet.points)
+            : 0;
         if (walletDiscount > 0) discountText += `🎁 خصم محفظة النقاط: -${walletDiscount} ج\n`;
 
         const totalDiscount = promoDiscount + walletDiscount + bundleAgg.totalDiscount;
@@ -3650,7 +3683,7 @@
             const giftQtyNow = rw ? Math.max(1, Number(rw.qty) || 1) : 1;
             const ladderUsedSameProd = (ladderReward && ladderReward.type === 'free_product' && rw && ladderReward.productId === rw.productId) ? (Number(ladderReward.qty) || 0) : 0;
             const giftStockOk = Boolean(rw && productsInfo[rw.productId] && (getAvailableStock(rw.productId) - ladderUsedSameProd) >= giftQtyNow);
-            if (rw && wNow && wNow.enabled !== false && wNow.allowCashRedemption === false
+            if (rw && wNow && wNow.enabled !== false && wNow.allowGiftRedemption !== false && !walletUsed
                 && ptsNow >= (Number(rw.pointsCost) || 0) && subTotal >= minOrderNow && phoneMatches && giftStockOk) {
                 walletRewardUsed = rw;
             } else {
@@ -3663,7 +3696,7 @@
             giftOrderItems.push({ id: ladderReward.productId, name: `${ladderReward.name} (هدية من سمان ههيا 🎁)`, quantity: ladderReward.qty, price: 0, isGift: true });
         }
         if (walletRewardUsed) {
-            giftOrderItems.push({ id: walletRewardUsed.productId, name: `${walletRewardUsed.title || productsInfo[walletRewardUsed.productId]?.name || 'هدية النقاط'} (هدية النقاط 🎁)`, quantity: Math.max(1, Number(walletRewardUsed.qty) || 1), price: 0, isGift: true });
+            giftOrderItems.push({ id: walletRewardUsed.productId, name: `${walletRewardUsed.title || productsInfo[walletRewardUsed.productId]?.name || 'هدية النقاط'} (هدية النقاط 🎁)`, quantity: Math.max(1, Number(walletRewardUsed.qty) || 1), price: 0, isGift: true, pointsCost: Number(walletRewardUsed.pointsCost) || 0 });
         }
         giftOrderItems.forEach((g) => {
             orderItems.push(g);
@@ -3721,6 +3754,7 @@
                     appliedBundles: bundleAgg.list.length > 0 ? bundleAgg.list.map((x) => ({ id: x.bundle.id, title: x.bundle.title, instances: x.instances, bundlePrice: x.bundlePrice, discount: x.discount })) : null,
                     ladderReward: ladderReward ? { type: ladderReward.type, productId: ladderReward.productId || null, qty: ladderReward.qty || 0, multiplier: ladderReward.multiplier || 1, bonusPoints: ladderReward.points || 0 } : null,
                     walletRewardRedeemed: walletRewardUsed ? { id: walletRewardUsed.id, title: walletRewardUsed.title, pointsCost: Number(walletRewardUsed.pointsCost) || 0 } : null,
+                    walletPointsUsed: ((walletUsed && walletPtsToDeduct > 0) ? walletPtsToDeduct : 0) + (walletRewardUsed ? (Number(walletRewardUsed.pointsCost) || 0) : 0),
                     bonusPoints: bundleAgg.bonusPoints + ((ladderReward && ladderReward.type === 'bonus_points') ? ladderReward.points : 0),
                     pointsMultiplier: (ladderReward && ladderReward.type === 'points_multiplier') ? ladderReward.multiplier : 1,
                     batch: globalSettings.batchHashtag || '',
@@ -3806,10 +3840,16 @@
                 if (customerAddress) custUpdate.address = customerAddress;
                 const rewardPtsToDeduct = walletRewardUsed ? (Number(walletRewardUsed.pointsCost) || 0) : 0;
                 const totalPtsToDeduct = ((walletUsed && walletPtsToDeduct > 0) ? walletPtsToDeduct : 0) + rewardPtsToDeduct;
-                if (totalPtsToDeduct > 0) {
+                const walletDocId = (totalPtsToDeduct > 0 && activeCustomerWallet.phone) ? activeCustomerWallet.phone : customerPhone;
+                if (totalPtsToDeduct > 0 && walletDocId === customerPhone) {
                     custUpdate.walletPoints = firebase.firestore.FieldValue.increment(-totalPtsToDeduct);
                 }
                 batchOps.set(db.collection('customers').doc(customerPhone), custUpdate, { merge: true });
+                if (totalPtsToDeduct > 0 && walletDocId !== customerPhone) {
+                    batchOps.set(db.collection('customers').doc(walletDocId), {
+                        walletPoints: firebase.firestore.FieldValue.increment(-totalPtsToDeduct)
+                    }, { merge: true });
+                }
 
                 const stockUpdates = {};
                 const quailBookedUpdates = {};
@@ -4536,7 +4576,10 @@
             enabled: d.enabled !== false,
             wallet: {
                 enabled: w.enabled !== false,
+                allowGiftRedemption: w.allowGiftRedemption !== false,
                 allowCashRedemption: Boolean(w.allowCashRedemption),
+                cashPointValueEGP: Number(w.cashPointValueEGP) || Number(w.pointValueEGP) || 0.28,
+                minPointsForCash: Math.max(0, Number(w.minPointsForCash) || 0),
                 minOrderForRedeemEGP: Number(w.minOrderForRedeemEGP) || 0,
                 eggPlateRealCost: Number(w.eggPlateRealCost) || 40,
                 rewards: Array.isArray(w.rewards) ? w.rewards.filter((r) => r && r.id) : []
@@ -4855,9 +4898,18 @@
         wrap.classList.remove('hidden');
     }
 
-    // ------------------------- استبدال هدايا النقاط -------------------------
+    // ------------------------- اختيار العميل الحر (هدايا البيض 🆚 خصم الكاش) -------------------------
     window.toggleWalletReward = function (rewardId) {
-        selectedWalletRewardId = (selectedWalletRewardId === rewardId) ? '' : rewardId;
+        const willSelect = (selectedWalletRewardId !== rewardId);
+        selectedWalletRewardId = willSelect ? rewardId : '';
+        if (willSelect) activeCustomerWallet.useWallet = false;
+        updateUI();
+    };
+
+    window.toggleWalletCashChoice = function () {
+        const willUse = !activeCustomerWallet.useWallet;
+        activeCustomerWallet.useWallet = willUse;
+        if (willUse) selectedWalletRewardId = '';
         updateUI();
     };
 
@@ -4866,50 +4918,92 @@
         if (!box) return;
         const cfg = getOffersCfg();
         const w = cfg?.wallet;
-        const giftMode = Boolean(cfg && w && w.enabled !== false && w.allowCashRedemption === false);
         const pts = Number(activeCustomerWallet.points) || 0;
-        if (!giftMode || pts <= 0 || !activeCustomerWallet.phone) {
+        const giftsOn = Boolean(w && w.allowGiftRedemption !== false);
+        const cashOn = Boolean(w && w.allowCashRedemption === true);
+
+        if (!cfg || !w || w.enabled === false || (!giftsOn && !cashOn) || pts <= 0 || !activeCustomerWallet.phone) {
             box.classList.add('hidden');
             box.innerHTML = '';
-            if (!giftMode) selectedWalletRewardId = '';
+            if (!giftsOn) selectedWalletRewardId = '';
+            if (!cashOn) activeCustomerWallet.useWallet = false;
             return;
         }
-        const rewards = (w.rewards || []).filter((r) => r && r.enabled !== false);
-        if (rewards.length === 0) {
-            box.classList.add('hidden');
-            box.innerHTML = '';
-            return;
-        }
+
         const minOrder = Number(w.minOrderForRedeemEGP) || 0;
         const orderOk = (Number(subTotalPrice) || 0) >= minOrder;
         const curLadderRw = getLadderOrderReward();
-        const rowsHtml = rewards.map((r) => {
-            const cost = Math.max(1, Number(r.pointsCost) || 1);
-            const needQty = Math.max(1, Number(r.qty) || 1);
-            const reservedByLadder = (curLadderRw && curLadderRw.type === 'free_product' && curLadderRw.productId === r.productId) ? (Number(curLadderRw.qty) || 0) : 0;
-            const inStock = Boolean(productsInfo[r.productId] && (getAvailableStock(r.productId) - reservedByLadder) >= needQty);
-            const affordable = pts >= cost;
-            const selected = selectedWalletRewardId === r.id && inStock;
-            if (selectedWalletRewardId === r.id && !inStock) selectedWalletRewardId = '';
-            const usable = affordable && orderOk && inStock;
-            const btnCls = selected
+        let rowsHtml = '';
+
+        // 1. خيار هدايا البيض (القيمة الأعلى)
+        if (giftsOn) {
+            const rewards = (w.rewards || []).filter((r) => r && r.enabled !== false);
+            rowsHtml += rewards.map((r) => {
+                const cost = Math.max(1, Number(r.pointsCost) || 1);
+                const needQty = Math.max(1, Number(r.qty) || 1);
+                const reservedByLadder = (curLadderRw && curLadderRw.type === 'free_product' && curLadderRw.productId === r.productId) ? (Number(curLadderRw.qty) || 0) : 0;
+                const inStock = Boolean(productsInfo[r.productId] && (getAvailableStock(r.productId) - reservedByLadder) >= needQty);
+                const affordable = pts >= cost;
+                const selected = selectedWalletRewardId === r.id && inStock;
+                if (selectedWalletRewardId === r.id && !inStock) selectedWalletRewardId = '';
+                const usable = affordable && orderOk && inStock;
+                const btnCls = selected
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : (usable ? 'bg-amber-400 text-[#0b261c] border-amber-500 hover:bg-amber-300' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed');
+                const btnTxt = selected
+                    ? '✅ مضافة لطلبك (إلغاء)'
+                    : (!inStock ? 'غير متوفر حالياً' : (affordable ? (orderOk ? `استبدل ${cost} نقطة 🎁` : `لأوردر ${minOrder} ج+`) : `فاضل ${cost - pts} نقطة`));
+                return `
+                <div class="flex items-center justify-between gap-2 bg-white border-2 ${selected ? 'border-emerald-500' : 'border-amber-200'} rounded-xl p-2.5">
+                    <div class="min-w-0 flex-1">
+                        <div class="flex items-center gap-1 flex-wrap">
+                            <span class="text-xs font-black text-brand-navy truncate">${esc(r.title || 'هدية')}</span>
+                            <span class="bg-emerald-50 text-emerald-800 border border-emerald-200 text-[9px] font-black px-1.5 py-0.5 rounded-md">⭐ القيمة الأعلى</span>
+                        </div>
+                        <span class="text-[10px] font-bold text-slate-500">${cost} نقطة فقط</span>
+                    </div>
+                    <button type="button" ${usable || selected ? '' : 'disabled'} onclick="toggleWalletReward('${escAttr(r.id)}')" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
+                </div>`;
+            }).join('');
+        }
+
+        // 2. خيار خصم الكاش (القيمة الأقل — بحد أدنى مرن من الـ CRM)
+        if (cashOn) {
+            const minPtsCash = Math.max(0, Number(w.minPointsForCash) || 0);
+            const cashDisc = Math.floor(pts * (Number(w.cashPointValueEGP) || 0.28));
+            const meetsCashMin = pts >= minPtsCash;
+            const isCashSelected = Boolean(activeCustomerWallet.useWallet && meetsCashMin && cashDisc > 0);
+            if (activeCustomerWallet.useWallet && (!meetsCashMin || !orderOk)) activeCustomerWallet.useWallet = false;
+            const cashUsable = meetsCashMin && orderOk && cashDisc > 0;
+            const btnCls = isCashSelected
                 ? 'bg-emerald-600 text-white border-emerald-600'
-                : (usable ? 'bg-white text-amber-900 border-amber-300 hover:bg-amber-100' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed');
-            const btnTxt = selected
-                ? '✅ هتستلمها مع الطلب — اضغط للإلغاء'
-                : (!inStock ? 'غير متوفر بالمخزون حالياً' : (affordable ? (orderOk ? `استبدل ${cost} نقطة` : `تحتاج أوردر ${minOrder} ج+`) : `محتاج ${cost} نقطة`));
-            return `
-            <div class="flex items-center justify-between gap-2 bg-white/70 border ${selected ? 'border-emerald-400' : 'border-amber-200'} rounded-xl p-2">
-                <span class="text-[11px] font-black text-amber-950 min-w-0 flex-1 truncate">${esc(r.title || 'هدية')}</span>
-                <button type="button" ${usable || selected ? '' : 'disabled'} onclick="toggleWalletReward('${escAttr(r.id)}')" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
+                : (cashUsable ? 'bg-white text-brand-navy border-slate-300 hover:bg-slate-100' : 'bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed');
+            const btnTxt = isCashSelected
+                ? `✅ خصم -${cashDisc} ج (إلغاء)`
+                : (!meetsCashMin ? `يُفتح عند ${minPtsCash} نقطة` : (!orderOk ? `لأوردر ${minOrder} ج+` : `خصم ${cashDisc} ج.م`));
+            rowsHtml += `
+            <div class="flex items-center justify-between gap-2 bg-slate-50/90 border ${isCashSelected ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200'} rounded-xl p-2.5">
+                <div class="min-w-0 flex-1">
+                    <span class="text-xs font-black text-slate-800 block">💵 أو خصم كاش فوري من الفاتورة</span>
+                    <span class="text-[10px] font-bold text-slate-500">${pts} نقطة = خصم ${cashDisc} ج.م${minPtsCash > 0 && !meetsCashMin ? ` • فاضلك ${minPtsCash - pts} نقطة` : ''}</span>
+                </div>
+                <button type="button" ${cashUsable || isCashSelected ? '' : 'disabled'} onclick="toggleWalletCashChoice()" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
             </div>`;
-        }).join('');
+        }
+
+        if (!rowsHtml.trim()) {
+            box.classList.add('hidden');
+            box.innerHTML = '';
+            return;
+        }
+
+        document.getElementById('checkout-wallet-box')?.classList.add('hidden');
         box.innerHTML = `
             <div class="flex items-center gap-2">
-                <span class="w-8 h-8 rounded-xl bg-amber-400 text-[#0b261c] flex items-center justify-center shrink-0"><i class="fa-solid fa-gift"></i></span>
-                <div class="text-xs font-black text-amber-950">لديك ${pts} نقطة — استبدلها بهدية مع طلبك (هدية واحدة لكل طلب)</div>
+                <span class="w-8 h-8 rounded-xl bg-amber-400 text-[#0b261c] flex items-center justify-center shrink-0"><i class="fa-solid fa-crown"></i></span>
+                <div class="text-xs font-black text-amber-950">معاك ${pts} نقطة محفوظة — اختر هديتك (اختيار واحد للطلب):</div>
             </div>
-            ${rowsHtml}`;
+            <div class="space-y-2">${rowsHtml}</div>`;
         box.classList.remove('hidden');
     }
 
