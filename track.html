@@ -1080,6 +1080,7 @@
             if (doc.exists) {
               const fresh = { id: doc.id, ...doc.data() };
               currentOrder = fresh;
+              if (fresh.status !== 'new') document.getElementById('visual-edit-container')?.classList.add('hidden');
 
               const idxAll = allTrackedOrders.findIndex((x) => x.id === fresh.id);
               if (idxAll !== -1) allTrackedOrders[idxAll] = fresh;
@@ -2202,28 +2203,40 @@
         }
       }
 
+      let isConfirmingReceipt = false;
+
       window.confirmReceipt = async function () {
+        if (isConfirmingReceipt || !currentOrder || currentOrder.status === 'completed') return;
+        const btn = document.getElementById('btn-confirm-receipt');
+        if (btn && btn.disabled) return;
+
+        isConfirmingReceipt = true;
+        if (btn) btn.disabled = true;
+
         const ok = await openTrackDialog('هل تم استلام الطلب بالكامل من المندوب؟', {
           title: 'تأكيد استلام الطلب',
           isConfirm: true,
           confirmText: 'نعم، تم الاستلام ✅',
           cancelText: 'تراجع'
         });
-        if (!ok) return;
+        if (!ok) {
+          isConfirmingReceipt = false;
+          if (btn && currentOrder && currentOrder.status !== 'completed') btn.disabled = false;
+          return;
+        }
 
-        const btn = document.getElementById('btn-confirm-receipt');
-        const origHtml = btn.innerHTML;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التأكيد...';
-        btn.disabled = true;
+        const origHtml = btn ? btn.innerHTML : '';
+        if (btn) btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> جاري التأكيد...';
 
         try {
+          const targetId = currentOrder.id;
           const now = new Date();
           const dateStr = now.toLocaleString('ar-EG', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
           const oldNote = currentOrder.adminNote || '';
           const newNote = `[${dateStr}] ✅ العميل أكد استلام الطلب بنفسه من صفحة التتبع.`;
           const finalAdminNote = oldNote ? `${oldNote}\n---\n${newNote}` : newNote;
 
-          await db.collection('orders').doc(currentOrder.id).update({
+          await db.collection('orders').doc(targetId).update({
             status: 'completed',
             completedAt: firebase.firestore.FieldValue.serverTimestamp(),
             completedAtMs: Date.now(),
@@ -2231,13 +2244,22 @@
             completedTimeDisplay: dateStr,
             adminNote: finalAdminNote
           });
+
+          if (currentOrder && currentOrder.id === targetId) {
+            currentOrder.status = 'completed';
+            updateTimeline();
+          }
           if (typeof confetti === 'function') confetti({ particleCount: 90, spread: 70, origin: { y: 0.65 } });
           showTrackToast('تم تأكيد الاستلام! بالهناء والشفاء 🌿');
         } catch (e) {
           console.error(e);
           await openTrackDialog('تعذر تأكيد الاستلام حالياً، يرجى التحقق من الاتصال.', { title: 'تنبيه' });
-          btn.innerHTML = origHtml;
-          btn.disabled = false;
+          if (btn) {
+            btn.innerHTML = origHtml;
+            btn.disabled = false;
+          }
+        } finally {
+          isConfirmingReceipt = false;
         }
       };
 
