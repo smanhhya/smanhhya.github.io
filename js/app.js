@@ -4657,6 +4657,60 @@
         if (removed.length) saveCart();
         return removed;
     }
+    function getSoonestActiveBundle() {
+        const cfg = getOffersCfg();
+        if (!cfg || !Array.isArray(cfg.bundles)) return null;
+        const now = offerNowMs();
+        const timed = cfg.bundles
+            .filter((b) => b && b.enabled !== false && Number(b.endsAt) > now)
+            .sort((a, b) => Number(a.endsAt) - Number(b.endsAt));
+        return timed[0] || null;
+    }
+
+    function syncCartBundleCountdownBanner() {
+        let bar = document.getElementById('cart-bundle-timer-bar');
+        const soonest = getSoonestActiveBundle();
+        const sidebarOpen = Boolean(document.getElementById('cart-sidebar') && !document.getElementById('cart-sidebar').classList.contains('translate-x-full'));
+
+        if (!soonest) {
+            if (bar) bar.classList.add('hidden');
+            return;
+        }
+
+        const step1 = document.getElementById('checkout-step-1');
+        if (!bar && step1 && step1.parentElement) {
+            bar = document.createElement('div');
+            bar.id = 'cart-bundle-timer-bar';
+            bar.className = 'hidden px-4 py-2 text-[11px] font-black border-b shrink-0 flex items-center justify-between gap-2 transition-colors';
+            step1.parentElement.insertBefore(bar, step1);
+        }
+        if (!bar) return;
+
+        const left = Number(soonest.endsAt) - offerNowMs();
+        if (left <= 0) {
+            bar.classList.add('hidden');
+            return;
+        }
+
+        const c = fmtBundleCountdown(left);
+        const urgent = left < 3600000;
+        const cdStr = (c.d > 0 ? `${c.d}ي ` : '') + `${c.h}:${c.m}:${c.s}`;
+        const nextBarCls = urgent
+            ? 'px-4 py-2 text-[11px] font-black border-b border-rose-300 shrink-0 flex items-center justify-between gap-2 bg-rose-600 text-white'
+            : 'px-4 py-2 text-[11px] font-black border-b border-amber-200 shrink-0 flex items-center justify-between gap-2 bg-amber-50 text-amber-950';
+
+        if (bar.className !== nextBarCls) bar.className = nextBarCls;
+        bar.classList.remove('hidden');
+
+        const titleTxt = urgent ? `🔥 عرض ${esc(soonest.title || 'الباكج')} يوشك على الانتهاء` : `⏳ عرض ${esc(soonest.title || 'الباكج')} متاح لفترة محدودة`;
+        const htmlNow = `<span class="truncate">${titleTxt}</span><span dir="ltr" class="px-2 py-0.5 rounded-lg font-black tabular-nums shrink-0 ${urgent ? 'bg-white/20 text-white' : 'bg-amber-400/30 text-[#0b261c]'}">${cdStr}</span>`;
+        if (bar._lastHtml !== htmlNow) {
+            bar._lastHtml = htmlNow;
+            bar.innerHTML = htmlNow;
+        }
+        if (sidebarOpen) bar.classList.remove('hidden');
+    }
+
     function tickBundleTimers() {
         const els = document.querySelectorAll('[data-bnd-end]');
         let anyExpired = false;
@@ -4676,6 +4730,7 @@
                 if (lbl) lbl.textContent = urgent ? '🔥 آخر فرصة! العرض بيخلص بعد' : '⏳ العرض ينتهي بعد';
             }
         });
+        syncCartBundleCountdownBanner();
         if (anyExpired) {
             const removed = pruneExpiredBundles();
             renderBundlesSection();
@@ -5143,5 +5198,86 @@
             <div class="space-y-2">${rowsHtml}</div>`;
         box.classList.remove('hidden');
     }
+
+    // =========================================================================
+    // 15. بانر تثبيت التطبيق السريع بلمسة واحدة (PWA) — هادئ وغير مزعج
+    // =========================================================================
+    const PWA_DISMISS_KEY = 'sman_pwa_banner_dismissed_v1';
+    let deferredPwaPrompt = null;
+
+    function isStandalonePwa() {
+        return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function isIosSafariBrowser() {
+        const ua = window.navigator.userAgent || '';
+        const isIos = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+        const isWebkit = /WebKit/.test(ua);
+        return isIos && isWebkit;
+    }
+
+    function showPwaInstallBannerIfReady() {
+        if (isStandalonePwa()) return;
+        if (localStorage.getItem(PWA_DISMISS_KEY) === '1') return;
+        const banner = document.getElementById('pwa-install-banner');
+        const subEl = document.getElementById('pwa-install-sub');
+        const btnEl = document.getElementById('pwa-install-btn');
+        if (!banner || !subEl || !btnEl) return;
+
+        if (deferredPwaPrompt) {
+            subEl.textContent = 'أضف أيقونة سمان ههيا للشاشة الرئيسية واطلب بضغطة واحدة';
+            btnEl.innerHTML = '<i class="fa-solid fa-download"></i> <span>تثبيت</span>';
+            banner.classList.remove('hidden');
+        } else if (isIosSafariBrowser()) {
+            subEl.textContent = 'من شريط المشاركة اضغط «إضافة إلى الشاشة الرئيسية»';
+            btnEl.innerHTML = '<i class="fa-solid fa-arrow-up-from-bracket"></i> <span>الطريقة</span>';
+            banner.classList.remove('hidden');
+        }
+    }
+
+    window.triggerPwaInstall = async function () {
+        if (deferredPwaPrompt) {
+            const promptEvt = deferredPwaPrompt;
+            deferredPwaPrompt = null;
+            promptEvt.prompt();
+            try {
+                const choice = await promptEvt.userChoice;
+                if (choice && choice.outcome === 'accepted') {
+                    showStoreToast('تم تثبيت تطبيق سمان ههيا على جهازك بنجاح 🌿');
+                    document.getElementById('pwa-install-banner')?.classList.add('hidden');
+                }
+            } catch (e) {}
+            return;
+        }
+        if (isIosSafariBrowser()) {
+            showAlert('تثبيت سمان ههيا على الآيفون', 'افتح قائمة المشاركة (⬆️) في المتصفح ثم اختر «إضافة إلى الشاشة الرئيسية (Add to Home Screen)» لفتح المتجر كتطبيق كامل.');
+        }
+    };
+
+    window.dismissPwaInstallBanner = function () {
+        try { localStorage.setItem(PWA_DISMISS_KEY, '1'); } catch (e) {}
+        document.getElementById('pwa-install-banner')?.classList.add('hidden');
+    };
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredPwaPrompt = e;
+        setTimeout(showPwaInstallBannerIfReady, 1800);
+    });
+
+    window.addEventListener('appinstalled', () => {
+        deferredPwaPrompt = null;
+        document.getElementById('pwa-install-banner')?.classList.add('hidden');
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+        if (isStandalonePwa()) {
+            document.getElementById('pwa-install-banner')?.classList.add('hidden');
+            return;
+        }
+        if (isIosSafariBrowser()) {
+            setTimeout(showPwaInstallBannerIfReady, 2200);
+        }
+    });
 
 })();
