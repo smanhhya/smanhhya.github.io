@@ -3486,6 +3486,16 @@
         const selectedZone = globalDeliveryZones.find((z) => z.id === deliverySelect?.value || z.name === deliverySelect?.value);
 
         if (Object.keys(cart).length === 0) return showAlert('السلة فارغة', 'اختر صنفاً واحداً على الأقل قبل تأكيد الطلب.');
+        // التحقق من انتهاء الباكجات بوقت السيرفر قبل تسجيل الطلب
+        if (Object.keys(activeBundles).length > 0) {
+            await syncServerClock(true);
+            const expiredNow = pruneExpiredBundles();
+            if (expiredNow.length > 0) {
+                renderBundlesSection();
+                updateUI();
+                return showAlert('انتهى عرض الباكج', `انتهى عرض (${expiredNow.join('، ')}) قبل تأكيد طلبك. الأصناف فضلت في السلة بسعرها العادي والإجمالي اتحدّث. راجعه وأكّد الطلب تاني لو موافق.`);
+            }
+        }
         if (customerName.length < 3 || !/^[\u0600-\u06FF\sA-Za-z.]+$/.test(customerName)) {
             return showAlert('الاسم غير مكتمل', 'يرجى كتابة الاسم الصحيح (3 أحرف على الأقل وبدون أرقام أو رموز).');
         }
@@ -4604,6 +4614,78 @@
         return Number(globalPrices[id] !== undefined ? globalPrices[id] : productsInfo[id]?.basePrice) || 0;
     }
 
+    // ------------------------- مؤقت الباكجات -------------------------
+    // وقت السيرفر: نقرأ ترويسة Date من استجابة الموقع نفسه (مش ساعة موبايل العميل). لو فشل نرجع لساعة الجهاز.
+    let serverClockOffsetMs = 0;
+    let serverClockSynced = false;
+    async function syncServerClock(force) {
+        if (serverClockSynced && !force) return;
+        try {
+            const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const to = ctrl ? setTimeout(() => ctrl.abort(), 4000) : null;
+            const t0 = Date.now();
+            const r = await fetch(location.pathname + (location.pathname.includes('?') ? '&' : '?') + '_t=' + t0, { method: 'HEAD', cache: 'no-store', signal: ctrl ? ctrl.signal : undefined });
+            if (to) clearTimeout(to);
+            const t1 = Date.now();
+            const h = r.headers.get('Date');
+            const sv = h ? new Date(h).getTime() : NaN;
+            if (isFinite(sv)) {
+                serverClockOffsetMs = sv - Math.round((t0 + t1) / 2);
+                serverClockSynced = true;
+            }
+        } catch (e) { /* نكمل بساعة الجهاز */ }
+    }
+    function offerNowMs() { return Date.now() + serverClockOffsetMs; }
+    function isBundleExpired(b) {
+        const end = Number(b && b.endsAt) || 0;
+        return end > 0 && offerNowMs() >= end;
+    }
+    function fmtBundleCountdown(ms) {
+        const t = Math.max(0, Math.floor(ms / 1000));
+        const d = Math.floor(t / 86400), h = Math.floor((t % 86400) / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60;
+        const p = (n) => String(n).padStart(2, '0');
+        return { d, h: p(h), m: p(m), s: p(sec) };
+    }
+    // يشيل الباكجات المنتهية من السلة (الأصناف تفضل بسعرها العادي) ويرجّع أسماءها
+    function pruneExpiredBundles() {
+        const cfg = getOffersCfg();
+        const removed = [];
+        Object.keys(activeBundles).forEach((bId) => {
+            const b = cfg ? (cfg.bundles || []).find((x) => x.id === bId) : null;
+            if (b && isBundleExpired(b)) { removed.push(b.title || 'الباكج'); delete activeBundles[bId]; }
+        });
+        if (removed.length) saveCart();
+        return removed;
+    }
+    function tickBundleTimers() {
+        const els = document.querySelectorAll('[data-bnd-end]');
+        let anyExpired = false;
+        els.forEach((el) => {
+            const left = Number(el.getAttribute('data-bnd-end')) - offerNowMs();
+            if (left <= 0) { anyExpired = true; return; }
+            const c = fmtBundleCountdown(left);
+            const urgent = left < 3600000;
+            const txt = (c.d > 0 ? `<span><b>${c.d}</b> يوم</span>` : '') + `<span dir="ltr"><b>${c.h}</b>:<b>${c.m}</b>:<b>${c.s}</b></span>`;
+            const cd = el.querySelector('[data-bnd-cd]');
+            if (cd && cd._last !== txt) { cd._last = txt; cd.innerHTML = txt; }
+            const cls = urgent ? 'bg-rose-600 text-white animate-pulse' : 'bg-amber-100 text-amber-900';
+            if (el._cls !== cls) {
+                el._cls = cls;
+                el.className = 'flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-black ' + cls;
+                const lbl = el.querySelector('[data-bnd-lbl]');
+                if (lbl) lbl.textContent = urgent ? '🔥 آخر فرصة! العرض بيخلص بعد' : '⏳ العرض ينتهي بعد';
+            }
+        });
+        if (anyExpired) {
+            const removed = pruneExpiredBundles();
+            renderBundlesSection();
+            if (typeof updateUI === 'function') updateUI();
+            if (removed.length) showAlert('انتهى عرض الباكج', `انتهى عرض (${removed.join('، ')}) والأصناف فضلت في سلتك بسعرها العادي. راجع الإجمالي قبل تأكيد الطلب.`);
+        }
+    }
+    if (!window._bundleTimerInt) window._bundleTimerInt = setInterval(tickBundleTimers, 1000);
+    syncServerClock().then(() => { try { renderBundlesSection(); tickBundleTimers(); } catch (e) {} });
+
     // ------------------------- الباكجات -------------------------
     function renderBundlesSection() {
         const productsSec = document.getElementById('quail-section-wrap') || document.getElementById('products');
@@ -4626,6 +4708,7 @@
 
         const validCards = [];
         bundles.forEach((b) => {
+            if (isBundleExpired(b)) return; // العرض انتهى — يختفي من المتجر
             const items = (Array.isArray(b.items) ? b.items : []).filter((it) => it && productsInfo[it.id] && !productsInfo[it.id].isWeightBased);
             if (items.length === 0) return;
             const origTotal = items.reduce((sum, it) => sum + getOfferUnitPrice(it.id) * (Number(it.qty) || 1), 0);
@@ -4660,8 +4743,13 @@
                        <span>اطلب الباكج الآن</span>
                    </button>`;
 
+            const timerHtml = Number(b.endsAt) > 0
+                ? `<div data-bnd-end="${Number(b.endsAt)}" class="flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] font-black bg-amber-100 text-amber-900"><span data-bnd-lbl>⏳ العرض ينتهي بعد</span><span data-bnd-cd class="inline-flex items-center gap-1.5 font-black tabular-nums"></span></div>`
+                : '';
+
             validCards.push(`
             <div class="bg-white border-2 ${inCart ? 'border-emerald-400' : 'border-amber-200'} rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
+                ${timerHtml}
                 ${posterHtml}
                 <div class="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
                     <div class="space-y-1.5">
@@ -4701,6 +4789,7 @@
             wrap._lastHtml = newHtml;
             wrap.innerHTML = newHtml;
         }
+        tickBundleTimers();
     }
 
     window.addBundleToCart = function (bId) {
@@ -4709,6 +4798,11 @@
         if (!cfg) return;
         const b = (cfg.bundles || []).find((x) => x.id === bId);
         if (!b || !Array.isArray(b.items) || b.items.length === 0) return;
+        if (isBundleExpired(b)) {
+            showAlert('انتهى العرض', 'للأسف عرض الباكج ده خلص ومبقاش متاح.');
+            renderBundlesSection();
+            return;
+        }
 
         if (b.items.some((it) => getProductTrackType(it.id) === 'quail')) {
             const hasOpenQuailBatches = getVisibleBatchesByTrack('quail').some((x) => x.isOpen);
@@ -4760,6 +4854,7 @@
         Object.keys(activeBundles).forEach((bId) => {
             const b = (cfg.bundles || []).find((x) => x.id === bId);
             if (!b || !Array.isArray(b.items) || b.items.length === 0) { delete activeBundles[bId]; return; }
+            if (isBundleExpired(b)) { delete activeBundles[bId]; return; } // لا خصم لعرض منتهي
             let instances = Infinity;
             let origUnit = 0;
             let valid = true;
