@@ -1426,15 +1426,26 @@
           const cashBtnTxt = !isOrderNew
             ? (meetsCashMin && cashDisc > 0 ? `متاح (${cashDisc} ج) ✅` : `يُفتح عند ${minPtsCash} نقطة`)
             : (!meetsCashMin ? `يُفتح عند ${minPtsCash} نقطة` : (!orderOk ? `لأوردر ${minOrder} ج+` : `خصم ${cashDisc} ج.م 💵`));
+
+          const politeCashTip = (meetsCashMin && cashDisc > 0)
+            ? (bestUnlocked
+              ? `تقدر تخصمها دلوقتي، أو تستلم هديتك (${esc(bestUnlocked.title)}).`
+              : (firstReward ? 'تقدر تخصمها دلوقتي، أو تكمّل عليها لهديتك.' : ''))
+            : '';
+
           optionsHtml += `
-            <div class="flex items-center justify-between gap-2 bg-white/5 border border-white/15 rounded-xl p-2.5">
-              <div class="min-w-0 flex-1">
-                <span class="text-[11px] font-black text-emerald-100 block">💵 أو خصم كاش مباشر من الفاتورة</span>
-                <span class="text-[9px] font-bold text-emerald-200/75">${pts} نقطة = ${cashDisc} ج.م${!meetsCashMin ? ` (فاضل ${minPtsCash - pts} نقطة)` : ''}</span>
+            <div class="bg-white/5 border border-white/15 rounded-xl p-2.5 space-y-1.5">
+              <div class="flex items-center justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <span class="text-[11px] font-black text-emerald-100 block">💵 أو خصم كاش مباشر من الفاتورة</span>
+                  <span class="text-[9px] font-bold text-emerald-200/75">${pts} نقطة = ${cashDisc} ج.م${!meetsCashMin ? ` (فاضل ${minPtsCash - pts} نقطة)` : ''}</span>
+                </div>
+                <button type="button" ${usableCash ? '' : 'disabled'} onclick="applyTrackCashDiscount()" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black shrink-0 transition-all ${usableCash ? 'bg-white text-[#0b261c] hover:bg-emerald-100 shadow active:scale-95' : 'bg-white/10 text-white/55 cursor-not-allowed'}">${cashBtnTxt}</button>
               </div>
-              <button type="button" ${usableCash ? '' : 'disabled'} onclick="applyTrackCashDiscount()" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black shrink-0 transition-all ${usableCash ? 'bg-white text-[#0b261c] hover:bg-emerald-100 shadow active:scale-95' : 'bg-white/10 text-white/55 cursor-not-allowed'}">${cashBtnTxt}</button>
+              ${politeCashTip ? `<p class="text-[10px] font-bold text-emerald-200/80 pt-1.5 border-t border-white/10">${politeCashTip}</p>` : ''}
             </div>`;
         }
+
 
         const headerCaption = isOrderNew
           ? '🎁 اختر طريقة استخدام نقاطك على هذا الطلب (اختيار واحد للطلب):'
@@ -1518,7 +1529,30 @@
 
         const ptsToDeduct = appliedCash < rawCash ? Math.min(pts, Math.ceil(appliedCash / cashPtVal)) : pts;
 
-        const ok = await openTrackDialog(`هل تريد استبدال (${ptsToDeduct} نقطة) بخصم فوري قدره (${appliedCash} ج.م) من فاتورة هذا الطلب؟`, { title: 'تأكيد الخصم الكاش 💵', isConfirm: true, confirmText: 'نعم، طبّق الخصم 💵', cancelText: 'تراجع' });
+        const giftRewards = (wCfg.allowGiftRedemption && Array.isArray(wCfg.rewards))
+          ? wCfg.rewards.filter((r) => r && r.id && r.enabled !== false).sort((a, b) => (Number(a.pointsCost) || 0) - (Number(b.pointsCost) || 0))
+          : [];
+        const readyGift = giftRewards.filter((r) => pts >= (Number(r.pointsCost) || 0)).pop() || null;
+        const upcomingGift = giftRewards[0] || null;
+        let gentleHint = '';
+        if (readyGift) {
+          gentleHint = `
+(هديتك «${readyGift.title}» جاهزة لو حابب تختارها)`;
+        } else if (upcomingGift) {
+          const remPts = Math.max(1, (Number(upcomingGift.pointsCost) || 125) - pts);
+          gentleHint = `
+(فاضلك ${remPts} نقطة على «${upcomingGift.title}» لو حابب تسيبهم يتجمعوا)`;
+        }
+
+        const ok = await openTrackDialog(
+          `سيتم خصم ${appliedCash} ج.م من فاتورتك الآن (${ptsToDeduct} نقطة).${gentleHint}`,
+          {
+            title: 'خصم كاش من نقاطك',
+            isConfirm: true,
+            confirmText: 'تأكيد الخصم',
+            cancelText: upcomingGift ? 'خلّي النقاط' : 'تراجع'
+          }
+        );
         if (!ok) return;
         isRedeemingReward = true;
 
