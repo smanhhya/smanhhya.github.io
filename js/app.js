@@ -4624,9 +4624,10 @@
             productsSec.parentElement.insertBefore(wrap, productsSec);
         }
 
-        const cards = bundles.map((b) => {
+        const validCards = [];
+        bundles.forEach((b) => {
             const items = (Array.isArray(b.items) ? b.items : []).filter((it) => it && productsInfo[it.id] && !productsInfo[it.id].isWeightBased);
-            if (items.length === 0) return '';
+            if (items.length === 0) return;
             const origTotal = items.reduce((sum, it) => sum + getOfferUnitPrice(it.id) * (Number(it.qty) || 1), 0);
             const bundlePrice = Math.max(0, Number(b.bundlePrice) || 0);
             const saveAmt = Math.max(0, origTotal - bundlePrice);
@@ -4634,37 +4635,72 @@
             const itemsText = items.map((it) => `${Number(it.qty) || 1}× ${productsInfo[it.id].name}`).join(' + ');
             const inCart = Boolean(activeBundles[b.id]) && items.every((it) => (Number(cart[it.id]?.quantity) || 0) >= (Number(it.qty) || 1));
             const safeBId = escAttr(b.id);
-            return `
-            <div class="bg-white border-2 ${inCart ? 'border-emerald-300' : 'border-amber-200'} rounded-3xl p-3.5 shadow-sm space-y-2">
-                <div class="flex flex-wrap items-center gap-1.5">
-                    <span class="font-black text-brand-navy text-sm">${esc(b.title || 'باكج')}</span>
-                    ${b.badge ? `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[10px] font-black">${esc(b.badge)}</span>` : ''}
-                    ${b.freeDelivery ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-black">🚚 توصيل مجاني</span>` : ''}
-                    ${Number(b.bonusPoints) > 0 ? `<span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md text-[10px] font-black">+${Number(b.bonusPoints)} نقطة هدية</span>` : ''}
-                </div>
-                ${b.desc ? `<p class="text-[11px] font-bold text-slate-500">${esc(b.desc)}</p>` : ''}
-                <p class="text-xs font-black text-slate-700">${esc(itemsText)}</p>
-                <div class="flex items-center justify-between gap-2 pt-1">
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span class="text-lg font-black text-emerald-700">${bundlePrice} ج.م</span>
-                        ${saveAmt > 0 ? `<span class="text-xs font-bold text-slate-400 line-through">${origTotal} ج.م</span>
-                        <span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md text-[10px] font-black">وفّر ${saveAmt} ج (${savePct}%)</span>` : ''}
-                    </div>
-                    <button type="button" onclick="addBundleToCart('${safeBId}')" class="px-3.5 py-2 rounded-xl ${inCart ? 'bg-emerald-600' : 'bg-brand-navy'} text-white text-xs font-black shadow active:scale-95 transition-all shrink-0">${inCart ? '✅ في السلة — أضف نسخة' : '🛒 أضف الباكج'}</button>
-                </div>
-            </div>`;
-        }).join('');
+            const imgSrc = String(b.image || '').trim();
 
-        if (!cards.trim()) {
+            const posterHtml = imgSrc
+                ? `<div onclick="openImageModal('${escAttr(imgSrc)}')" class="relative bg-[#faf8f3] border-b border-amber-100 cursor-zoom-in overflow-hidden group">
+                       <img loading="lazy" src="${esc(imgSrc)}" alt="${esc(b.title || 'عرض الباكج')}" onerror="this.parentElement.remove()" class="w-full max-h-[380px] object-contain mx-auto transition-transform duration-300 group-hover:scale-[1.02]">
+                       <span class="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm text-white text-[10px] font-black px-2.5 py-1 rounded-full border border-white/15 flex items-center gap-1 pointer-events-none">
+                           <i class="fa-solid fa-magnifying-glass-plus text-amber-300"></i>
+                           <span>تكبير</span>
+                       </span>
+                   </div>`
+                : '';
+
+            const actionsHtml = inCart
+                ? `<div class="flex items-center gap-1.5 w-full sm:w-auto">
+                       <button type="button" onclick="addBundleToCart('${safeBId}')" class="flex-1 sm:flex-none px-3 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-black active:scale-95 transition-all">+ نسخة</button>
+                       <button type="button" onclick="toggleCart()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-[#0b261c] text-xs font-black shadow active:scale-95 transition-all flex items-center justify-center gap-1">
+                           <span>إتمام الطلب</span>
+                           <i class="fa-solid fa-arrow-left text-[10px]"></i>
+                       </button>
+                   </div>`
+                : `<button type="button" onclick="addBundleToCart('${safeBId}')" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-brand-navy hover:bg-emerald-800 text-amber-300 text-xs font-black shadow-md active:scale-95 transition-all shrink-0 flex items-center justify-center gap-1.5">
+                       <i class="fa-solid fa-cart-plus"></i>
+                       <span>اطلب الباكج الآن</span>
+                   </button>`;
+
+            validCards.push(`
+            <div class="bg-white border-2 ${inCart ? 'border-emerald-400' : 'border-amber-200'} rounded-3xl shadow-sm overflow-hidden flex flex-col justify-between">
+                ${posterHtml}
+                <div class="p-3.5 space-y-2 flex-1 flex flex-col justify-between">
+                    <div class="space-y-1.5">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="font-black text-brand-navy text-sm sm:text-base">${esc(b.title || 'باكج')}</span>
+                            ${b.badge ? `<span class="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md text-[10px] font-black">${esc(b.badge)}</span>` : ''}
+                            ${b.freeDelivery ? `<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-black">🚚 توصيل مجاني</span>` : ''}
+                            ${Number(b.bonusPoints) > 0 ? `<span class="bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md text-[10px] font-black">+${Number(b.bonusPoints)} نقطة هدية</span>` : ''}
+                        </div>
+                        ${b.desc ? `<p class="text-[11px] font-bold text-slate-500 leading-relaxed">${esc(b.desc)}</p>` : ''}
+                        <p class="text-xs font-black text-slate-700">${esc(itemsText)}</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-2 border-t border-slate-100">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="text-xl font-black text-emerald-700">${bundlePrice} <span class="text-xs font-bold text-slate-500">ج.م</span></span>
+                            ${saveAmt > 0 ? `<span class="text-xs font-bold text-slate-400 line-through">${origTotal} ج.م</span>
+                            <span class="bg-rose-50 text-rose-600 px-2 py-0.5 rounded-md text-[10px] font-black">وفّر ${saveAmt} ج (${savePct}%)</span>` : ''}
+                        </div>
+                        ${actionsHtml}
+                    </div>
+                </div>
+            </div>`);
+        });
+
+        if (validCards.length === 0) {
             wrap.remove();
             return;
         }
-        wrap.innerHTML = `
+        const gridCls = validCards.length === 1 ? 'grid grid-cols-1 max-w-lg' : 'grid grid-cols-1 sm:grid-cols-2 gap-3';
+        const newHtml = `
             <h2 class="text-base sm:text-lg font-black text-brand-navy flex items-center gap-2">
                 <span class="w-1.5 h-5 rounded-full bg-amber-400 inline-block"></span>
                 <span>📦 الباكجات والعروض المجمعة</span>
             </h2>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">${cards}</div>`;
+            <div class="${gridCls}">${validCards.join('')}</div>`;
+        if (wrap._lastHtml !== newHtml) {
+            wrap._lastHtml = newHtml;
+            wrap.innerHTML = newHtml;
+        }
     }
 
     window.addBundleToCart = function (bId) {
@@ -4981,13 +5017,19 @@
             const btnTxt = isCashSelected
                 ? `✅ خصم -${cashDisc} ج (إلغاء)`
                 : (!meetsCashMin ? `يُفتح عند ${minPtsCash} نقطة` : (!orderOk ? `لأوردر ${minOrder} ج+` : `خصم ${cashDisc} ج.م`));
+            const cashSoftTip = (giftsOn && meetsCashMin && cashDisc > 0 && !isCashSelected)
+                ? '<p class="text-[10px] font-bold text-slate-500 pt-1.5 border-t border-slate-200/70">تقدر تخصمها دلوقتي، أو تكمّل عليها لهديتك.</p>'
+                : '';
             rowsHtml += `
-            <div class="flex items-center justify-between gap-2 bg-slate-50/90 border ${isCashSelected ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200'} rounded-xl p-2.5">
-                <div class="min-w-0 flex-1">
-                    <span class="text-xs font-black text-slate-800 block">💵 أو خصم كاش فوري من الفاتورة</span>
-                    <span class="text-[10px] font-bold text-slate-500">${pts} نقطة = خصم ${cashDisc} ج.م${minPtsCash > 0 && !meetsCashMin ? ` • فاضلك ${minPtsCash - pts} نقطة` : ''}</span>
+            <div class="bg-slate-50/90 border ${isCashSelected ? 'border-emerald-500 bg-emerald-50/40' : 'border-slate-200'} rounded-xl p-2.5 space-y-1.5">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <span class="text-xs font-black text-slate-800 block">💵 أو خصم كاش فوري من الفاتورة</span>
+                        <span class="text-[10px] font-bold text-slate-500">${pts} نقطة = خصم ${cashDisc} ج.م${minPtsCash > 0 && !meetsCashMin ? ` • فاضلك ${minPtsCash - pts} نقطة` : ''}</span>
+                    </div>
+                    <button type="button" ${cashUsable || isCashSelected ? '' : 'disabled'} onclick="toggleWalletCashChoice()" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
                 </div>
-                <button type="button" ${cashUsable || isCashSelected ? '' : 'disabled'} onclick="toggleWalletCashChoice()" class="px-2.5 py-1.5 rounded-xl text-[10px] font-black border shrink-0 transition-colors ${btnCls}">${btnTxt}</button>
+                ${cashSoftTip}
             </div>`;
         }
 
