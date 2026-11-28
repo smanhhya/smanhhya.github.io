@@ -2846,6 +2846,13 @@
         const code = inputEl.value.trim().toUpperCase();
         if (!code) return;
 
+        if (computeActiveBundleOffers().list.length > 0) {
+            msg.textContent = 'عفواً، لا يمكن جمع كود خصم مع عرض الباكج المخفض في نفس الطلب.';
+            msg.className = 'text-[11px] font-bold mt-1.5 text-amber-700';
+            msg.classList.remove('hidden');
+            return;
+        }
+
         const subTotal = calculateCartSubtotal();
         const promo = (Array.isArray(globalSettings.promoCodes) ? globalSettings.promoCodes : [])
             .find((p) => p && String(p.code || '').toUpperCase() === code);
@@ -3016,30 +3023,14 @@
         if (step2Sub) step2Sub.textContent = bNameNow ? `حجز ضمن: ${bNameNow} — اضغط لعرض التفاصيل` : 'اضغط لعرض الأصناف المختارة';
         if (step2Collapse) step2Collapse.innerHTML = step2Lines.join('') || '<p class="text-slate-400">لا توجد أصناف</p>';
 
-        let freeDelivery = Boolean(globalSettings.freeDeliveryActive && subTotalPrice >= (Number(globalSettings.freeDeliveryThreshold) || 0) && subTotalPrice > 0);
-        const tracker = document.getElementById('free-delivery-tracker');
-        if (tracker) {
-            if (globalSettings.freeDeliveryActive && subTotalPrice > 0) {
-                tracker.classList.remove('hidden');
-                const threshold = Number(globalSettings.freeDeliveryThreshold) || 1;
-                const rem = Math.max(0, threshold - subTotalPrice);
-                const prog = document.getElementById('fd-progress');
-                const txt = document.getElementById('free-delivery-text');
-                if (prog) {
-                    prog.style.width = `${Math.min(100, (subTotalPrice / threshold) * 100)}%`;
-                    prog.className = rem > 0 ? 'bg-brand-navy h-2 rounded-full progress-bar-animated' : 'bg-emerald-500 h-2 rounded-full progress-bar-animated';
-                }
-                if (txt) {
-                    txt.innerHTML = rem > 0
-                        ? `<span class="text-slate-600">باقي <strong class="text-rose-600">${rem} ج.م</strong> وتاخد توصيل مجاني!</span><i class="fa-solid fa-gift text-amber-500"></i>`
-                        : `<span class="text-emerald-600 font-black">مبروك! التوصيل مجاني 🎉</span><i class="fa-solid fa-circle-check text-emerald-500"></i>`;
-                }
-            } else {
-                tracker.classList.add('hidden');
-            }
+        const bundleAgg = computeActiveBundleOffers();
+        if (bundleAgg.list.length > 0 && appliedPromo) {
+            appliedPromo = null;
+            document.getElementById('promo-message')?.classList.add('hidden');
         }
 
         let promoDiscount = 0;
+        let promoFreeDelivery = false;
         const promoRow = document.getElementById('promo-discount-row');
         const step2PromoRow = document.getElementById('step2-promo-row');
         if (appliedPromo && subTotalPrice > 0) {
@@ -3049,7 +3040,7 @@
                 if (step2PromoRow) step2PromoRow.classList.add('hidden');
             } else {
                 if (appliedPromo.type === 'free_delivery') {
-                    freeDelivery = true;
+                    promoFreeDelivery = true;
                     document.getElementById('promo-label').textContent = `${appliedPromo.code} (توصيل مجاني)`;
                     document.getElementById('cart-discount').textContent = '0';
                 } else {
@@ -3064,9 +3055,13 @@
                     document.getElementById('cart-discount').textContent = promoDiscount;
                 }
                 if (promoRow) promoRow.classList.remove('hidden');
-                if (step2PromoRow && promoDiscount > 0) {
-                    document.getElementById('step2-promo-val').textContent = promoDiscount;
-                    step2PromoRow.classList.remove('hidden');
+                if (step2PromoRow) {
+                    if (promoDiscount > 0) {
+                        document.getElementById('step2-promo-val').textContent = promoDiscount;
+                        step2PromoRow.classList.remove('hidden');
+                    } else {
+                        step2PromoRow.classList.add('hidden');
+                    }
                 }
             }
         } else {
@@ -3075,8 +3070,34 @@
         }
 
         const totalAfterPromo = Math.max(0, subTotalPrice - promoDiscount);
-        const bundleAgg = computeActiveBundleOffers();
-        if (bundleAgg.freeDelivery) freeDelivery = true;
+        const netAfterOffers = Math.max(0, totalAfterPromo - bundleAgg.totalDiscount);
+        let freeDelivery = Boolean(
+            (globalSettings.freeDeliveryActive && netAfterOffers >= (Number(globalSettings.freeDeliveryThreshold) || 0) && netAfterOffers > 0)
+            || promoFreeDelivery
+            || bundleAgg.freeDelivery
+        );
+
+        const tracker = document.getElementById('free-delivery-tracker');
+        if (tracker) {
+            if (globalSettings.freeDeliveryActive && subTotalPrice > 0) {
+                tracker.classList.remove('hidden');
+                const threshold = Number(globalSettings.freeDeliveryThreshold) || 1;
+                const rem = freeDelivery ? 0 : Math.max(0, threshold - netAfterOffers);
+                const prog = document.getElementById('fd-progress');
+                const txt = document.getElementById('free-delivery-text');
+                if (prog) {
+                    prog.style.width = `${freeDelivery ? 100 : Math.min(100, (netAfterOffers / threshold) * 100)}%`;
+                    prog.className = rem > 0 ? 'bg-brand-navy h-2 rounded-full progress-bar-animated' : 'bg-emerald-500 h-2 rounded-full progress-bar-animated';
+                }
+                if (txt) {
+                    txt.innerHTML = rem > 0
+                        ? `<span class="text-slate-600">باقي <strong class="text-rose-600">${rem} ج.م</strong> وتاخد توصيل مجاني!</span><i class="fa-solid fa-gift text-amber-500"></i>`
+                        : `<span class="text-emerald-600 font-black">مبروك! التوصيل مجاني 🎉</span><i class="fa-solid fa-circle-check text-emerald-500"></i>`;
+                }
+            } else {
+                tracker.classList.add('hidden');
+            }
+        }
         const offersWUi = getOffersCfg()?.wallet;
         const cashPtValUi = Number(offersWUi?.cashPointValueEGP) || Number(globalSettings.pointValueInEGP) || 0.28;
         if (activeCustomerWallet.points > 0) {
@@ -3564,6 +3585,11 @@
         const deliveryFee = Number(selectedZone.price) || 0;
         const subTotal = calculateCartSubtotal();
 
+        const bundleAgg = computeActiveBundleOffers();
+        if (bundleAgg.list.length > 0 && appliedPromo) {
+            appliedPromo = null;
+        }
+
         let promoDiscount = 0;
         let discountText = '';
         if (appliedPromo) {
@@ -3582,7 +3608,6 @@
         }
 
         const totalAfterPromo = Math.max(0, subTotal - promoDiscount);
-        const bundleAgg = computeActiveBundleOffers();
         if (bundleAgg.totalDiscount > 0) discountText += `📦 خصم الباكجات: -${bundleAgg.totalDiscount} ج\n`;
         const offersW = getOffersCfg()?.wallet;
         const cashPtValFinal = Number(offersW?.cashPointValueEGP) || Number(globalSettings.pointValueInEGP) || 0.28;
@@ -3611,7 +3636,7 @@
         if (walletDiscount > 0) discountText += `🎁 خصم محفظة النقاط: -${walletDiscount} ج\n`;
 
         const totalDiscount = promoDiscount + walletDiscount + bundleAgg.totalDiscount;
-        const freeDelivery = Boolean((globalSettings.freeDeliveryActive && totalAfterPromo >= (Number(globalSettings.freeDeliveryThreshold) || 0)) || (appliedPromo && appliedPromo.type === 'free_delivery') || bundleAgg.freeDelivery);
+        const freeDelivery = Boolean((globalSettings.freeDeliveryActive && totalAfterPromoAndBundles >= (Number(globalSettings.freeDeliveryThreshold) || 0) && totalAfterPromoAndBundles > 0) || (appliedPromo && appliedPromo.type === 'free_delivery') || bundleAgg.freeDelivery);
         const finalDelivery = freeDelivery ? 0 : deliveryFee;
         const finalTotal = Math.max(0, subTotal - totalDiscount + finalDelivery);
 
@@ -4662,7 +4687,11 @@
         if (!cfg || !Array.isArray(cfg.bundles)) return null;
         const now = offerNowMs();
         const timed = cfg.bundles
-            .filter((b) => b && b.enabled !== false && Number(b.endsAt) > now)
+            .filter((b) => {
+                if (!b || b.enabled === false || !(Number(b.endsAt) > now) || !activeBundles[b.id]) return false;
+                const items = Array.isArray(b.items) ? b.items : [];
+                return items.length > 0 && items.every((it) => it && (Number(cart[it.id]?.quantity) || 0) >= (Number(it.qty) || 1));
+            })
             .sort((a, b) => Number(a.endsAt) - Number(b.endsAt));
         return timed[0] || null;
     }
@@ -4868,6 +4897,8 @@
                 return;
             }
         }
+        let totalQuailNeeded = 0;
+        const neededByProd = {};
         for (const it of b.items) {
             const pInfo = productsInfo[it.id];
             if (!pInfo || pInfo.isWeightBased) {
@@ -4875,11 +4906,33 @@
                 return;
             }
             const need = Math.max(1, Number(it.qty) || 1);
-            if (getAvailableStock(it.id) < need) {
-                showAlert('المخزون لا يكفي', `المتاح حالياً من (${pInfo.name}) لا يكفي لإتمام الباكج.`);
+            neededByProd[it.id] = (neededByProd[it.id] || 0) + need;
+            if (getProductTrackType(it.id) === 'quail') totalQuailNeeded += need;
+        }
+        for (const pId of Object.keys(neededByProd)) {
+            if (getAvailableStock(pId) < neededByProd[pId]) {
+                showAlert('المخزون لا يكفي', `المتاح حالياً من (${productsInfo[pId].name}) لا يكفي لإتمام الباكج.`);
                 return;
             }
         }
+        if (totalQuailNeeded > 0) {
+            const bSelId = document.getElementById('user-batch-select')?.value || '';
+            const activeQBatch = (bSelId && globalBatches[bSelId] && getBatchTrackType(globalBatches[bSelId]) === 'quail') ? globalBatches[bSelId] : null;
+            const capRem = activeQBatch ? getBatchRemainingCeilingPairs(activeQBatch) : null;
+            if (capRem !== null && totalQuailNeeded > capRem) {
+                showAlert('سقف الدفعة لا يكفي', `المتبقي في الدفعة المختارة (${capRem} جوز فقط) ولا يكفي لإجمالي السمان داخل الباكج (${totalQuailNeeded} جوز). يمكنك اختيار دفعة أخرى.`);
+                return;
+            }
+        }
+
+        const hadPromo = Boolean(appliedPromo);
+        if (hadPromo) {
+            appliedPromo = null;
+            const pInp = document.getElementById('promo-code-input');
+            if (pInp) pInp.value = '';
+            document.getElementById('promo-message')?.classList.add('hidden');
+        }
+
         b.items.forEach((it) => {
             const need = Math.max(1, Number(it.qty) || 1);
             const unitPrice = getOfferUnitPrice(it.id);
@@ -4891,7 +4944,7 @@
         renderProducts();
         updateUI();
         if (navigator.vibrate) navigator.vibrate(45);
-        showStoreToast(`تمت إضافة ${b.title || 'الباكج'} للسلة 🎁`);
+        showStoreToast(hadPromo ? `تمت إضافة ${b.title || 'الباكج'} (لا يُجمع مع كود الخصم) 🎁` : `تمت إضافة ${b.title || 'الباكج'} للسلة 🎁`);
     };
 
     // خصم الباكج محسوب لحظياً من محتوى السلة: لو العميل شال صنف الخصم بيتشال، ولو الأسعار نزلت يدفع الأقل
@@ -4938,11 +4991,22 @@
 
     // ------------------------- سُلّم أطباق السمان -------------------------
     function getQuailPlatesInCart() {
+        const bundleQuailUsed = {};
+        const bundleAgg = computeActiveBundleOffers();
+        (bundleAgg.list || []).forEach((x) => {
+            (x.bundle?.items || []).forEach((it) => {
+                if (getProductTrackType(it.id) === 'quail') {
+                    bundleQuailUsed[it.id] = (bundleQuailUsed[it.id] || 0) + ((Number(it.qty) || 1) * x.instances);
+                }
+            });
+        });
         let plates = 0;
         Object.keys(cart).forEach((id) => {
             const it = cart[id];
             if (!it || it.pendingWeight || it.isWeightBased) return;
-            if (getProductTrackType(id) === 'quail') plates += Number(it.quantity) || 0;
+            if (getProductTrackType(id) === 'quail') {
+                plates += Math.max(0, (Number(it.quantity) || 0) - (bundleQuailUsed[id] || 0));
+            }
         });
         return plates;
     }
